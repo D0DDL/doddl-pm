@@ -1,0 +1,23 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+:root {
+  --indigo: #3D157D;
+  --aqua: #30BEAA;
+  --orange: #FACC91;
+  --bg: #F5F6FA;
+  --text: #1a1a2e;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--text); }
+.status-todo { background: #e5e7eb; color: #374151; }
+.status-in_progress { background: #dbeafe; color: #1d4ed8; }
+.status-blocked { background: #fee2e2; color: #dc2626; }
+.status-done { background: #d1fae5; color: #059669; }
+.source-email { background: #dbeafe; color: #1d4ed8; }
+.source-teams { background: #ede9fe; color: #7c3aed; }
+.source-teamsmaestro { background: #fce7f3; color: #be185d; }
+.source-manual { background: #f3f4f6; color: #374151; }
