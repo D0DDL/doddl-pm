@@ -702,6 +702,7 @@ export default function Home() {
           <div style={{ marginBottom: 20 }}>
             {navBtn('mywork', '👤 My Work', 0)}
             {navBtn('board', '📋 Projects', 0)}
+            {navBtn('kanban', '🗂 Kanban', 0)}
             {navBtn('gantt', '📅 Gantt', 0)}
             {navBtn('inbox', '📥 Inbox', inboxCount)}
           </div>
@@ -801,6 +802,86 @@ export default function Home() {
                     <Section title="No Due Date" color="#c1c7d0" items={noDate} />
                   </>
                 )}
+              </>
+            )
+          })() : view === 'kanban' ? (() => {
+            const cols = STATUSES.map(s => ({
+              ...s,
+              tasks: (activeProject
+                ? tasks.filter(t => t.project_id === activeProject)
+                : tasks
+              ).filter(t => t.status === s.key && !t.is_group)
+            }))
+            return (
+              <>
+                <h2 style={{ fontWeight: 800, fontSize: 18, color: 'var(--indigo)', marginBottom: 16 }}>Kanban Board</h2>
+                <div style={{ display: 'flex', gap: 12, overflowX: 'auto', alignItems: 'flex-start', paddingBottom: 16 }}>
+                  {cols.map(col => (
+                    <div key={col.key} style={{ minWidth: 260, maxWidth: 260, flexShrink: 0 }}>
+                      {/* Column header */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#fff', borderRadius: '8px 8px 0 0', borderTop: `3px solid ${col.color}`, borderLeft: '1px solid #dfe1e6', borderRight: '1px solid #dfe1e6' }}>
+                        <span style={{ width: 10, height: 10, borderRadius: '50%', background: col.color }} />
+                        <span style={{ fontWeight: 800, fontSize: 12, color: '#172b4d', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{col.label}</span>
+                        <span style={{ marginLeft: 'auto', background: '#f0f1f3', borderRadius: 10, fontSize: 11, fontWeight: 700, padding: '1px 7px', color: '#42526e' }}>{col.tasks.length}</span>
+                      </div>
+                      {/* Cards */}
+                      <div style={{ background: '#f8f9fc', borderLeft: '1px solid #dfe1e6', borderRight: '1px solid #dfe1e6', borderBottom: '1px solid #dfe1e6', borderRadius: '0 0 8px 8px', minHeight: 120, padding: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {col.tasks.map(task => {
+                          const proj = projects.find(p => p.id === task.project_id)
+                          const prio = priorityMap[task.priority] || PRIORITIES[2]
+                          const isOverdue = task.due_date && new Date(task.due_date) < new Date()
+                          return (
+                            <div key={task.id} style={{ background: '#fff', borderRadius: 8, padding: '10px 12px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', border: '1px solid #e5e7eb', cursor: 'pointer' }}
+                              onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.12)'}
+                              onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)'}>
+                              {proj && <p style={{ fontSize: 10, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', marginBottom: 4 }}>{proj.name}</p>}
+                              <p style={{ fontSize: 13, fontWeight: 700, color: '#172b4d', marginBottom: 8, lineHeight: 1.4 }}>{task.title}</p>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <span style={{ fontSize: 10, fontWeight: 700, color: prio.color }}>● {prio.label}</span>
+                                {task.due_date && (
+                                  <span style={{ fontSize: 10, fontWeight: 600, color: isOverdue ? '#de350b' : '#6b778c', background: isOverdue ? '#ffebe6' : '#f0f1f3', borderRadius: 4, padding: '2px 6px' }}>
+                                    {isOverdue ? '⚠ ' : ''}{task.due_date}
+                                  </span>
+                                )}
+                              </div>
+                              {task.assigned_to && (
+                                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--aqua)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: '#fff' }}>
+                                    {task.assigned_to.charAt(0).toUpperCase()}
+                                  </div>
+                                  <span style={{ fontSize: 11, color: '#42526e', fontWeight: 600 }}>{task.assigned_to}</span>
+                                </div>
+                              )}
+                              {task.progress > 0 && (
+                                <div style={{ marginTop: 8 }}>
+                                  <div style={{ height: 3, background: '#f0f1f3', borderRadius: 2, overflow: 'hidden' }}>
+                                    <div style={{ width: `${task.progress}%`, height: '100%', background: col.color, borderRadius: 2 }} />
+                                  </div>
+                                </div>
+                              )}
+                              {/* Status change buttons */}
+                              <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
+                                {STATUSES.filter(s => s.key !== col.key).slice(0, 3).map(s => (
+                                  <button key={s.key}
+                                    onClick={async () => { await supabase.from('tasks').update({ status: s.key }).eq('id', task.id); load() }}
+                                    style={{ fontSize: 9, padding: '2px 6px', borderRadius: 3, border: `1px solid ${s.color}`, background: 'transparent', color: s.color, cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>
+                                    → {s.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )
+                        })}
+                        <button onClick={() => { setView('kanban'); handleAddTask(activeProject) }}
+                          style={{ background: 'none', border: '2px dashed #dfe1e6', borderRadius: 8, padding: '8px', fontSize: 12, color: '#6b778c', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 600, textAlign: 'center' }}
+                          onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--aqua)'}
+                          onMouseLeave={e => e.currentTarget.style.borderColor = '#dfe1e6'}>
+                          + Add task
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </>
             )
           })() : view === 'gantt' ? (
