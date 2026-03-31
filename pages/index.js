@@ -669,6 +669,9 @@ export default function Home() {
   const [addTaskParentId, setAddTaskParentId]   = useState(null)
   const [search, setSearch]                 = useState('')
   const [selectedTask, setSelectedTask]     = useState(null)
+  const now = new Date()
+  const [calYear, setCalYear]               = useState(now.getFullYear())
+  const [calMonth, setCalMonth]             = useState(now.getMonth())
 
   useEffect(() => {
     (async () => {
@@ -924,9 +927,6 @@ export default function Home() {
           })()
 
           : view === 'calendar' ? (() => {
-            const now = new Date()
-            const [calYear, setCalYear] = useState(now.getFullYear())
-            const [calMonth, setCalMonth] = useState(now.getMonth())
             const firstDay = new Date(calYear, calMonth, 1)
             const lastDay  = new Date(calYear, calMonth + 1, 0)
             const startPad = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1
