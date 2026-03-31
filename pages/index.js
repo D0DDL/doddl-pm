@@ -24,7 +24,117 @@ const COL_WIDTHS = { task: 320, status: 130, assignee: 120, start: 110, due: 110
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 function StatusBadge({ value, onChange }) {
-)
+  const [open, setOpen] = useState(false)
+  const s = statusMap[value] || STATUSES[0]
+  return (
+    <div style={{ position: 'relative' }}>
+      <div onClick={() => onChange && setOpen(o => !o)}
+        style={{ background: s.color, color: '#fff', borderRadius: 3, padding: '3px 8px', fontSize: 11, fontWeight: 700, cursor: onChange ? 'pointer' : 'default', whiteSpace: 'nowrap', textAlign: 'center' }}>
+        {s.label}
+      </div>
+      {open && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 999, background: '#fff', border: '1px solid #dfe1e6', borderRadius: 4, boxShadow: '0 4px 16px rgba(0,0,0,0.15)', minWidth: 140, marginTop: 2 }}>
+          {STATUSES.map(st => (
+            <div key={st.key} onClick={() => { onChange(st.key); setOpen(false) }}
+              style={{ padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+              onMouseEnter={e => e.currentTarget.style.background = '#f4f5f7'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              <span style={{ width: 10, height: 10, borderRadius: 2, background: st.color, flexShrink: 0 }} />
+              <span style={{ fontSize: 12, fontWeight: 600 }}>{st.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PriorityBadge({ value, onChange }) {
+  const [open, setOpen] = useState(false)
+  const p = priorityMap[value] || PRIORITIES[2]
+  return (
+    <div style={{ position: 'relative' }}>
+      <div onClick={() => onChange && setOpen(o => !o)}
+        style={{ color: p.color, fontSize: 11, fontWeight: 700, cursor: onChange ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: 4 }}>
+        <span style={{ width: 8, height: 8, borderRadius: '50%', background: p.color }} />
+        {p.label}
+      </div>
+      {open && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 999, background: '#fff', border: '1px solid #dfe1e6', borderRadius: 4, boxShadow: '0 4px 16px rgba(0,0,0,0.15)', minWidth: 120, marginTop: 2 }}>
+          {PRIORITIES.map(pr => (
+            <div key={pr.key} onClick={() => { onChange(pr.key); setOpen(false) }}
+              style={{ padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+              onMouseEnter={e => e.currentTarget.style.background = '#f4f5f7'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: pr.color }} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: pr.color }}>{pr.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ProgressBar({ value, onChange }) {
+  const pct = Math.min(100, Math.max(0, value || 0))
+  const color = pct === 100 ? '#36b37e' : pct > 60 ? '#0052cc' : pct > 30 ? '#ff8b00' : '#c1c7d0'
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div style={{ flex: 1, height: 6, background: '#f0f1f3', borderRadius: 3, overflow: 'hidden' }}>
+        <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 3, transition: 'width 0.3s' }} />
+      </div>
+      {onChange ? (
+        <input type="number" min="0" max="100" value={pct}
+          onChange={e => onChange(parseInt(e.target.value) || 0)}
+          style={{ width: 36, fontSize: 11, fontWeight: 700, color: '#42526e', border: 'none', background: 'transparent', textAlign: 'right', padding: 0 }} />
+      ) : (
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#42526e', minWidth: 28, textAlign: 'right' }}>{pct}%</span>
+      )}
+    </div>
+  )
+}
+
+function InlineEdit({ value, onSave, style = {} }) {
+  const [editing, setEditing] = useState(false)
+  const [val, setVal] = useState(value)
+  const ref = useRef()
+  useEffect(() => { if (editing && ref.current) ref.current.focus() }, [editing])
+  if (editing) return (
+    <input ref={ref} value={val} onChange={e => setVal(e.target.value)}
+      onBlur={() => { onSave(val); setEditing(false) }}
+      onKeyDown={e => { if (e.key === 'Enter') { onSave(val); setEditing(false) } if (e.key === 'Escape') setEditing(false) }}
+      style={{ width: '100%', border: 'none', borderBottom: '2px solid var(--aqua)', outline: 'none', background: 'transparent', fontSize: 13, padding: '2px 0', ...style }} />
+  )
+  return <span onDoubleClick={() => setEditing(true)} style={{ cursor: 'text', ...style }}>{value || <span style={{ color: '#a0aec0' }}>—</span>}</span>
+}
+
+function DateCell({ value, onChange }) {
+  return (
+    <input type="date" value={value || ''} onChange={e => onChange(e.target.value)}
+      style={{ border: 'none', background: 'transparent', fontSize: 12, color: value ? '#172b4d' : '#a0aec0', cursor: 'pointer', width: '100%', fontFamily: 'Nunito, sans-serif' }} />
+  )
+}
+
+// ── Gantt Chart ────────────────────────────────────────────────────────────
+function GanttView({ tasks, projects }) {
+  const today = new Date()
+  const allDates = tasks.flatMap(t => [t.start_date, t.due_date]).filter(Boolean).map(d => new Date(d))
+  const minDate = allDates.length ? new Date(Math.min(...allDates)) : new Date(today.getFullYear(), today.getMonth(), 1)
+  const maxDate = allDates.length ? new Date(Math.max(...allDates)) : new Date(today.getFullYear(), today.getMonth() + 3, 0)
+  minDate.setDate(minDate.getDate() - 7)
+  maxDate.setDate(maxDate.getDate() + 14)
+
+  const totalDays = Math.ceil((maxDate - minDate) / 86400000)
+  const dayWidth = 28
+  const labelW = 240
+
+  const dayPos = date => Math.ceil((new Date(date) - minDate) / 86400000) * dayWidth
+  const todayPos = Math.ceil((today - minDate) / 86400000) * dayWidth
+
+  // Build weeks
+  const weeks = []
+  let cur = new Date(minDate)
   while (cur <= maxDate) {
     weeks.push(new Date(cur))
     cur.setDate(cur.getDate() + 7)
@@ -100,7 +210,15 @@ function TaskRow({ task, allTasks, depth, onUpdate, onDelete, onAddSubtask }) {
   const bg = depth === 0 ? '#f8f9fc' : '#fff'
   const indent = depth * 20
 
-p: 6 }}>
+  return (
+    <>
+      <tr style={{ background: bg, borderBottom: '1px solid #f0f1f3' }}
+        onMouseEnter={e => e.currentTarget.style.background = '#f0f4ff'}
+        onMouseLeave={e => e.currentTarget.style.background = bg}>
+
+        {/* Task name */}
+        <td style={{ padding: '6px 8px 6px ' + (8 + indent) + 'px', width: COL_WIDTHS.task, minWidth: COL_WIDTHS.task }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             {hasChildren && (
               <span onClick={() => setExpanded(e => !e)} style={{ cursor: 'pointer', color: '#6b778c', fontSize: 10, width: 14, flexShrink: 0 }}>
                 {expanded ? '▼' : '▶'}
