@@ -399,71 +399,413 @@ function TaskRow({ task, allTasks, depth, onUpdate, onDelete, onAddSubtask, onSe
 }
 
 // ── Project Section ────────────────────────────────────────────────────────
-function ProjectSection({ project, tasks, allTasks, onUpdate, onDelete, onAddTask, onAddSubtask, onSelect, colorIndex }) {
+// ── Mini Timeline Bar ──────────────────────────────────────────────────────
+function MiniTimeline({ startDate, dueDate, color }) {
+  if (!startDate && !dueDate) return <span style={{ color: '#c1c7d0', fontSize: 11 }}>—</span>
+  const now = new Date()
+  const start = startDate ? new Date(startDate) : now
+  const end = dueDate ? new Date(dueDate) : now
+  const total = Math.max(end - start, 86400000)
+  const elapsed = Math.min(Math.max(now - start, 0), total)
+  const pct = Math.round((elapsed / total) * 100)
+  const isOverdue = dueDate && new Date(dueDate) < now
+  const barColor = isOverdue ? '#de350b' : color || '#0052cc'
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div style={{ flex: 1, height: 6, background: '#f0f1f3', borderRadius: 3, overflow: 'hidden', minWidth: 60 }}>
+        <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 3 }} />
+      </div>
+      {dueDate && <span style={{ fontSize: 10, color: isOverdue ? '#de350b' : '#6b778c', fontWeight: 600, whiteSpace: 'nowrap' }}>{new Date(dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>}
+    </div>
+  )
+}
+
+// ── Owner Avatar ───────────────────────────────────────────────────────────
+function OwnerAvatar({ name }) {
+  if (!name) return <div style={{ width: 28, height: 28 }} />
+  const colors = ['#0052cc','#00875a','#de350b','#ff8b00','#6554c0','#00a3bf']
+  const idx = name.charCodeAt(0) % colors.length
+  return (
+    <div title={name} style={{ width: 28, height: 28, borderRadius: '50%', background: colors[idx], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#fff', flexShrink: 0, cursor: 'default' }}>
+      {name.charAt(0).toUpperCase()}
+    </div>
+  )
+}
+
+// ── Project Group (sub-section within a project) ───────────────────────────
+function ProjectGroup({ group, allTasks, projectColor, onUpdate, onDelete, onAddSubtask, onSelect, onAddTask, projectId }) {
   const [collapsed, setCollapsed] = useState(false)
+  const [addingTask, setAddingTask] = useState(false)
+  const [newTaskTitle, setNewTaskTitle] = useState('')
+  const children = allTasks.filter(t => t.parent_id === group.id)
+
+  const addTask = async () => {
+    if (!newTaskTitle.trim()) return
+    await supabase.from('tasks').insert([{ title: newTaskTitle, project_id: projectId, parent_id: group.id, status: 'not_started', priority: 'medium', progress: 0, source: 'manual' }])
+    setNewTaskTitle(''); setAddingTask(false); onUpdate()
+  }
+
+  return (
+    <div style={{ marginBottom: 0 }}>
+      {/* Group header row */}
+      <div style={{ display: 'flex', alignItems: 'center', borderLeft: `4px solid ${projectColor}`, background: '#f8f9fc', borderBottom: '1px solid #dfe1e6' }}>
+        <div style={{ width: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span onClick={() => setCollapsed(c => !c)} style={{ cursor: 'pointer', fontSize: 10, color: '#6b778c' }}>{collapsed ? '▶' : '▼'}</span>
+        </div>
+        <div style={{ flex: 1, padding: '8px 8px 8px 4px', fontWeight: 800, fontSize: 13, color: '#172b4d' }}>{group.title}</div>
+        <div style={{ width: 130, padding: '8px', fontSize: 11, color: '#6b778c', fontWeight: 600 }}>{children.length} task{children.length !== 1 ? 's' : ''}</div>
+        <div style={{ width: 120 }} /><div style={{ width: 220 }} /><div style={{ width: 110 }} /><div style={{ width: 80 }} />
+      </div>
+      {/* Child tasks */}
+      {!collapsed && children.map(task => (
+        <ProjectTableRow key={task.id} task={task} allTasks={allTasks} projectColor={projectColor}
+          onUpdate={onUpdate} onDelete={onDelete} onAddSubtask={onAddSubtask} onSelect={onSelect} depth={1} />
+      ))}
+      {!collapsed && (
+        addingTask ? (
+          <div style={{ display: 'flex', alignItems: 'center', borderLeft: `4px solid ${projectColor}`, borderBottom: '1px solid #f0f1f3', padding: '4px 8px 4px 32px', gap: 8 }}>
+            <input autoFocus value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') addTask(); if (e.key === 'Escape') setAddingTask(false) }}
+              placeholder="Task title..." style={{ flex: 1, border: '1px solid var(--aqua)', borderRadius: 4, padding: '4px 8px', fontSize: 13, fontFamily: 'Nunito, sans-serif', outline: 'none' }} />
+            <button onClick={addTask} style={{ background: 'var(--aqua)', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 12px', fontSize: 12, cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>Add</button>
+            <button onClick={() => setAddingTask(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#6b778c' }}>Cancel</button>
+          </div>
+        ) : (
+          <div style={{ borderLeft: `4px solid ${projectColor}`, borderBottom: '1px solid #f0f1f3' }}>
+            <button onClick={() => setAddingTask(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#6b778c', padding: '6px 8px 6px 32px', fontFamily: 'Nunito, sans-serif', fontWeight: 600 }}
+              onMouseEnter={e => e.currentTarget.style.color = 'var(--aqua)'} onMouseLeave={e => e.currentTarget.style.color = '#6b778c'}>+ Add task</button>
+          </div>
+        )
+      )}
+    </div>
+  )
+}
+
+// ── Project Table Row (Monday.com style) ───────────────────────────────────
+function ProjectTableRow({ task, allTasks, projectColor, onUpdate, onDelete, onAddSubtask, onSelect, depth = 0 }) {
+  const update = async (field, value) => { await supabase.from('tasks').update({ [field]: value }).eq('id', task.id); onUpdate() }
+  const s = statusMap[task.status] || STATUSES[0]
+  const indent = depth * 20
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', borderLeft: `4px solid ${projectColor}`, borderBottom: '1px solid #f0f1f3', minHeight: 38 }}
+      onMouseEnter={e => e.currentTarget.style.background = '#f8f9ff'}
+      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+      {/* Task name */}
+      <div style={{ flex: 1, paddingLeft: 8 + indent, paddingRight: 8, display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+        <span style={{ cursor: 'pointer', flex: 1, fontSize: 13, fontWeight: depth === 0 ? 600 : 400, color: '#172b4d', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+          onClick={() => onSelect && onSelect(task)}>{task.title}</span>
+        <span onClick={() => onDelete(task.id)} style={{ color: '#c1c7d0', cursor: 'pointer', fontSize: 14, flexShrink: 0, opacity: 0 }}
+          onMouseEnter={e => e.currentTarget.style.opacity = 1} onMouseLeave={e => e.currentTarget.style.opacity = 0}>×</span>
+      </div>
+      {/* Owner */}
+      <div style={{ width: 60, padding: '4px 8px', display: 'flex', alignItems: 'center' }}>
+        <OwnerAvatar name={task.assigned_to} />
+      </div>
+      {/* Status */}
+      <div style={{ width: 130, padding: '4px 8px' }}>
+        <StatusBadge value={task.status} onChange={v => update('status', v)} />
+      </div>
+      {/* Timeline */}
+      <div style={{ width: 160, padding: '4px 8px' }}>
+        <MiniTimeline startDate={task.start_date} dueDate={task.due_date} color={projectColor} />
+      </div>
+      {/* Due date */}
+      <div style={{ width: 90, padding: '4px 8px', fontSize: 12, color: task.due_date && new Date(task.due_date) < new Date() ? '#de350b' : '#42526e', fontWeight: 600 }}>
+        {task.due_date ? new Date(task.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}
+      </div>
+      {/* Priority */}
+      <div style={{ width: 90, padding: '4px 8px' }}>
+        <PriorityBadge value={task.priority} onChange={v => update('priority', v)} />
+      </div>
+      {/* Progress */}
+      <div style={{ width: 80, padding: '4px 8px' }}>
+        <ProgressBar value={task.progress} onChange={v => update('progress', v)} />
+      </div>
+    </div>
+  )
+}
+
+// ── Project Dashboard (metrics view) ──────────────────────────────────────
+function ProjectDashboard({ project, tasks, color }) {
+  const total = tasks.length
+  const done = tasks.filter(t => t.status === 'done').length
+  const inProgress = tasks.filter(t => t.status === 'in_progress' || t.status === 'on_track').length
+  const blocked = tasks.filter(t => t.status === 'blocked' || t.status === 'at_risk').length
+  const notStarted = tasks.filter(t => t.status === 'not_started').length
+  const overdue = tasks.filter(t => t.due_date && new Date(t.due_date) < new Date() && t.status !== 'done').length
+  const pct = total ? Math.round(done / total * 100) : 0
+  const byAssignee = TEAM.map(m => ({ name: m.name, count: tasks.filter(t => t.assigned_to === m.name).length })).filter(m => m.count > 0)
+
+  const Stat = ({ label, value, color: c, sub }) => (
+    <div style={{ background: '#fff', borderRadius: 10, padding: '20px 24px', border: '1px solid #dfe1e6', flex: 1 }}>
+      <p style={{ fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>{label}</p>
+      <p style={{ fontSize: 32, fontWeight: 800, color: c || '#172b4d', marginBottom: 4 }}>{value}</p>
+      {sub && <p style={{ fontSize: 12, color: '#6b778c' }}>{sub}</p>}
+    </div>
+  )
+
+  return (
+    <div style={{ padding: '0 0 24px 0' }}>
+      {/* KPI row */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+        <Stat label="Total Tasks" value={total} sub={`${pct}% complete`} />
+        <Stat label="Done" value={done} color="#36b37e" sub="completed" />
+        <Stat label="In Progress" value={inProgress} color="#0052cc" sub="active" />
+        <Stat label="Blocked / At Risk" value={blocked} color="#de350b" sub="needs attention" />
+        <Stat label="Overdue" value={overdue} color={overdue > 0 ? '#de350b' : '#6b778c'} sub="past due date" />
+      </div>
+      {/* Progress bar */}
+      <div style={{ background: '#fff', borderRadius: 10, padding: '20px 24px', border: '1px solid #dfe1e6', marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+          <p style={{ fontWeight: 800, fontSize: 14, color: '#172b4d' }}>Overall Progress</p>
+          <p style={{ fontWeight: 800, fontSize: 14, color }>{pct}%</p>
+        </div>
+        <div style={{ height: 12, background: '#f0f1f3', borderRadius: 6, overflow: 'hidden' }}>
+          <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 6, transition: 'width 0.5s' }} />
+        </div>
+        <div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
+          {[['Not Started', notStarted, '#c1c7d0'], ['In Progress', inProgress, '#0052cc'], ['Done', done, '#36b37e'], ['Blocked', blocked, '#de350b']].map(([l, v, c]) => (
+            <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 10, height: 10, borderRadius: 2, background: c }} />
+              <span style={{ fontSize: 12, color: '#6b778c', fontWeight: 600 }}>{l}: {v}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* By assignee */}
+      {byAssignee.length > 0 && (
+        <div style={{ background: '#fff', borderRadius: 10, padding: '20px 24px', border: '1px solid #dfe1e6' }}>
+          <p style={{ fontWeight: 800, fontSize: 14, color: '#172b4d', marginBottom: 16 }}>Workload by Person</p>
+          {byAssignee.map(({ name, count }) => (
+            <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+              <OwnerAvatar name={name} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#172b4d', width: 80 }}>{name}</span>
+              <div style={{ flex: 1, height: 8, background: '#f0f1f3', borderRadius: 4, overflow: 'hidden' }}>
+                <div style={{ width: `${(count / total) * 100}%`, height: '100%', background: color, borderRadius: 4 }} />
+              </div>
+              <span style={{ fontSize: 12, color: '#6b778c', fontWeight: 600, width: 40, textAlign: 'right' }}>{count} task{count !== 1 ? 's' : ''}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Project Section — Monday.com style with internal tabs ──────────────────
+function ProjectSection({ project, tasks, allTasks, onUpdate, onDelete, onAddTask, onAddSubtask, onSelect, colorIndex, projects, user }) {
+  const [projectTab, setProjectTab] = useState('table')
   const [addingGroup, setAddingGroup] = useState(false)
   const [groupName, setGroupName] = useState('')
-  const projectTasks = tasks.filter(t => !t.parent_id)
+  const color = getProjectColor(project, colorIndex)
   const totalTasks = tasks.length
   const doneTasks = tasks.filter(t => t.status === 'done').length
   const pct = totalTasks ? Math.round(doneTasks / totalTasks * 100) : 0
-  const color = getProjectColor(project, colorIndex)
+
+  // Separate groups from regular tasks
+  const groups = tasks.filter(t => t.is_group && !t.parent_id)
+  const ungroupedTasks = tasks.filter(t => !t.is_group && !t.parent_id)
+
   const saveGroup = async () => {
     if (!groupName.trim()) return
     await supabase.from('tasks').insert([{ title: groupName, project_id: project.id, is_group: true, status: 'not_started', priority: 'medium', progress: 0 }])
     setGroupName(''); setAddingGroup(false); onUpdate()
   }
-  return (
-    <div style={{ marginBottom: 32 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', background: `linear-gradient(90deg, ${color} 0%, ${color}cc 100%)`, borderRadius: '8px 8px 0 0', color: '#fff' }}>
-        <span onClick={() => setCollapsed(c => !c)} style={{ cursor: 'pointer', fontSize: 12 }}>{collapsed ? '▶' : '▼'}</span>
-        <span style={{ fontWeight: 800, fontSize: 15 }}>{project.name}</span>
-        {project.owner && <span style={{ fontSize: 12, opacity: 0.7 }}>· {project.owner}</span>}
-        <div style={{ flex: 1 }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 80, height: 5, background: 'rgba(255,255,255,0.3)', borderRadius: 3, overflow: 'hidden' }}>
-            <div style={{ width: `${pct}%`, height: '100%', background: '#30BEAA', borderRadius: 3 }} />
+
+  const TAB = ({ id, label, icon }) => (
+    <button onClick={() => setProjectTab(id)} style={{
+      display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', border: 'none', background: 'none', cursor: 'pointer',
+      fontFamily: 'Nunito, sans-serif', fontWeight: 600, fontSize: 13, borderBottom: projectTab === id ? `3px solid ${color}` : '3px solid transparent',
+      color: projectTab === id ? color : '#6b778c', marginBottom: -1
+    }}>{icon} {label}</button>
+  )
+
+  // Project-level Kanban
+  const KanbanView = () => {
+    const cols = STATUSES.map(s => ({ ...s, tasks: tasks.filter(t => t.status === s.key && !t.is_group) }))
+    return (
+      <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 16, paddingTop: 12 }}>
+        {cols.map(col => (
+          <div key={col.key} style={{ minWidth: 240, flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: '#f8f9fc', borderRadius: '6px 6px 0 0', borderTop: `3px solid ${col.color}`, border: `1px solid #dfe1e6`, borderTop: `3px solid ${col.color}` }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: col.color }} />
+              <span style={{ fontWeight: 700, fontSize: 11, color: '#172b4d', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{col.label}</span>
+              <span style={{ marginLeft: 'auto', background: '#e5e7eb', borderRadius: 8, fontSize: 10, fontWeight: 700, padding: '1px 6px', color: '#42526e' }}>{col.tasks.length}</span>
+            </div>
+            <div style={{ background: '#f8f9fc', border: '1px solid #dfe1e6', borderTop: 'none', borderRadius: '0 0 6px 6px', minHeight: 80, padding: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {col.tasks.map(task => {
+                const prio = priorityMap[task.priority] || PRIORITIES[2]
+                const isOverdue = task.due_date && new Date(task.due_date) < new Date()
+                return (
+                  <div key={task.id} onClick={() => onSelect(task)} style={{ background: '#fff', borderRadius: 6, padding: '10px 12px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: `1px solid #e5e7eb`, cursor: 'pointer', borderLeft: `3px solid ${col.color}` }}
+                    onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'}
+                    onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)'}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#172b4d', marginBottom: 8, lineHeight: 1.4 }}>{task.title}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: prio.color }}>● {prio.label}</span>
+                      {task.due_date && <span style={{ fontSize: 10, fontWeight: 600, color: isOverdue ? '#de350b' : '#6b778c', background: isOverdue ? '#ffebe6' : '#f0f1f3', borderRadius: 4, padding: '2px 6px' }}>{isOverdue ? '⚠ ' : ''}{new Date(task.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>}
+                    </div>
+                    {task.assigned_to && <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}><OwnerAvatar name={task.assigned_to} /><span style={{ fontSize: 11, color: '#42526e' }}>{task.assigned_to}</span></div>}
+                    <div style={{ display: 'flex', gap: 3, marginTop: 8, flexWrap: 'wrap' }}>
+                      {STATUSES.filter(s => s.key !== col.key).slice(0, 2).map(s => (
+                        <button key={s.key} onClick={async e => { e.stopPropagation(); await supabase.from('tasks').update({ status: s.key }).eq('id', task.id); onUpdate() }}
+                          style={{ fontSize: 9, padding: '2px 5px', borderRadius: 3, border: `1px solid ${s.color}`, background: 'transparent', color: s.color, cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>→ {s.label}</button>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+              <button onClick={() => onAddTask(project.id)} style={{ background: 'none', border: '2px dashed #dfe1e6', borderRadius: 6, padding: '6px', fontSize: 11, color: '#6b778c', cursor: 'pointer', fontFamily: 'Nunito, sans-serif' }}>+ Add task</button>
+            </div>
           </div>
-          <span style={{ fontSize: 12, fontWeight: 700 }}>{pct}%</span>
-          <span style={{ fontSize: 11, opacity: 0.7 }}>{doneTasks}/{totalTasks} tasks</span>
-        </div>
-        {project.due_date && <span style={{ fontSize: 11, background: 'rgba(255,255,255,0.15)', padding: '2px 8px', borderRadius: 10 }}>Due {project.due_date}</span>}
+        ))}
       </div>
-      {!collapsed && (
-        <>
-          <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-            <thead>
-              <tr style={{ background: '#f8f9fc', borderBottom: '2px solid #dfe1e6' }}>
-                {[['Task', COL_WIDTHS.task], ['Status', COL_WIDTHS.status], ['Assignee', COL_WIDTHS.assignee], ['Start', COL_WIDTHS.start], ['Due', COL_WIDTHS.due], ['Priority', COL_WIDTHS.priority], ['Progress', COL_WIDTHS.progress], ['Depends On', COL_WIDTHS.depends]].map(([h, w]) => (
-                  <th key={h} style={{ padding: '7px 8px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', letterSpacing: '0.04em', width: w }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {projectTasks.map(task => (
-                <TaskRow key={task.id} task={task} allTasks={allTasks} depth={0}
-                  onUpdate={onUpdate} onDelete={onDelete} onAddSubtask={onAddSubtask} onSelect={onSelect} />
-              ))}
-            </tbody>
-          </table>
-          <div style={{ padding: '6px 16px', borderTop: '1px solid #f0f1f3', display: 'flex', gap: 8 }}>
-            <button onClick={() => onAddTask(project.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#6b778c', fontFamily: 'Nunito, sans-serif', fontWeight: 600, padding: '4px 8px', borderRadius: 4 }}
-              onMouseEnter={e => e.currentTarget.style.background = '#f0f1f3'} onMouseLeave={e => e.currentTarget.style.background = 'none'}>+ Add task</button>
-            {addingGroup ? (
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <input autoFocus value={groupName} onChange={e => setGroupName(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') saveGroup(); if (e.key === 'Escape') setAddingGroup(false) }}
-                  placeholder="Group name..." style={{ border: '1px solid var(--aqua)', borderRadius: 4, padding: '3px 8px', fontSize: 12, fontFamily: 'Nunito, sans-serif' }} />
-                <button onClick={saveGroup} style={{ background: 'var(--aqua)', color: '#fff', border: 'none', borderRadius: 4, padding: '3px 10px', fontSize: 12, cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>Add</button>
-                <button onClick={() => setAddingGroup(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#6b778c' }}>Cancel</button>
-              </div>
-            ) : (
-              <button onClick={() => setAddingGroup(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#6b778c', fontFamily: 'Nunito, sans-serif', fontWeight: 600, padding: '4px 8px', borderRadius: 4 }}
-                onMouseEnter={e => e.currentTarget.style.background = '#f0f1f3'} onMouseLeave={e => e.currentTarget.style.background = 'none'}>+ Add group</button>
-            )}
+    )
+  }
+
+  // Project-level Gantt
+  const GanttView = () => {
+    const ganttTasks = tasks.filter(t => !t.is_group)
+    if (ganttTasks.length === 0) return <div style={{ padding: 40, textAlign: 'center', color: '#6b778c' }}>No tasks with dates to display</div>
+    const allDates = ganttTasks.flatMap(t => [t.start_date, t.due_date]).filter(Boolean).map(d => new Date(d))
+    const minDate = allDates.length ? new Date(Math.min(...allDates)) : new Date()
+    const maxDate = allDates.length ? new Date(Math.max(...allDates)) : new Date()
+    minDate.setDate(minDate.getDate() - 3); maxDate.setDate(maxDate.getDate() + 7)
+    const totalDays = Math.max(Math.ceil((maxDate - minDate) / 86400000), 14)
+    const dayW = Math.max(24, Math.min(40, 800 / totalDays))
+    const labelW = 220
+    const today = new Date()
+    const todayPos = Math.ceil((today - minDate) / 86400000) * dayW
+    const weeks = []; let cur = new Date(minDate)
+    while (cur <= maxDate) { weeks.push(new Date(cur)); cur.setDate(cur.getDate() + 7) }
+    return (
+      <div style={{ overflowX: 'auto', marginTop: 12, border: '1px solid #dfe1e6', borderRadius: 8 }}>
+        <div style={{ minWidth: labelW + totalDays * dayW + 20 }}>
+          <div style={{ display: 'flex', background: '#f8f9fc', borderBottom: '2px solid #dfe1e6', position: 'sticky', top: 0, zIndex: 5 }}>
+            <div style={{ width: labelW, flexShrink: 0, padding: '8px 12px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', borderRight: '1px solid #dfe1e6' }}>Task</div>
+            <div style={{ flex: 1, position: 'relative', height: 36 }}>
+              {weeks.map((w, i) => <div key={i} style={{ position: 'absolute', left: Math.ceil((w - minDate) / 86400000) * dayW, top: 0, bottom: 0, borderLeft: '1px solid #e5e7eb', padding: '10px 4px', fontSize: 10, fontWeight: 700, color: '#6b778c', whiteSpace: 'nowrap' }}>{w.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</div>)}
+            </div>
           </div>
-        </>
-      )}
+          <div style={{ position: 'relative' }}>
+            <div style={{ position: 'absolute', left: labelW + todayPos, top: 0, bottom: 0, width: 2, background: '#de350b', zIndex: 4, pointerEvents: 'none' }} />
+            {ganttTasks.map(task => {
+              const s = statusMap[task.status] || STATUSES[0]
+              const start = task.start_date ? Math.ceil((new Date(task.start_date) - minDate) / 86400000) * dayW : null
+              const end = task.due_date ? Math.ceil((new Date(task.due_date) - minDate) / 86400000) * dayW + dayW : null
+              const barW = start !== null && end !== null ? Math.max(end - start, dayW) : null
+              return (
+                <div key={task.id} style={{ display: 'flex', borderBottom: '1px solid #f0f1f3', minHeight: 34 }}>
+                  <div style={{ width: labelW, flexShrink: 0, padding: '7px 12px', borderRight: '1px solid #f0f1f3', fontSize: 12, color: '#172b4d', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <OwnerAvatar name={task.assigned_to} />
+                    <span title={task.title}>{task.title}</span>
+                  </div>
+                  <div style={{ flex: 1, position: 'relative', background: '#fff' }}>
+                    {barW && <div style={{ position: 'absolute', left: start, top: 6, height: 20, width: barW, background: s.color, borderRadius: 4, opacity: 0.85, display: 'flex', alignItems: 'center', paddingLeft: 6, overflow: 'hidden' }}>
+                      <span style={{ fontSize: 10, color: '#fff', fontWeight: 700, whiteSpace: 'nowrap' }}>{task.title}</span>
+                    </div>}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ marginBottom: 40, background: '#fff', borderRadius: 12, border: '1px solid #dfe1e6', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+      {/* Project header */}
+      <div style={{ padding: '14px 20px', borderLeft: `5px solid ${color}`, borderBottom: '1px solid #dfe1e6', display: 'flex', alignItems: 'center', gap: 12, background: '#fafbfc' }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontWeight: 800, fontSize: 16, color: '#172b4d' }}>{project.name}</span>
+            {project.owner && <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><OwnerAvatar name={project.owner} /><span style={{ fontSize: 12, color: '#6b778c', fontWeight: 600 }}>{project.owner}</span></div>}
+            {project.due_date && <span style={{ fontSize: 11, background: '#f0f1f3', borderRadius: 10, padding: '2px 10px', color: '#42526e', fontWeight: 600 }}>Due {new Date(project.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
+          </div>
+          {project.description && <p style={{ fontSize: 12, color: '#6b778c', marginTop: 4 }}>{project.description}</p>}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 100, height: 6, background: '#e5e7eb', borderRadius: 3, overflow: 'hidden' }}>
+            <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 3 }} />
+          </div>
+          <span style={{ fontSize: 12, fontWeight: 700, color }}>  {pct}%</span>
+          <span style={{ fontSize: 11, color: '#6b778c' }}>{doneTasks}/{totalTasks}</span>
+        </div>
+      </div>
+
+      {/* Tabs — Monday.com style */}
+      <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #dfe1e6', padding: '0 20px', background: '#fafbfc', gap: 4 }}>
+        <TAB id="table" label="Main Table" icon="☰" />
+        <TAB id="kanban" label="Kanban" icon="⊞" />
+        <TAB id="gantt" label="Timeline" icon="▬" />
+        <TAB id="dashboard" label="Dashboard" icon="◉" />
+        <div style={{ flex: 1 }} />
+        <button onClick={() => onAddTask(project.id)} style={{ background: color, color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Nunito, sans-serif' }}>+ Add task</button>
+      </div>
+
+      {/* Tab content */}
+      <div style={{ padding: projectTab === 'table' ? 0 : '0 16px' }}>
+
+        {/* TABLE VIEW */}
+        {projectTab === 'table' && (
+          <>
+            {/* Column headers */}
+            <div style={{ display: 'flex', alignItems: 'center', background: '#f8f9fc', borderBottom: '2px solid #dfe1e6', paddingLeft: 32 }}>
+              <div style={{ flex: 1, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Task</div>
+              <div style={{ width: 60, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Owner</div>
+              <div style={{ width: 130, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Status</div>
+              <div style={{ width: 160, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Timeline</div>
+              <div style={{ width: 90, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Due date</div>
+              <div style={{ width: 90, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Priority</div>
+              <div style={{ width: 80, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Progress</div>
+            </div>
+
+            {/* Groups with their tasks */}
+            {groups.map(group => (
+              <ProjectGroup key={group.id} group={group} allTasks={allTasks} projectColor={color}
+                onUpdate={onUpdate} onDelete={onDelete} onAddSubtask={onAddSubtask} onSelect={onSelect}
+                onAddTask={onAddTask} projectId={project.id} />
+            ))}
+
+            {/* Ungrouped tasks */}
+            {ungroupedTasks.length > 0 && (
+              <div>
+                {ungroupedTasks.map(task => (
+                  <ProjectTableRow key={task.id} task={task} allTasks={allTasks} projectColor={color}
+                    onUpdate={onUpdate} onDelete={onDelete} onAddSubtask={onAddSubtask} onSelect={onSelect} />
+                ))}
+              </div>
+            )}
+
+            {/* Add group/task footer */}
+            <div style={{ padding: '8px 16px 12px', display: 'flex', gap: 8, borderTop: '1px solid #f0f1f3' }}>
+              {addingGroup ? (
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <input autoFocus value={groupName} onChange={e => setGroupName(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') saveGroup(); if (e.key === 'Escape') setAddingGroup(false) }}
+                    placeholder="Group name..." style={{ border: `1px solid ${color}`, borderRadius: 4, padding: '4px 10px', fontSize: 12, fontFamily: 'Nunito, sans-serif', outline: 'none' }} />
+                  <button onClick={saveGroup} style={{ background: color, color: '#fff', border: 'none', borderRadius: 4, padding: '4px 12px', fontSize: 12, cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>Add</button>
+                  <button onClick={() => setAddingGroup(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#6b778c' }}>Cancel</button>
+                </div>
+              ) : (
+                <>
+                  <button onClick={() => onAddTask(project.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#6b778c', fontFamily: 'Nunito, sans-serif', fontWeight: 600, padding: '4px 8px', borderRadius: 4 }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#f0f1f3'} onMouseLeave={e => e.currentTarget.style.background = 'none'}>+ Add task</button>
+                  <button onClick={() => setAddingGroup(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#6b778c', fontFamily: 'Nunito, sans-serif', fontWeight: 600, padding: '4px 8px', borderRadius: 4 }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#f0f1f3'} onMouseLeave={e => e.currentTarget.style.background = 'none'}>+ Add group</button>
+                </>
+              )}
+            </div>
+          </>
+        )}
+
+        {projectTab === 'kanban' && <KanbanView />}
+        {projectTab === 'gantt' && <GanttView />}
+        {projectTab === 'dashboard' && <ProjectDashboard project={project} tasks={tasks} color={color} />}
+      </div>
     </div>
   )
 }
@@ -799,9 +1141,6 @@ export default function Home() {
           <div style={{ marginBottom: 20 }}>
             {navBtn('mywork', '👤 My Work', 0)}
             {navBtn('board', '📋 Projects', 0)}
-            {navBtn('kanban', '🗂 Kanban', 0)}
-            {navBtn('calendar', '📆 Calendar', 0)}
-            {navBtn('gantt', '📅 Gantt', 0)}
             {navBtn('inbox', '📥 Inbox', inboxCount)}
           </div>
           <p style={{ fontSize: 10, fontWeight: 700, color: '#a0aec0', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '0 12px', marginBottom: 6 }}>Projects</p>
@@ -871,119 +1210,7 @@ export default function Home() {
             )
           })()
 
-          : view === 'kanban' ? (() => {
-            const cols = STATUSES.map(s => ({
-              ...s, tasks: (activeProject ? visibleTasks.filter(t => t.project_id === activeProject) : visibleTasks).filter(t => t.status === s.key && !t.is_group)
-            }))
-            return (
-              <>
-                <h2 style={{ fontWeight: 800, fontSize: 18, color: 'var(--indigo)', marginBottom: 16 }}>Kanban Board</h2>
-                <div style={{ display: 'flex', gap: 12, overflowX: 'auto', alignItems: 'flex-start', paddingBottom: 16 }}>
-                  {cols.map(col => (
-                    <div key={col.key} style={{ minWidth: 260, maxWidth: 260, flexShrink: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#fff', borderRadius: '8px 8px 0 0', borderTop: `3px solid ${col.color}`, borderLeft: '1px solid #dfe1e6', borderRight: '1px solid #dfe1e6' }}>
-                        <span style={{ width: 10, height: 10, borderRadius: '50%', background: col.color }} />
-                        <span style={{ fontWeight: 800, fontSize: 12, color: '#172b4d', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{col.label}</span>
-                        <span style={{ marginLeft: 'auto', background: '#f0f1f3', borderRadius: 10, fontSize: 11, fontWeight: 700, padding: '1px 7px', color: '#42526e' }}>{col.tasks.length}</span>
-                      </div>
-                      <div style={{ background: '#f8f9fc', borderLeft: '1px solid #dfe1e6', borderRight: '1px solid #dfe1e6', borderBottom: '1px solid #dfe1e6', borderRadius: '0 0 8px 8px', minHeight: 120, padding: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {col.tasks.map(task => {
-                          const proj = projects.find(p => p.id === task.project_id)
-                          const prio = priorityMap[task.priority] || PRIORITIES[2]
-                          const isOverdue = task.due_date && task.due_date < new Date().toISOString().split('T')[0]
-                          return (
-                            <div key={task.id} onClick={() => setSelectedTask(task)}
-                              style={{ background: '#fff', borderRadius: 8, padding: '10px 12px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', border: '1px solid #e5e7eb', cursor: 'pointer' }}
-                              onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.12)'}
-                              onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)'}>
-                              {proj && <p style={{ fontSize: 10, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', marginBottom: 4 }}>{proj.name}</p>}
-                              <p style={{ fontSize: 13, fontWeight: 700, color: '#172b4d', marginBottom: 8, lineHeight: 1.4 }}>{task.title}</p>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <span style={{ fontSize: 10, fontWeight: 700, color: prio.color }}>● {prio.label}</span>
-                                {task.due_date && <span style={{ fontSize: 10, fontWeight: 600, color: isOverdue ? '#de350b' : '#6b778c', background: isOverdue ? '#ffebe6' : '#f0f1f3', borderRadius: 4, padding: '2px 6px' }}>{isOverdue ? '⚠ ' : ''}{task.due_date}</span>}
-                              </div>
-                              {task.assigned_to && <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--aqua)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: '#fff' }}>{task.assigned_to.charAt(0).toUpperCase()}</div>
-                                <span style={{ fontSize: 11, color: '#42526e', fontWeight: 600 }}>{task.assigned_to}</span>
-                              </div>}
-                              {task.progress > 0 && <div style={{ marginTop: 8, height: 3, background: '#f0f1f3', borderRadius: 2, overflow: 'hidden' }}><div style={{ width: `${task.progress}%`, height: '100%', background: col.color, borderRadius: 2 }} /></div>}
-                              <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
-                                {STATUSES.filter(s => s.key !== col.key).slice(0, 3).map(s => (
-                                  <button key={s.key} onClick={async e => { e.stopPropagation(); await supabase.from('tasks').update({ status: s.key }).eq('id', task.id); load() }}
-                                    style={{ fontSize: 9, padding: '2px 6px', borderRadius: 3, border: `1px solid ${s.color}`, background: 'transparent', color: s.color, cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>→ {s.label}</button>
-                                ))}
-                              </div>
-                            </div>
-                          )
-                        })}
-                        <button onClick={() => handleAddTask(activeProject)} style={{ background: 'none', border: '2px dashed #dfe1e6', borderRadius: 8, padding: '8px', fontSize: 12, color: '#6b778c', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 600, textAlign: 'center' }}
-                          onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--aqua)'} onMouseLeave={e => e.currentTarget.style.borderColor = '#dfe1e6'}>+ Add task</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )
-          })()
-
-          : view === 'calendar' ? (() => {
-            const firstDay = new Date(calYear, calMonth, 1)
-            const lastDay  = new Date(calYear, calMonth + 1, 0)
-            const startPad = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1
-            const totalCells = Math.ceil((startPad + lastDay.getDate()) / 7) * 7
-            const todayStr = now.toISOString().split('T')[0]
-            const monthStr = `${calYear}-${String(calMonth + 1).padStart(2,'0')}`
-            const monthTasks = visibleTasks.filter(t => t.due_date?.startsWith(monthStr))
-            return (
-              <>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
-                  <h2 style={{ fontWeight: 800, fontSize: 18, color: 'var(--indigo)' }}>Calendar</h2>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
-                    <button onClick={() => { const d = new Date(calYear, calMonth - 1); setCalYear(d.getFullYear()); setCalMonth(d.getMonth()) }} style={{ background: 'none', border: '1px solid #dfe1e6', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 14 }}>‹</button>
-                    <span style={{ fontWeight: 700, fontSize: 14, minWidth: 140, textAlign: 'center' }}>{firstDay.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}</span>
-                    <button onClick={() => { const d = new Date(calYear, calMonth + 1); setCalYear(d.getFullYear()); setCalMonth(d.getMonth()) }} style={{ background: 'none', border: '1px solid #dfe1e6', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 14 }}>›</button>
-                    <button onClick={() => { setCalYear(now.getFullYear()); setCalMonth(now.getMonth()) }} style={{ background: 'var(--indigo)', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'Nunito, sans-serif' }}>Today</button>
-                  </div>
-                </div>
-                <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #dfe1e6', overflow: 'hidden' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', background: '#f8f9fc', borderBottom: '2px solid #dfe1e6' }}>
-                    {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => <div key={d} style={{ padding: '8px 12px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', textAlign: 'center' }}>{d}</div>)}
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
-                    {Array.from({ length: totalCells }).map((_, i) => {
-                      const dayNum = i - startPad + 1
-                      const isCurrentMonth = dayNum >= 1 && dayNum <= lastDay.getDate()
-                      const dateStr = isCurrentMonth ? `${calYear}-${String(calMonth + 1).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}` : null
-                      const isToday = dateStr === todayStr
-                      const dayTasks = dateStr ? monthTasks.filter(t => t.due_date === dateStr) : []
-                      return (
-                        <div key={i} style={{ minHeight: 100, borderRight: '1px solid #f0f1f3', borderBottom: '1px solid #f0f1f3', padding: 6, background: isToday ? '#f0f4ff' : 'transparent' }}>
-                          {isCurrentMonth && <>
-                            <div style={{ width: 26, height: 26, borderRadius: '50%', background: isToday ? 'var(--indigo)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>
-                              <span style={{ fontSize: 12, fontWeight: isToday ? 800 : 600, color: isToday ? '#fff' : '#172b4d' }}>{dayNum}</span>
-                            </div>
-                            {dayTasks.slice(0, 3).map(task => {
-                              const s = statusMap[task.status] || STATUSES[0]
-                              return <div key={task.id} onClick={() => setSelectedTask(task)} style={{ background: s.color, borderRadius: 3, padding: '2px 6px', marginBottom: 2, overflow: 'hidden', cursor: 'pointer' }}>
-                                <p style={{ fontSize: 10, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.title}</p>
-                              </div>
-                            })}
-                            {dayTasks.length > 3 && <p style={{ fontSize: 10, color: '#6b778c', fontWeight: 600 }}>+{dayTasks.length - 3} more</p>}
-                          </>}
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              </>
-            )
-          })()
-
-          : view === 'gantt' ? (
-            <><h2 style={{ fontWeight: 800, fontSize: 18, color: 'var(--indigo)', marginBottom: 16 }}>Gantt Chart</h2>
-            <GanttView tasks={filteredTasks.filter(t => t.project_id)} projects={projects} /></>
-
-          ) : view === 'inbox' ? (
+          : view === 'inbox' ? (
             <>
               <h2 style={{ fontWeight: 800, fontSize: 18, color: 'var(--indigo)', marginBottom: 16 }}>
                 Inbox <span style={{ fontSize: 13, fontWeight: 600, color: '#6b778c' }}>— from Email, Teams & TeamsMAestro</span>
