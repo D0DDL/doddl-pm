@@ -700,6 +700,7 @@ export default function Home() {
         {/* Sidebar */}
         <aside style={{ width: 210, background: '#fff', borderRight: '1px solid #dfe1e6', padding: '16px 8px', overflowY: 'auto', flexShrink: 0 }}>
           <div style={{ marginBottom: 20 }}>
+            {navBtn('mywork', '👤 My Work', 0)}
             {navBtn('board', '📋 Projects', 0)}
             {navBtn('gantt', '📅 Gantt', 0)}
             {navBtn('inbox', '📥 Inbox', inboxCount)}
@@ -724,7 +725,85 @@ export default function Home() {
         <main style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
           {loading ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60%', color: '#6b778c', fontWeight: 600 }}>Loading...</div>
-          ) : view === 'gantt' ? (
+          ) : view === 'mywork' ? (() => {
+            const myName = user?.name || user?.username || ''
+            const myTasks = tasks.filter(t =>
+              t.assigned_to && t.assigned_to.toLowerCase().includes(myName.split(' ')[0].toLowerCase()) && t.status !== 'done'
+            )
+            const overdue = myTasks.filter(t => t.due_date && new Date(t.due_date) < new Date())
+            const today = myTasks.filter(t => t.due_date && t.due_date === new Date().toISOString().split('T')[0])
+            const upcoming = myTasks.filter(t => t.due_date && new Date(t.due_date) > new Date() && t.due_date !== new Date().toISOString().split('T')[0])
+            const noDate = myTasks.filter(t => !t.due_date)
+            const Section = ({ title, color, items }) => items.length === 0 ? null : (
+              <div style={{ marginBottom: 28 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: color }} />
+                  <h3 style={{ fontSize: 13, fontWeight: 800, color: '#172b4d', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{title}</h3>
+                  <span style={{ fontSize: 12, color: '#6b778c', fontWeight: 600 }}>{items.length}</span>
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#f8f9fc', borderBottom: '2px solid #dfe1e6' }}>
+                      {['Task', 'Project', 'Status', 'Due', 'Priority'].map(h => (
+                        <th key={h} style={{ padding: '7px 8px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map(task => {
+                      const proj = projects.find(p => p.id === task.project_id)
+                      const s = statusMap[task.status] || STATUSES[0]
+                      return (
+                        <tr key={task.id} style={{ borderBottom: '1px solid #f0f1f3' }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#f8f9fc'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                          <td style={{ padding: '8px 8px', fontSize: 13, fontWeight: 600, color: '#172b4d' }}>{task.title}</td>
+                          <td style={{ padding: '8px 8px' }}>
+                            {proj ? <span style={{ fontSize: 11, background: '#f0f1f3', borderRadius: 3, padding: '2px 8px', fontWeight: 600, color: '#42526e' }}>{proj.name}</span> : <span style={{ color: '#c1c7d0', fontSize: 11 }}>—</span>}
+                          </td>
+                          <td style={{ padding: '8px 8px' }}>
+                            <StatusBadge value={task.status} onChange={async v => { await supabase.from('tasks').update({ status: v }).eq('id', task.id); load() }} />
+                          </td>
+                          <td style={{ padding: '8px 8px', fontSize: 12, color: overdue.includes(task) ? '#de350b' : '#42526e', fontWeight: overdue.includes(task) ? 700 : 400 }}>
+                            {task.due_date || '—'}
+                          </td>
+                          <td style={{ padding: '8px 8px' }}>
+                            <PriorityBadge value={task.priority} onChange={async v => { await supabase.from('tasks').update({ priority: v }).eq('id', task.id); load() }} />
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )
+            return (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--aqua)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 18, color: '#fff' }}>
+                    {myName.charAt(0)}
+                  </div>
+                  <div>
+                    <h2 style={{ fontWeight: 800, fontSize: 18, color: 'var(--indigo)' }}>My Work</h2>
+                    <p style={{ fontSize: 13, color: '#6b778c', fontWeight: 600 }}>{myTasks.length} active task{myTasks.length !== 1 ? 's' : ''} assigned to you</p>
+                  </div>
+                </div>
+                {myTasks.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: 60, color: '#6b778c' }}>
+                    <p style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>All clear! 🎉</p>
+                    <p>No tasks assigned to you</p>
+                  </div>
+                ) : (
+                  <>
+                    <Section title="Overdue" color="#de350b" items={overdue} />
+                    <Section title="Due Today" color="#ff8b00" items={today} />
+                    <Section title="Upcoming" color="#0052cc" items={upcoming} />
+                    <Section title="No Due Date" color="#c1c7d0" items={noDate} />
+                  </>
+                )}
+              </>
+            )
+          })() : view === 'gantt' ? (
             <>
               <h2 style={{ fontWeight: 800, fontSize: 18, color: 'var(--indigo)', marginBottom: 16 }}>Gantt Chart</h2>
               <GanttView tasks={filteredTasks.filter(t => t.project_id)} projects={projects} />
