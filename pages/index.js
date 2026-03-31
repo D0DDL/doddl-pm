@@ -196,6 +196,66 @@ function GanttView({ tasks, projects }) {
 }
 
 // ── Task Row ───────────────────────────────────────────────────────────────
+const SOURCE_COLORS = {
+  email:        { bg: '#dbeafe', color: '#1d4ed8', label: 'Email' },
+  teams:        { bg: '#ede9fe', color: '#7c3aed', label: 'Teams' },
+  teamsmaestro: { bg: '#fce7f3', color: '#be185d', label: 'TeamsMAestro' },
+  manual:       { bg: '#f3f4f6', color: '#374151', label: 'Manual' },
+}
+
+function InboxRow({ task, onUpdate, onDelete }) {
+  const [assignee, setAssignee] = useState(task.assigned_to || '')
+  const src = SOURCE_COLORS[task.source] || SOURCE_COLORS.manual
+  const s = statusMap[task.status] || STATUSES[0]
+
+  const saveAssignee = async () => {
+    await supabase.from('tasks').update({ assigned_to: assignee }).eq('id', task.id)
+    onUpdate()
+  }
+
+  return (
+    <tr style={{ borderBottom: '1px solid #f0f1f3' }}
+      onMouseEnter={e => e.currentTarget.style.background = '#f8f9fc'}
+      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+      {/* Task */}
+      <td style={{ padding: '8px 8px', fontSize: 13, fontWeight: 600, color: '#172b4d' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {task.title}
+          <span onClick={() => onDelete(task.id)} style={{ cursor: 'pointer', color: '#c1c7d0', fontSize: 14, marginLeft: 4 }}>×</span>
+        </div>
+        {task.notes && <p style={{ fontSize: 11, color: '#6b778c', marginTop: 2, fontWeight: 400 }}>{task.notes.substring(0, 80)}{task.notes.length > 80 ? '…' : ''}</p>}
+      </td>
+      {/* Source */}
+      <td style={{ padding: '8px 8px' }}>
+        <span style={{ background: src.bg, color: src.color, borderRadius: 3, padding: '3px 8px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
+          {src.label}
+        </span>
+      </td>
+      {/* Status */}
+      <td style={{ padding: '8px 8px' }}>
+        <StatusBadge value={task.status} onChange={async v => { await supabase.from('tasks').update({ status: v }).eq('id', task.id); onUpdate(); }} />
+      </td>
+      {/* Assignee */}
+      <td style={{ padding: '8px 8px' }}>
+        <input
+          value={assignee}
+          onChange={e => setAssignee(e.target.value)}
+          onBlur={saveAssignee}
+          onKeyDown={e => e.key === 'Enter' && saveAssignee()}
+          placeholder="Assign to..."
+          style={{ border: 'none', borderBottom: '1px solid #e5e7eb', background: 'transparent', fontSize: 12, color: '#42526e', width: '100%', padding: '2px 0', fontFamily: 'Nunito, sans-serif', outline: 'none' }}
+        />
+      </td>
+      {/* Due */}
+      <td style={{ padding: '8px 8px', fontSize: 12, color: '#42526e' }}>{task.due_date || '—'}</td>
+      {/* Priority */}
+      <td style={{ padding: '8px 8px' }}>
+        <PriorityBadge value={task.priority} onChange={async v => { await supabase.from('tasks').update({ priority: v }).eq('id', task.id); onUpdate(); }} />
+      </td>
+    </tr>
+  )
+}
+
 function TaskRow({ task, allTasks, depth, onUpdate, onDelete, onAddSubtask }) {
   const [expanded, setExpanded] = useState(true)
   const subtasks = allTasks.filter(t => t.parent_id === task.id)
@@ -662,8 +722,7 @@ export default function Home() {
                     </thead>
                     <tbody>
                       {tasks.filter(t => t.source !== 'manual' && (t.status === 'not_started' || t.status === 'todo')).map(task => (
-                        <TaskRow key={task.id} task={task} allTasks={tasks} depth={0}
-                          onUpdate={load} onDelete={deleteTask} onAddSubtask={handleAddSubtask} />
+                        <InboxRow key={task.id} task={task} onUpdate={load} onDelete={deleteTask} />
                       ))}
                     </tbody>
                   </table>
