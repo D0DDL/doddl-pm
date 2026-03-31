@@ -24,7 +24,7 @@ export default async function handler(req, res) {
   const { data, error } = await supabase.from('tasks').insert([{
     title, notes: notes || null, source: source || 'manual',
     assigned_to: assigned_to || null, message_id: message_id || null,
-    project_id: project_id || null, due_date, status: 'todo', priority: 'medium',
+    project_id: project_id || null, due_date, status: 'not_started', priority: 'medium',
   }]).select().single()
 
   if (error) return res.status(500).json({ error: error.message })
