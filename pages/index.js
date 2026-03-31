@@ -556,7 +556,7 @@ export default function Home() {
   const filteredProjects = activeProject ? projects.filter(p => p.id === activeProject) : projects
   const filteredTasks    = search ? tasks.filter(t => t.title?.toLowerCase().includes(search.toLowerCase())) : tasks
 
-  const inboxCount = tasks.filter(t => t.source !== 'manual' && t.status === 'not_started').length
+  const inboxCount = tasks.filter(t => t.source !== 'manual' && (t.status === 'not_started' || t.status === 'todo')).length
 
   const navBtn = (key, label, count) => (
     <button onClick={() => setView(key)} style={{
@@ -649,7 +649,7 @@ export default function Home() {
               <h2 style={{ fontWeight: 800, fontSize: 18, color: 'var(--indigo)', marginBottom: 16 }}>
                 Inbox <span style={{ fontSize: 13, fontWeight: 600, color: '#6b778c' }}>— from Email, Teams & TeamsMAestro</span>
               </h2>
-              {tasks.filter(t => t.source !== 'manual' && t.status === 'not_started').length === 0
+              {tasks.filter(t => t.source !== 'manual' && (t.status === 'not_started' || t.status === 'todo')).length === 0
                 ? <p style={{ color: '#6b778c', fontWeight: 600 }}>Inbox is clear ✓</p>
                 : (
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -661,7 +661,7 @@ export default function Home() {
                       </tr>
                     </thead>
                     <tbody>
-                      {tasks.filter(t => t.source !== 'manual' && t.status === 'not_started').map(task => (
+                      {tasks.filter(t => t.source !== 'manual' && (t.status === 'not_started' || t.status === 'todo')).map(task => (
                         <TaskRow key={task.id} task={task} allTasks={tasks} depth={0}
                           onUpdate={load} onDelete={deleteTask} onAddSubtask={handleAddSubtask} />
                       ))}
