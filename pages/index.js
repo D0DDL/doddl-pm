@@ -703,6 +703,7 @@ export default function Home() {
             {navBtn('mywork', '👤 My Work', 0)}
             {navBtn('board', '📋 Projects', 0)}
             {navBtn('kanban', '🗂 Kanban', 0)}
+            {navBtn('calendar', '📆 Calendar', 0)}
             {navBtn('gantt', '📅 Gantt', 0)}
             {navBtn('inbox', '📥 Inbox', inboxCount)}
           </div>
@@ -881,6 +882,74 @@ export default function Home() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </>
+            )
+          })() : view === 'calendar' ? (() => {
+            const now = new Date()
+            const [calYear, setCalYear] = useState(now.getFullYear())
+            const [calMonth, setCalMonth] = useState(now.getMonth())
+            const firstDay = new Date(calYear, calMonth, 1)
+            const lastDay = new Date(calYear, calMonth + 1, 0)
+            const startPad = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1
+            const totalCells = Math.ceil((startPad + lastDay.getDate()) / 7) * 7
+            const monthTasks = tasks.filter(t => {
+              if (!t.due_date) return false
+              const d = new Date(t.due_date)
+              return d.getFullYear() === calYear && d.getMonth() === calMonth
+            })
+            const monthName = firstDay.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+            return (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
+                  <h2 style={{ fontWeight: 800, fontSize: 18, color: 'var(--indigo)' }}>Calendar</h2>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+                    <button onClick={() => { const d = new Date(calYear, calMonth - 1); setCalYear(d.getFullYear()); setCalMonth(d.getMonth()) }}
+                      style={{ background: 'none', border: '1px solid #dfe1e6', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 14 }}>‹</button>
+                    <span style={{ fontWeight: 700, fontSize: 14, minWidth: 140, textAlign: 'center' }}>{monthName}</span>
+                    <button onClick={() => { const d = new Date(calYear, calMonth + 1); setCalYear(d.getFullYear()); setCalMonth(d.getMonth()) }}
+                      style={{ background: 'none', border: '1px solid #dfe1e6', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 14 }}>›</button>
+                    <button onClick={() => { setCalYear(now.getFullYear()); setCalMonth(now.getMonth()) }}
+                      style={{ background: 'var(--indigo)', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'Nunito, sans-serif' }}>Today</button>
+                  </div>
+                </div>
+                <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #dfe1e6', overflow: 'hidden' }}>
+                  {/* Day headers */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', background: '#f8f9fc', borderBottom: '2px solid #dfe1e6' }}>
+                    {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => (
+                      <div key={d} style={{ padding: '8px 12px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', textAlign: 'center' }}>{d}</div>
+                    ))}
+                  </div>
+                  {/* Calendar grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+                    {Array.from({ length: totalCells }).map((_, i) => {
+                      const dayNum = i - startPad + 1
+                      const isCurrentMonth = dayNum >= 1 && dayNum <= lastDay.getDate()
+                      const dateStr = isCurrentMonth ? `${calYear}-${String(calMonth + 1).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}` : null
+                      const isToday = dateStr === now.toISOString().split('T')[0]
+                      const dayTasks = dateStr ? monthTasks.filter(t => t.due_date === dateStr) : []
+                      return (
+                        <div key={i} style={{ minHeight: 100, borderRight: '1px solid #f0f1f3', borderBottom: '1px solid #f0f1f3', padding: 6, background: isToday ? '#f0f4ff' : 'transparent' }}>
+                          {isCurrentMonth && (
+                            <>
+                              <div style={{ width: 26, height: 26, borderRadius: '50%', background: isToday ? 'var(--indigo)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>
+                                <span style={{ fontSize: 12, fontWeight: isToday ? 800 : 600, color: isToday ? '#fff' : '#172b4d' }}>{dayNum}</span>
+                              </div>
+                              {dayTasks.slice(0, 3).map(task => {
+                                const s = statusMap[task.status] || STATUSES[0]
+                                return (
+                                  <div key={task.id} style={{ background: s.color, borderRadius: 3, padding: '2px 6px', marginBottom: 2, overflow: 'hidden' }}>
+                                    <p style={{ fontSize: 10, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.title}</p>
+                                  </div>
+                                )
+                              })}
+                              {dayTasks.length > 3 && <p style={{ fontSize: 10, color: '#6b778c', fontWeight: 600 }}>+{dayTasks.length - 3} more</p>}
+                            </>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               </>
             )
