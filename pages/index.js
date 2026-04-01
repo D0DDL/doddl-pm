@@ -559,7 +559,7 @@ function ProjectDashboard({ project, tasks, color }) {
       <div style={{ background: '#fff', borderRadius: 10, padding: '20px 24px', border: '1px solid #dfe1e6', marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
           <p style={{ fontWeight: 800, fontSize: 14, color: '#172b4d' }}>Overall Progress</p>
-          <p style={{ fontWeight: 800, fontSize: 14, color }>{pct}%</p>
+          <p style={{ fontWeight: 800, fontSize: 14, color: color }}>{pct}%</p>
         </div>
         <div style={{ height: 12, background: '#f0f1f3', borderRadius: 6, overflow: 'hidden' }}>
           <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 6, transition: 'width 0.5s' }} />
@@ -628,7 +628,7 @@ function ProjectSection({ project, tasks, allTasks, onUpdate, onDelete, onAddTas
       <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 16, paddingTop: 12 }}>
         {cols.map(col => (
           <div key={col.key} style={{ minWidth: 240, flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: '#f8f9fc', borderRadius: '6px 6px 0 0', borderTop: `3px solid ${col.color}`, border: `1px solid #dfe1e6`, borderTop: `3px solid ${col.color}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: '#f8f9fc', borderRadius: '6px 6px 0 0', borderTop: `3px solid ${col.color}`, borderLeft: '1px solid #dfe1e6', borderRight: '1px solid #dfe1e6', borderBottom: '1px solid #dfe1e6' }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: col.color }} />
               <span style={{ fontWeight: 700, fontSize: 11, color: '#172b4d', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{col.label}</span>
               <span style={{ marginLeft: 'auto', background: '#e5e7eb', borderRadius: 8, fontSize: 10, fontWeight: 700, padding: '1px 6px', color: '#42526e' }}>{col.tasks.length}</span>
