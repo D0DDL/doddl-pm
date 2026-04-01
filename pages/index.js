@@ -770,8 +770,12 @@ function ProjectTableRow({ task, allTasks, projectColor, onUpdate, onDelete, onS
   const saveSilent = async (field, value) => { await supabase.from('tasks').update({ [field]: value }).eq('id', task.id) }
   const update = async (field, value) => { await supabase.from('tasks').update({ [field]: value }).eq('id', task.id); onUpdate() }
   const indent = depth * 20
-  const effort = task.start_date && task.due_date
-    ? Math.max(1, Math.ceil((new Date(task.due_date) - new Date(task.start_date)) / 86400000))
+  const [localStart, setLocalStart] = useState(task.start_date || '')
+  const [localEnd,   setLocalEnd]   = useState(task.due_date   || '')
+  useEffect(() => { setLocalStart(task.start_date || '') }, [task.start_date])
+  useEffect(() => { setLocalEnd(task.due_date   || '') }, [task.due_date])
+  const effort = localStart && localEnd
+    ? Math.max(1, Math.ceil((new Date(localEnd) - new Date(localStart)) / 86400000))
     : null
 
   return (
@@ -798,8 +802,10 @@ function ProjectTableRow({ task, allTasks, projectColor, onUpdate, onDelete, onS
       {/* Timeline — combined date range picker + bar */}
       <div style={{ width: 170, padding: '4px 8px' }}>
         <TimelineCell
-          startDate={task.start_date} dueDate={task.due_date} color={projectColor}
+          startDate={localStart} dueDate={localEnd} color={projectColor}
           onSave={async (start, end) => {
+            setLocalStart(start)
+            setLocalEnd(end)
             await supabase.from('tasks').update({ start_date: start, due_date: end }).eq('id', task.id)
           }} />
       </div>
