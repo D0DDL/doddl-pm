@@ -179,18 +179,20 @@ function PriorityBadge({ value, onChange }) {
   )
 }
 
-function AssigneeSelect({ value, onChange }) {
+function AssigneeSelect({ value, onChange, avatarOnly }) {
   const [open, setOpen] = useState(false)
+  const colors = ['#0052cc','#00875a','#de350b','#ff8b00','#6554c0','#00a3bf']
+  const avatarColor = value ? colors[value.charCodeAt(0) % colors.length] : 'var(--aqua)'
   return (
     <div style={{ position: 'relative' }}>
       {open && <div style={{ position: 'fixed', inset: 0, zIndex: 998 }} onClick={() => setOpen(false)} />}
-      <div onClick={() => setOpen(o => !o)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div onClick={() => setOpen(o => !o)} title={value || 'Assign...'} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
         {value ? (
           <>
-            <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--aqua)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: '#fff', flexShrink: 0 }}>{value.charAt(0)}</div>
-            <span style={{ fontSize: 12, color: '#172b4d', fontWeight: 600 }}>{value}</span>
+            <div style={{ width: 26, height: 26, borderRadius: '50%', background: avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#fff', flexShrink: 0 }}>{value.charAt(0)}</div>
+            {!avatarOnly && <span style={{ fontSize: 12, color: '#172b4d', fontWeight: 600 }}>{value}</span>}
           </>
-        ) : <span style={{ fontSize: 12, color: '#a0aec0' }}>Assign...</span>}
+        ) : <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#f0f1f3', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#a0aec0', flexShrink: 0 }}>+</div>}
       </div>
       {open && (
         <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 999, background: '#fff', border: '1px solid #dfe1e6', borderRadius: 4, boxShadow: '0 4px 16px rgba(0,0,0,0.15)', minWidth: 140, marginTop: 2 }}>
@@ -696,7 +698,7 @@ function TimelineCell({ startDate, dueDate, color, onSave }) {
               <div style={{width:`${pct}%`,height:'100%',background:bar,borderRadius:3}}/>
             </div>
           </div>
-        ) : <span style={{fontSize:11,color:'#c1c7d0',fontStyle:'italic'}}>Set dates…</span>}
+        ) : <span style={{fontSize:10,color:'#c1c7d0',letterSpacing:'0.02em'}}>📅 click to set</span>}
       </div>
       {stage && pos && (
         <div style={{position:'fixed',top:pos.top,left:pos.left,zIndex:9999}}>
@@ -745,7 +747,7 @@ function ProjectGroup({ group, allTasks, projectColor, onUpdate, onDelete, onAdd
         <div style={{ flex: 1, padding: '8px 8px 8px 4px', fontWeight: 800, fontSize: 13, color: tint.text }}>{group.title}</div>
         <div style={{ padding: '8px 12px', fontSize: 11, color: tint.text, fontWeight: 700, opacity: 0.7 }}>{children.length} task{children.length !== 1 ? 's' : ''}</div>
         {/* Spacer cols */}
-        <div style={{ width: 56 }} /><div style={{ width: 120 }} /><div style={{ width: 170 }} /><div style={{ width: 60 }} /><div style={{ width: 90 }} /><div style={{ width: 130 }} />
+        <div style={{ width: 68 }} /><div style={{ width: 120 }} /><div style={{ width: 170 }} /><div style={{ width: 60 }} /><div style={{ width: 90 }} /><div style={{ width: 130 }} />
         {/* Delete group */}
         <span onClick={() => onDelete(group.id)} title="Delete group"
           style={{ padding: '0 12px', color: '#c1c7d0', cursor: 'pointer', fontSize: 16, flexShrink: 0 }}
@@ -832,8 +834,8 @@ function ProjectTableRow({ task, allTasks, projectColor, onUpdate, onDelete, onS
           style={{ color: '#c1c7d0', cursor: 'pointer', fontSize: 14, flexShrink: 0 }} onMouseEnter={e => e.currentTarget.style.color='#de350b'} onMouseLeave={e => e.currentTarget.style.color='#c1c7d0'}>×</span>
       </div>
       {/* Owner */}
-      <div style={{ width: 56, padding: '4px 6px', display: 'flex', alignItems: 'center' }}>
-        <AssigneeSelect value={localAssignee} onChange={v => { setLocalAssignee(v); save('assigned_to', v) }} />
+      <div style={{ width: 68, padding: '4px 8px', display: 'flex', alignItems: 'center' }}>
+        <AssigneeSelect value={localAssignee} onChange={v => { setLocalAssignee(v); save('assigned_to', v) }} avatarOnly />
       </div>
       {/* Status */}
       <div style={{ width: 120, padding: '4px 6px' }}>
@@ -1110,7 +1112,7 @@ function ProjectSection({ project, tasks, allTasks, onUpdate, onDelete, onAddTas
             {/* Column headers */}
             <div style={{ display: 'flex', alignItems: 'center', background: '#f8f9fc', borderBottom: '2px solid #dfe1e6', paddingLeft: 32 }}>
               <div style={{ flex: 1, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Task</div>
-              <div style={{ width: 56, padding: '7px 6px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Owner</div>
+              <div style={{ width: 68, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Owner</div>
               <div style={{ width: 120, padding: '7px 6px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Status</div>
               <div style={{ width: 170, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Timeline</div>
               <div style={{ width: 60, padding: '7px 6px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Effort</div>
