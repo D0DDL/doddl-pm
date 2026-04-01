@@ -584,102 +584,112 @@ function TaskRow({ task, allTasks, depth, onUpdate, onDelete, onAddSubtask, onSe
 // ── Project Section ────────────────────────────────────────────────────────
 // ── Mini Timeline Bar ──────────────────────────────────────────────────────
 // ── Timeline cell — inline date range picker + progress bar ───────────────
-// ── Mini date input — text field, dd/mm/yy, parses to yyyy-mm-dd ──────────
-function DateInput({ value, onChange, placeholder, autoFocus }) {
-  // Display as dd/mm/yy, store as yyyy-mm-dd
-  const toDisplay = (iso) => {
-    if (!iso) return ''
-    const [y, m, d] = iso.split('-')
-    return `${d}/${m}/${y.slice(2)}`
-  }
-  const toISO = (display) => {
-    const parts = display.replace(/[^0-9]/g, '')
-    if (parts.length < 6) return null
-    const d = parts.slice(0, 2), m = parts.slice(2, 4), y = parts.slice(4, 6)
-    const full = `20${y}-${m}-${d}`
-    return isNaN(new Date(full).getTime()) ? null : full
-  }
+// ── Calendar Picker + Timeline Cell ───────────────────────────────────────
+function CalendarPicker({ value, onChange, label }) {
+  const d = value ? new Date(value) : null
+  const [viewYear, setViewYear] = useState((d || new Date()).getFullYear())
+  const [viewMonth, setViewMonth] = useState((d || new Date()).getMonth())
 
-  const [text, setText] = useState(toDisplay(value))
-  useEffect(() => { setText(toDisplay(value)) }, [value])
+  const firstDay = new Date(viewYear, viewMonth, 1)
+  const lastDay  = new Date(viewYear, viewMonth + 1, 0)
+  const startPad = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1
+  const totalCells = Math.ceil((startPad + lastDay.getDate()) / 7) * 7
+  const monthName = firstDay.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
 
-  const handleChange = (e) => {
-    let v = e.target.value
-    // Auto-insert slashes
-    const digits = v.replace(/\D/g, '')
-    if (digits.length <= 2) v = digits
-    else if (digits.length <= 4) v = `${digits.slice(0,2)}/${digits.slice(2)}`
-    else v = `${digits.slice(0,2)}/${digits.slice(2,4)}/${digits.slice(4,6)}`
-    setText(v)
-    if (digits.length === 6) {
-      const iso = toISO(v)
-      if (iso) onChange(iso)
-    }
-  }
-
-  const handleBlur = () => {
-    const iso = toISO(text)
-    if (iso) onChange(iso)
-    else if (!text) onChange('')
-    else setText(toDisplay(value)) // revert invalid
-  }
+  const toISO = (y, m, d) => `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
 
   return (
-    <input value={text} onChange={handleChange} onBlur={handleBlur}
-      placeholder={placeholder || 'dd/mm/yy'} autoFocus={autoFocus}
-      maxLength={8}
-      style={{ border: 'none', outline: 'none', fontSize: 11, fontFamily: 'Nunito, sans-serif', color: '#172b4d', width: 56, background: 'transparent' }} />
+    <div style={{ background: '#fff', borderRadius: 8, boxShadow: '0 4px 20px rgba(0,0,0,0.15)', border: '1px solid #dfe1e6', padding: 10, width: 200, userSelect: 'none' }}>
+      <p style={{ fontSize: 10, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', textAlign: 'center', marginBottom: 6 }}>{label}</p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <span onClick={() => { const d = new Date(viewYear, viewMonth-1); setViewYear(d.getFullYear()); setViewMonth(d.getMonth()) }}
+          style={{ cursor: 'pointer', padding: '2px 6px', borderRadius: 3, fontSize: 12, color: '#6b778c' }}>‹</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: '#172b4d' }}>{monthName}</span>
+        <span onClick={() => { const d = new Date(viewYear, viewMonth+1); setViewYear(d.getFullYear()); setViewMonth(d.getMonth()) }}
+          style={{ cursor: 'pointer', padding: '2px 6px', borderRadius: 3, fontSize: 12, color: '#6b778c' }}>›</span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1 }}>
+        {['M','T','W','T','F','S','S'].map((d,i) => (
+          <div key={i} style={{ textAlign: 'center', fontSize: 9, fontWeight: 700, color: '#a0aec0', padding: '2px 0' }}>{d}</div>
+        ))}
+        {Array.from({ length: totalCells }).map((_, i) => {
+          const dayNum = i - startPad + 1
+          const valid = dayNum >= 1 && dayNum <= lastDay.getDate()
+          const iso = valid ? toISO(viewYear, viewMonth, dayNum) : null
+          const isSelected = iso && iso === value
+          return (
+            <div key={i} onClick={() => valid && onChange(iso)}
+              style={{ textAlign: 'center', fontSize: 11, padding: '3px 2px', borderRadius: 3, cursor: valid ? 'pointer' : 'default',
+                background: isSelected ? 'var(--indigo)' : 'transparent', color: isSelected ? '#fff' : valid ? '#172b4d' : 'transparent',
+                fontWeight: isSelected ? 800 : 400 }}
+              onMouseEnter={e => { if (valid && !isSelected) e.currentTarget.style.background = '#f0f1f3' }}
+              onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent' }}>
+              {valid ? dayNum : ''}
+            </div>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
 function TimelineCell({ startDate, dueDate, onChangeStart, onChangeEnd, color }) {
-  const [editing, setEditing] = useState(false)
+  const [open, setOpen] = useState(false)   // false | 'start' | 'end'
   const [localStart, setLocalStart] = useState(startDate || '')
-  const [localEnd, setLocalEnd] = useState(dueDate || '')
+  const [localEnd,   setLocalEnd]   = useState(dueDate   || '')
+  const ref = useRef()
 
   useEffect(() => { setLocalStart(startDate || '') }, [startDate])
-  useEffect(() => { setLocalEnd(dueDate || '') }, [dueDate])
+  useEffect(() => { setLocalEnd(dueDate     || '') }, [dueDate])
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const handleStart = (v) => { setLocalStart(v); onChangeStart(v); setOpen('end') }
+  const handleEnd   = (v) => { setLocalEnd(v);   onChangeEnd(v);   setOpen(false) }
 
   const now = new Date()
   const isOverdue = localEnd && new Date(localEnd) < now
   const barColor = isOverdue ? '#de350b' : color || '#0052cc'
-
   let pct = 0
   if (localStart && localEnd) {
     const s = new Date(localStart), e = new Date(localEnd)
     const total = Math.max(e - s, 86400000)
     pct = Math.round((Math.min(Math.max(now - s, 0), total) / total) * 100)
   }
-
   const fmt = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : null
 
-  const handleStart = (v) => { setLocalStart(v); onChangeStart(v) }
-  const handleEnd   = (v) => { setLocalEnd(v);   onChangeEnd(v) }
-
-  if (editing) return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 3, background: '#fff', border: '1px solid var(--aqua)', borderRadius: 4, padding: '3px 6px' }}>
-      <DateInput value={localStart} onChange={handleStart} placeholder="dd/mm/yy" autoFocus />
-      <span style={{ color: '#a0aec0', fontSize: 10 }}>→</span>
-      <DateInput value={localEnd} onChange={handleEnd} placeholder="dd/mm/yy" />
-      <span onClick={() => setEditing(false)}
-        style={{ cursor: 'pointer', color: 'var(--aqua)', fontSize: 13, fontWeight: 800, marginLeft: 2 }}>✓</span>
-    </div>
-  )
-
   return (
-    <div onClick={() => setEditing(true)} style={{ cursor: 'pointer' }} title="Click to set dates">
-      {localStart || localEnd ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 4 }}>
-            <span style={{ fontSize: 10, color: '#6b778c', fontWeight: 600 }}>{fmt(localStart) || '—'}</span>
-            <span style={{ fontSize: 10, color: isOverdue ? '#de350b' : '#6b778c', fontWeight: 600 }}>{fmt(localEnd) || '—'}</span>
+    <div ref={ref} style={{ position: 'relative' }}>
+      {/* Display */}
+      <div onClick={() => setOpen(o => o ? false : 'start')} style={{ cursor: 'pointer' }} title="Click to set dates">
+        {localStart || localEnd ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 4 }}>
+              <span style={{ fontSize: 10, color: '#6b778c', fontWeight: 600 }}>{fmt(localStart) || <span style={{color:'#c1c7d0'}}>Start</span>}</span>
+              <span style={{ fontSize: 10, color: isOverdue ? '#de350b' : '#6b778c', fontWeight: 600 }}>{fmt(localEnd) || <span style={{color:'#c1c7d0'}}>End</span>}</span>
+            </div>
+            <div style={{ height: 6, background: '#f0f1f3', borderRadius: 3, overflow: 'hidden' }}>
+              <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 3 }} />
+            </div>
           </div>
-          <div style={{ height: 6, background: '#f0f1f3', borderRadius: 3, overflow: 'hidden' }}>
-            <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 3 }} />
-          </div>
+        ) : (
+          <span style={{ fontSize: 11, color: '#c1c7d0', fontStyle: 'italic' }}>Set dates…</span>
+        )}
+      </div>
+      {/* Popup */}
+      {open && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 1000, marginTop: 4 }}>
+          <CalendarPicker
+            value={open === 'start' ? localStart : localEnd}
+            onChange={open === 'start' ? handleStart : handleEnd}
+            label={open === 'start' ? 'Start date' : 'End date'} />
         </div>
-      ) : (
-        <span style={{ fontSize: 11, color: '#c1c7d0', fontStyle: 'italic' }}>Set dates…</span>
       )}
     </div>
   )
