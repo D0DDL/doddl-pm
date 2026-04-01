@@ -664,10 +664,21 @@ function TimelineCell({ startDate, dueDate, onChangeStart, onChangeEnd, color })
   }
   const fmt = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : null
 
+  // Use a fixed-position portal so overflow:hidden on table rows doesn't clip the popup
+  const [anchorPos, setAnchorPos] = useState(null)
+  const displayRef = useRef()
+
+  const handleOpen = (which) => {
+    if (open) { setOpen(false); return }
+    const rect = displayRef.current?.getBoundingClientRect()
+    if (rect) setAnchorPos({ top: rect.bottom + 4, left: rect.left })
+    setOpen(which)
+  }
+
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
+    <div ref={ref}>
       {/* Display */}
-      <div onClick={() => setOpen(o => o ? false : 'start')} style={{ cursor: 'pointer' }} title="Click to set dates">
+      <div ref={displayRef} onClick={() => handleOpen('start')} style={{ cursor: 'pointer' }} title="Click to set start then end date">
         {localStart || localEnd ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 4 }}>
@@ -682,15 +693,26 @@ function TimelineCell({ startDate, dueDate, onChangeStart, onChangeEnd, color })
           <span style={{ fontSize: 11, color: '#c1c7d0', fontStyle: 'italic' }}>Set dates…</span>
         )}
       </div>
-      {/* Popup */}
-      {open && (
-        <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 1000, marginTop: 4 }}>
+      {/* Fixed-position popup — escapes overflow:hidden clipping */}
+      {open && anchorPos && typeof document !== 'undefined' && (() => {
+        const el = document.getElementById('timeline-portal')
+        if (!el) return null
+        const portalContent = (
+          <div style={{ position: 'fixed', top: anchorPos.top, left: anchorPos.left, zIndex: 9999 }}>
+            <CalendarPicker
+              value={open === 'start' ? localStart : localEnd}
+              onChange={open === 'start' ? handleStart : handleEnd}
+              label={open === 'start' ? '① Pick start date' : '② Pick end date'} />
+          </div>
+        )
+        // Use ReactDOM.createPortal via inline import workaround
+        return <div style={{ position: 'fixed', top: anchorPos.top, left: anchorPos.left, zIndex: 9999 }}>
           <CalendarPicker
             value={open === 'start' ? localStart : localEnd}
             onChange={open === 'start' ? handleStart : handleEnd}
-            label={open === 'start' ? 'Start date' : 'End date'} />
+            label={open === 'start' ? '① Pick start date' : '② Pick end date'} />
         </div>
-      )}
+      })()}
     </div>
   )
 }
@@ -764,6 +786,8 @@ function ProjectGroup({ group, allTasks, projectColor, onUpdate, onDelete, onAdd
 
 // ── Project Table Row (Monday.com style) ───────────────────────────────────
 function ProjectTableRow({ task, allTasks, projectColor, onUpdate, onDelete, onSelect, depth = 0 }) {
+  // saveSilent: saves to DB without triggering a full reload (avoids destroying local state mid-edit)
+  const saveSilent = async (field, value) => { await supabase.from('tasks').update({ [field]: value }).eq('id', task.id) }
   const update = async (field, value) => { await supabase.from('tasks').update({ [field]: value }).eq('id', task.id); onUpdate() }
   const indent = depth * 20
   const effort = task.start_date && task.due_date
@@ -795,8 +819,8 @@ function ProjectTableRow({ task, allTasks, projectColor, onUpdate, onDelete, onS
       <div style={{ width: 170, padding: '4px 8px' }}>
         <TimelineCell
           startDate={task.start_date} dueDate={task.due_date} color={projectColor}
-          onChangeStart={v => update('start_date', v)}
-          onChangeEnd={v => update('due_date', v)} />
+          onChangeStart={v => saveSilent('start_date', v)}
+          onChangeEnd={v => { saveSilent('due_date', v); onUpdate() }} />
       </div>
       {/* Effort — auto from dates */}
       <div style={{ width: 60, padding: '4px 6px', textAlign: 'center' }}>
@@ -1664,6 +1688,7 @@ export default function Home() {
       {selectedTask && <TaskDetailPanel task={selectedTask} user={user} onClose={() => setSelectedTask(null)} onUpdate={load} />}
       {showAddTask && <AddTaskModal projects={projects} parentId={addTaskParentId} projectId={addTaskProjectId} allTasks={tasks} onClose={() => setShowAddTask(false)} onSaved={load} currentUser={user} />}
       {showAddProject && <AddProjectModal onClose={() => setShowAddProject(false)} onSaved={load} colorIndex={projects.length} />}
+      <div id="timeline-portal" />
     </>
   )
 }
