@@ -1349,6 +1349,77 @@ function GanttView({ tasks, projects }) {
   )
 }
 
+// ── My Work sub-components (must be top-level for hooks) ─────────────────
+function MwTaskTable({ items, sortFn, projects, todayStr, setSelectedTask, load }) {
+  const ColHdr = ({ col, label, activeSort, onSort }) => (
+    <th onClick={() => onSort(col)} style={{ padding: '8px 8px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: activeSort === col ? 'var(--indigo)' : '#6b778c', textTransform: 'uppercase', cursor: 'pointer', whiteSpace: 'nowrap', userSelect: 'none' }}>
+      {label} {activeSort === col ? '↓' : ''}
+    </th>
+  )
+  return (
+    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <thead>
+        <tr style={{ background: '#f8f9fc', borderBottom: '2px solid #dfe1e6' }}>
+          <th style={{ padding: '8px 8px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Task</th>
+          <th style={{ padding: '8px 8px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Project</th>
+          <th style={{ padding: '8px 8px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Status</th>
+          <th style={{ padding: '8px 8px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Due</th>
+          <th style={{ padding: '8px 8px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Priority</th>
+          <th style={{ padding: '8px 8px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Progress</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[...items].sort(sortFn).map(task => {
+          const proj = projects.find(p => p.id === task.project_id)
+          const isOvd = task.due_date && task.due_date < todayStr
+          return (
+            <tr key={task.id} onClick={() => setSelectedTask(task)} style={{ borderBottom: '1px solid #f0f1f3', cursor: 'pointer' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#f8f9ff'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              <td style={{ padding: '9px 8px', fontSize: 13, fontWeight: 600, color: '#172b4d', maxWidth: 400 }}>
+                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.title}</div>
+                {task.notes && <div style={{ fontSize: 11, color: '#6b778c', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{String(task.notes).substring(0,80)}</div>}
+              </td>
+              <td style={{ padding: '9px 8px' }}>
+                {proj ? <span style={{ fontSize: 11, background: '#f0f1f3', borderRadius: 3, padding: '2px 8px', fontWeight: 600, color: '#42526e', whiteSpace: 'nowrap' }}>{proj.name.substring(0,25)}{proj.name.length>25?'…':''}</span>
+                  : <span style={{ color: '#c1c7d0', fontSize: 11 }}>—</span>}
+              </td>
+              <td style={{ padding: '9px 8px' }}>
+                <StatusBadge value={task.status} onChange={async v => { await supabase.from('tasks').update({ status: v }).eq('id', task.id); load() }} />
+              </td>
+              <td style={{ padding: '9px 8px', fontSize: 12, fontWeight: isOvd ? 700 : 500, color: isOvd ? '#de350b' : '#42526e', whiteSpace: 'nowrap' }}>
+                {task.due_date ? new Date(task.due_date).toLocaleDateString('en-GB', { day:'numeric', month:'short' }) : '—'}
+              </td>
+              <td style={{ padding: '9px 8px' }}>
+                <PriorityBadge value={task.priority} onChange={async v => { await supabase.from('tasks').update({ priority: v }).eq('id', task.id); load() }} />
+              </td>
+              <td style={{ padding: '9px 8px', minWidth: 90 }}>
+                <ProgressBar value={task.progress} onChange={async v => { await supabase.from('tasks').update({ progress: v }).eq('id', task.id); load() }} />
+              </td>
+            </tr>
+          )
+        })}
+      </tbody>
+    </table>
+  )
+}
+
+function MwSection({ title, color, accent, items, icon, sortFn, projects, todayStr, setSelectedTask, load }) {
+  const [open, setOpen] = useState(true)
+  if (items.length === 0) return null
+  return (
+    <div style={{ marginBottom: 4 }}>
+      <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: accent, borderLeft: `4px solid ${color}`, borderBottom: '1px solid #dfe1e6', cursor: 'pointer' }}>
+        <span style={{ fontSize: 14 }}>{icon}</span>
+        <span style={{ fontWeight: 800, fontSize: 13, color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{title}</span>
+        <span style={{ background: color, color: '#fff', borderRadius: 10, fontSize: 11, fontWeight: 800, padding: '1px 8px' }}>{items.length}</span>
+        <span style={{ marginLeft: 'auto', fontSize: 11, color, opacity: 0.7 }}>{open ? '▼' : '▶'}</span>
+      </div>
+      {open && <MwTaskTable items={items} sortFn={sortFn} projects={projects} todayStr={todayStr} setSelectedTask={setSelectedTask} load={load} />}
+    </div>
+  )
+}
+
 // ── Main App ───────────────────────────────────────────────────────────────
 export default function Home() {
   const [user, setUser]                     = useState(null)
@@ -1365,6 +1436,8 @@ export default function Home() {
   const [addTaskParentId, setAddTaskParentId]   = useState(null)
   const [search, setSearch]                 = useState('')
   const [selectedTask, setSelectedTask]     = useState(null)
+  const [mwFilter, setMwFilter]             = useState({ status: '', priority: '', project: '' })
+  const [mwSort, setMwSort]                 = useState('due')
   const now = new Date()
   const [calYear, setCalYear]               = useState(now.getFullYear())
   const [calMonth, setCalMonth]             = useState(now.getMonth())
@@ -1534,8 +1607,6 @@ export default function Home() {
             const monthStr = monthEnd.toISOString().split('T')[0]
 
             const allMy = visibleTasks.filter(t => t.assigned_to?.toLowerCase() === userName.toLowerCase())
-            const [mwFilter, setMwFilter] = useState({ status: '', priority: '', project: '' })
-            const [mwSort, setMwSort] = useState('due')
 
             const myTasks = allMy.filter(t => t.status !== 'done')
               .filter(t => !mwFilter.status   || t.status   === mwFilter.status)
@@ -1561,75 +1632,6 @@ export default function Home() {
               if (mwSort === 'priority') { const o = {critical:0,high:1,medium:2,low:3}; return (o[a.priority]??2) - (o[b.priority]??2) }
               if (mwSort === 'project')  return (a.project_id||'') < (b.project_id||'') ? -1 : 1
               return 0
-            }
-
-            const ColHdr = ({ col, label }) => (
-              <th onClick={() => setMwSort(col)} style={{ padding: '8px 8px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: mwSort === col ? 'var(--indigo)' : '#6b778c', textTransform: 'uppercase', cursor: 'pointer', whiteSpace: 'nowrap', userSelect: 'none' }}>
-                {label} {mwSort === col ? '↓' : ''}
-              </th>
-            )
-
-            const TaskTable = ({ items }) => (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ background: '#f8f9fc', borderBottom: '2px solid #dfe1e6' }}>
-                    <ColHdr col="title"    label="Task" />
-                    <ColHdr col="project"  label="Project" />
-                    <ColHdr col="status"   label="Status" />
-                    <ColHdr col="due"      label="Due" />
-                    <ColHdr col="priority" label="Priority" />
-                    <th style={{ padding: '8px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Progress</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...items].sort(sortFn).map(task => {
-                    const proj = projects.find(p => p.id === task.project_id)
-                    const isOvd = task.due_date && task.due_date < todayStr
-                    return (
-                      <tr key={task.id} onClick={() => setSelectedTask(task)} style={{ borderBottom: '1px solid #f0f1f3', cursor: 'pointer' }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#f8f9ff'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                        <td style={{ padding: '9px 8px', fontSize: 13, fontWeight: 600, color: '#172b4d', maxWidth: 400 }}>
-                          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.title}</div>
-                          {task.notes && <div style={{ fontSize: 11, color: '#6b778c', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{String(task.notes).substring(0,80)}</div>}
-                        </td>
-                        <td style={{ padding: '9px 8px' }}>
-                          {proj ? <span style={{ fontSize: 11, background: '#f0f1f3', borderRadius: 3, padding: '2px 8px', fontWeight: 600, color: '#42526e', whiteSpace: 'nowrap' }}>{proj.name.substring(0,25)}{proj.name.length>25?'…':''}</span>
-                            : <span style={{ color: '#c1c7d0', fontSize: 11 }}>—</span>}
-                        </td>
-                        <td style={{ padding: '9px 8px' }}>
-                          <StatusBadge value={task.status} onChange={async v => { await supabase.from('tasks').update({ status: v }).eq('id', task.id); load() }} />
-                        </td>
-                        <td style={{ padding: '9px 8px', fontSize: 12, fontWeight: isOvd ? 700 : 500, color: isOvd ? '#de350b' : '#42526e', whiteSpace: 'nowrap' }}>
-                          {task.due_date ? new Date(task.due_date).toLocaleDateString('en-GB', { day:'numeric', month:'short' }) : '—'}
-                        </td>
-                        <td style={{ padding: '9px 8px' }}>
-                          <PriorityBadge value={task.priority} onChange={async v => { await supabase.from('tasks').update({ priority: v }).eq('id', task.id); load() }} />
-                        </td>
-                        <td style={{ padding: '9px 8px', minWidth: 90 }}>
-                          <ProgressBar value={task.progress} onChange={async v => { await supabase.from('tasks').update({ progress: v }).eq('id', task.id); load() }} />
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            )
-
-            const Section = ({ title, color, accent, items, icon }) => {
-              const [open, setOpen] = useState(true)
-              if (items.length === 0) return null
-              return (
-                <div style={{ marginBottom: 4 }}>
-                  <div onClick={() => setOpen(o=>!o)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: accent, borderLeft: `4px solid ${color}`, borderBottom: '1px solid #dfe1e6', cursor: 'pointer' }}>
-                    <span style={{ fontSize: 14 }}>{icon}</span>
-                    <span style={{ fontWeight: 800, fontSize: 13, color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{title}</span>
-                    <span style={{ background: color, color: '#fff', borderRadius: 10, fontSize: 11, fontWeight: 800, padding: '1px 8px' }}>{items.length}</span>
-                    <span style={{ marginLeft: 'auto', fontSize: 11, color, opacity: 0.7 }}>{open ? '▼' : '▶'}</span>
-                  </div>
-                  {open && <TaskTable items={items} />}
-                </div>
-              )
             }
 
             const selStyle = { padding: '6px 10px', border: '1px solid #dfe1e6', borderRadius: 6, fontSize: 12, fontFamily: 'Nunito, sans-serif', background: '#fff', cursor: 'pointer', color: '#42526e' }
@@ -1696,12 +1698,12 @@ export default function Home() {
                   </div>
                 ) : (
                   <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #dfe1e6', overflow: 'hidden' }}>
-                    <Section title="Overdue"     color="#de350b" accent="#fff5f5" items={overdue}   icon="🔴" />
-                    <Section title="Due Today"   color="#ff8b00" accent="#fffbf0" items={dueToday}  icon="🟡" />
-                    <Section title="This Week"   color="#0052cc" accent="#f0f5ff" items={thisWeek}  icon="📅" />
-                    <Section title="This Month"  color="#00875a" accent="#f0faf5" items={thisMonth} icon="📆" />
-                    <Section title="Later"       color="#6554c0" accent="#f5f3ff" items={later}     icon="🔮" />
-                    <Section title="No Due Date" color="#6b778c" accent="#f8f9fc" items={noDate}    icon="📌" />
+                    <MwSection title="Overdue"     color="#de350b" accent="#fff5f5" items={overdue}   icon="🔴" sortFn={sortFn} projects={projects} todayStr={todayStr} setSelectedTask={setSelectedTask} load={load} />
+                    <MwSection title="Due Today"   color="#ff8b00" accent="#fffbf0" items={dueToday}  icon="🟡" sortFn={sortFn} projects={projects} todayStr={todayStr} setSelectedTask={setSelectedTask} load={load} />
+                    <MwSection title="This Week"   color="#0052cc" accent="#f0f5ff" items={thisWeek}  icon="📅" sortFn={sortFn} projects={projects} todayStr={todayStr} setSelectedTask={setSelectedTask} load={load} />
+                    <MwSection title="This Month"  color="#00875a" accent="#f0faf5" items={thisMonth} icon="📆" sortFn={sortFn} projects={projects} todayStr={todayStr} setSelectedTask={setSelectedTask} load={load} />
+                    <MwSection title="Later"       color="#6554c0" accent="#f5f3ff" items={later}     icon="🔮" sortFn={sortFn} projects={projects} todayStr={todayStr} setSelectedTask={setSelectedTask} load={load} />
+                    <MwSection title="No Due Date" color="#6b778c" accent="#f8f9fc" items={noDate}    icon="📌" sortFn={sortFn} projects={projects} todayStr={todayStr} setSelectedTask={setSelectedTask} load={load} />
                   </div>
                 )}
               </div>
