@@ -810,7 +810,7 @@ function ProjectTableRow({ task, allTasks, projectColor, onUpdate, onDelete, onS
       <div style={{ width: 120, padding: '4px 6px' }}>
         <StatusBadge value={task.status} onChange={async v => {
           const updates = { status: v }
-          if (v === 'done') updates.progress = 95
+          if (v === 'done') updates.progress = 100
           await supabase.from('tasks').update(updates).eq('id', task.id)
           onUpdate()
         }} />
