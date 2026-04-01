@@ -243,6 +243,96 @@ function DateCell({ value, onChange }) {
 }
 
 // ── Task Detail Panel ──────────────────────────────────────────────────────
+// ── Comment body renderer (highlights @mentions) ──────────────────────────
+function CommentBody({ body }) {
+  const parts = body.split(/(@\w+)/g)
+  return (
+    <p style={{ fontSize: 13, color: '#172b4d', lineHeight: 1.5 }}>
+      {parts.map((part, i) =>
+        part.startsWith('@') ? (
+          <span key={i} style={{ background: '#e9f2ff', color: '#0052cc', borderRadius: 3, padding: '1px 4px', fontWeight: 700 }}>{part}</span>
+        ) : part
+      )}
+    </p>
+  )
+}
+
+// ── @Mention Comment Input ─────────────────────────────────────────────────
+function MentionInput({ value, onChange, onPost, posting, userName }) {
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [mentionSearch, setMentionSearch] = useState('')
+  const [caretPos, setCaretPos] = useState(0)
+  const [atIndex, setAtIndex] = useState(-1)
+  const textareaRef = useRef()
+
+  const handleKeyDown = (e) => {
+    if (showDropdown) {
+      if (e.key === 'Escape') { setShowDropdown(false); return }
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); return }
+    }
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) onPost()
+  }
+
+  const handleChange = (e) => {
+    const val = e.target.value
+    const pos = e.target.selectionStart
+    onChange(val)
+
+    // Detect @ trigger
+    const textBefore = val.substring(0, pos)
+    const match = textBefore.match(/@(\w*)$/)
+    if (match) {
+      setAtIndex(textBefore.lastIndexOf('@'))
+      setMentionSearch(match[1].toLowerCase())
+      setShowDropdown(true)
+    } else {
+      setShowDropdown(false)
+    }
+  }
+
+  const insertMention = (name) => {
+    const before = value.substring(0, atIndex)
+    const after = value.substring(textareaRef.current.selectionStart)
+    const newVal = before + '@' + name + ' ' + after
+    onChange(newVal)
+    setShowDropdown(false)
+    setTimeout(() => {
+      textareaRef.current?.focus()
+      const pos = before.length + name.length + 2
+      textareaRef.current?.setSelectionRange(pos, pos)
+    }, 10)
+  }
+
+  const filtered = TEAM.filter(m => m.name.toLowerCase().startsWith(mentionSearch) && m.name.toLowerCase() !== userName.toLowerCase())
+
+  return (
+    <div style={{ flex: 1, position: 'relative' }}>
+      <textarea ref={textareaRef} value={value} onChange={handleChange} onKeyDown={handleKeyDown}
+        placeholder="Add a comment... Type @ to mention someone (Ctrl+Enter to post)" rows={3}
+        style={{ width: '100%', border: '1px solid #dfe1e6', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'Nunito, sans-serif', resize: 'none', outline: 'none', boxSizing: 'border-box' }} />
+      {showDropdown && filtered.length > 0 && (
+        <div style={{ position: 'absolute', bottom: '100%', left: 0, background: '#fff', border: '1px solid #dfe1e6', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 999, minWidth: 160, marginBottom: 4, overflow: 'hidden' }}>
+          <p style={{ fontSize: 10, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', padding: '6px 10px 4px', borderBottom: '1px solid #f0f1f3' }}>Mention</p>
+          {filtered.map(m => (
+            <div key={m.email} onMouseDown={e => { e.preventDefault(); insertMention(m.name) }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', cursor: 'pointer' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#f0f4ff'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              <OwnerAvatar name={m.name} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#172b4d' }}>{m.name}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <button onClick={onPost} disabled={posting || !value.trim()}
+        style={{ marginTop: 6, background: 'var(--indigo)', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 16px', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'Nunito, sans-serif', opacity: posting || !value.trim() ? 0.5 : 1 }}>
+        {posting ? 'Posting...' : 'Post'}
+      </button>
+    </div>
+  )
+}
+
+// ── Task Detail Panel ──────────────────────────────────────────────────────
 function TaskDetailPanel({ task, user, onClose, onUpdate }) {
   const [comments, setComments] = useState([])
   const [newComment, setNewComment] = useState('')
@@ -259,7 +349,35 @@ function TaskDetailPanel({ task, user, onClose, onUpdate }) {
   const postComment = async () => {
     if (!newComment.trim()) return
     setPosting(true)
-    await supabase.from('comments').insert([{ task_id: task.id, author: userName, body: newComment }])
+
+    // Extract @mentions
+    const mentionMatches = newComment.match(/@(\w+)/g) || []
+    const mentions = mentionMatches.map(m => m.slice(1)).filter(n =>
+      TEAM.some(t => t.name.toLowerCase() === n.toLowerCase())
+    )
+
+    // Insert comment
+    const { data: commentData } = await supabase.from('comments')
+      .insert([{ task_id: task.id, author: userName, body: newComment, mentions }])
+      .select().single()
+
+    // Create notifications
+    const notifs = []
+
+    // Notify @mentioned users
+    for (const name of mentions) {
+      if (name.toLowerCase() !== userName.toLowerCase()) {
+        notifs.push({ user_name: name, type: 'mention', comment_id: commentData?.id, task_id: task.id, task_title: task.title, from_user: userName, body: newComment, read: false })
+      }
+    }
+
+    // Notify task owner if different from commenter
+    if (task.assigned_to && task.assigned_to.toLowerCase() !== userName.toLowerCase() && !mentions.map(m => m.toLowerCase()).includes(task.assigned_to.toLowerCase())) {
+      notifs.push({ user_name: task.assigned_to, type: 'comment_on_owned', comment_id: commentData?.id, task_id: task.id, task_title: task.title, from_user: userName, body: newComment, read: false })
+    }
+
+    if (notifs.length > 0) await supabase.from('notifications').insert(notifs)
+
     setNewComment(''); setPosting(false); loadComments()
   }
 
@@ -288,35 +406,29 @@ function TaskDetailPanel({ task, user, onClose, onUpdate }) {
       </div>}
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 20px' }}>
         <p style={{ fontSize: 10, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', marginBottom: 12 }}>Comments ({comments.length})</p>
-        {comments.length === 0 && <p style={{ fontSize: 13, color: '#a0aec0', fontWeight: 600 }}>No comments yet</p>}
+        {comments.length === 0 && <p style={{ fontSize: 13, color: '#a0aec0', fontWeight: 600 }}>No comments yet. Type @ to mention someone.</p>}
         {comments.map(c => (
           <div key={c.id} style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--indigo)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#fff', flexShrink: 0 }}>{c.author.charAt(0).toUpperCase()}</div>
+              <OwnerAvatar name={c.author} />
               <div>
                 <span style={{ fontSize: 12, fontWeight: 700, color: '#172b4d' }}>{c.author}</span>
                 <span style={{ fontSize: 11, color: '#a0aec0', marginLeft: 8 }}>{new Date(c.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
               </div>
+              {c.mentions?.length > 0 && <div style={{ display: 'flex', gap: 3, marginLeft: 'auto' }}>
+                {c.mentions.map(m => <span key={m} style={{ fontSize: 9, background: '#e9f2ff', color: '#0052cc', borderRadius: 3, padding: '1px 4px', fontWeight: 700 }}>@{m}</span>)}
+              </div>}
             </div>
             <div style={{ marginLeft: 36, background: '#f8f9fc', borderRadius: 8, padding: '8px 12px' }}>
-              <p style={{ fontSize: 13, color: '#172b4d', lineHeight: 1.5 }}>{c.body}</p>
+              <CommentBody body={c.body} />
             </div>
           </div>
         ))}
       </div>
       <div style={{ padding: '12px 20px', borderTop: '1px solid #dfe1e6' }}>
         <div style={{ display: 'flex', gap: 8 }}>
-          <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--aqua)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#fff', flexShrink: 0, marginTop: 4 }}>{userName.charAt(0).toUpperCase()}</div>
-          <div style={{ flex: 1 }}>
-            <textarea value={newComment} onChange={e => setNewComment(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) postComment() }}
-              placeholder="Add a comment... (Ctrl+Enter to post)" rows={3}
-              style={{ width: '100%', border: '1px solid #dfe1e6', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'Nunito, sans-serif', resize: 'none', outline: 'none' }} />
-            <button onClick={postComment} disabled={posting || !newComment.trim()}
-              style={{ marginTop: 6, background: 'var(--indigo)', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 16px', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'Nunito, sans-serif', opacity: posting || !newComment.trim() ? 0.5 : 1 }}>
-              {posting ? 'Posting...' : 'Post'}
-            </button>
-          </div>
+          <OwnerAvatar name={userName} />
+          <MentionInput value={newComment} onChange={setNewComment} onPost={postComment} posting={posting} userName={userName} />
         </div>
       </div>
     </div>
@@ -1072,8 +1184,23 @@ export default function Home() {
 
   const filteredProjects = activeProject ? projects.filter(p => p.id === activeProject) : projects
   const filteredTasks    = search ? visibleTasks.filter(t => t.title?.toLowerCase().includes(search.toLowerCase())) : visibleTasks
-  const inboxTasks       = visibleTasks.filter(t => t.source !== 'manual' && !t.project_id && (t.status === 'not_started' || t.status === 'todo'))
-  const inboxCount       = inboxTasks.length
+  const myFlowTasks      = visibleTasks.filter(t => ['email','teams','teamsmaestro'].includes(t.source) && t.assigned_to?.toLowerCase() === userName.toLowerCase())
+  const [notifications, setNotifications] = useState([])
+  const loadNotifications = useCallback(async () => {
+    if (!userName) return
+    const { data } = await supabase.from('notifications').select('*').eq('user_name', userName).order('created_at', { ascending: false }).limit(50)
+    setNotifications(data || [])
+  }, [userName])
+  useEffect(() => { if (userName) loadNotifications() }, [userName, loadNotifications])
+  const unreadCount = notifications.filter(n => !n.read).length
+  const markRead = async (id) => {
+    await supabase.from('notifications').update({ read: true }).eq('id', id)
+    loadNotifications()
+  }
+  const markAllRead = async () => {
+    await supabase.from('notifications').update({ read: true }).eq('user_name', userName).eq('read', false)
+    loadNotifications()
+  }
 
   const navBtn = (key, label, count) => (
     <button onClick={() => setView(key)} style={{
@@ -1140,8 +1267,9 @@ export default function Home() {
         <aside style={{ width: 210, background: '#fff', borderRight: '1px solid #dfe1e6', padding: '16px 8px', overflowY: 'auto', flexShrink: 0 }}>
           <div style={{ marginBottom: 20 }}>
             {navBtn('mywork', '👤 My Work', 0)}
-            {navBtn('board', '📋 Projects', 0)}
-            {navBtn('inbox', '📥 Inbox', inboxCount)}
+            {navBtn('myprojects', '📌 My Projects', myFlowTasks.length)}
+            {navBtn('board', '📋 All Projects', 0)}
+            {navBtn('inbox', '🔔 Notifications', unreadCount)}
           </div>
           <p style={{ fontSize: 10, fontWeight: 700, color: '#a0aec0', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '0 12px', marginBottom: 6 }}>Projects</p>
           <button onClick={() => setActiveProject(null)} style={{ width: '100%', textAlign: 'left', padding: '6px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 600, fontSize: 12, marginBottom: 2, background: !activeProject ? '#e9f2ff' : 'transparent', color: !activeProject ? '#0052cc' : '#42526e' }}>All projects</button>
@@ -1210,24 +1338,116 @@ export default function Home() {
             )
           })()
 
-          : view === 'inbox' ? (
-            <>
-              <h2 style={{ fontWeight: 800, fontSize: 18, color: 'var(--indigo)', marginBottom: 16 }}>
-                Inbox <span style={{ fontSize: 13, fontWeight: 600, color: '#6b778c' }}>— from Email, Teams & TeamsMAestro</span>
-              </h2>
-              {inboxTasks.length === 0 ? <p style={{ color: '#6b778c', fontWeight: 600 }}>Inbox is clear ✓</p> : (
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead><tr style={{ background: '#f8f9fc', borderBottom: '2px solid #dfe1e6' }}>
-                    {['Task', 'Source', 'Status', 'Assignee', 'Due', 'Priority'].map(h => <th key={h} style={{ padding: '7px 8px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>{h}</th>)}
-                  </tr></thead>
-                  <tbody>
-                    {inboxTasks.map(task => <InboxRow key={task.id} task={task} onUpdate={load} onDelete={deleteTask} onSelect={setSelectedTask} />)}
-                  </tbody>
-                </table>
-              )}
-            </>
+          : view === 'myprojects' ? (() => {
+            const SOURCE_ORDER = ['teamsmaestro', 'teams', 'email']
+            const grouped = SOURCE_ORDER.reduce((acc, src) => { acc[src] = myFlowTasks.filter(t => t.source === src); return acc }, {})
+            return (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                  <div>
+                    <h2 style={{ fontWeight: 800, fontSize: 18, color: 'var(--indigo)' }}>My Projects</h2>
+                    <p style={{ fontSize: 13, color: '#6b778c', fontWeight: 600, marginTop: 2 }}>Your actions from Email, Teams and TeamsMAestro — visible only to you</p>
+                  </div>
+                  <div style={{ marginLeft: 'auto', background: '#f0f4ff', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, color: 'var(--indigo)' }}>{myFlowTasks.length} tasks</div>
+                </div>
+                {myFlowTasks.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: 60, color: '#6b778c' }}>
+                    <p style={{ fontSize: 32, marginBottom: 8 }}>📬</p>
+                    <p style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>No tasks yet</p>
+                    <p style={{ fontSize: 13 }}>Tasks from Email, Teams and TeamsMAestro assigned to you will appear here</p>
+                  </div>
+                ) : SOURCE_ORDER.map(src => {
+                  const srcTasks = grouped[src]
+                  if (!srcTasks.length) return null
+                  const srcInfo = SOURCE_COLORS[src] || SOURCE_COLORS.manual
+                  return (
+                    <div key={src} style={{ marginBottom: 28 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                        <span style={{ background: srcInfo.bg, color: srcInfo.color, borderRadius: 4, padding: '3px 10px', fontSize: 12, fontWeight: 700 }}>{srcInfo.label}</span>
+                        <span style={{ fontSize: 12, color: '#6b778c', fontWeight: 600 }}>{srcTasks.length} task{srcTasks.length !== 1 ? 's' : ''}</span>
+                      </div>
+                      <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #dfe1e6', overflow: 'hidden' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                          <thead><tr style={{ background: '#f8f9fc', borderBottom: '1px solid #dfe1e6' }}>
+                            {['Task', 'Status', 'Due', 'Priority'].map(h => <th key={h} style={{ padding: '7px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>{h}</th>)}
+                          </tr></thead>
+                          <tbody>
+                            {srcTasks.map(task => (
+                              <tr key={task.id} style={{ borderBottom: '1px solid #f0f1f3', cursor: 'pointer' }}
+                                onClick={() => setSelectedTask(task)}
+                                onMouseEnter={e => e.currentTarget.style.background = '#f8f9ff'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                <td style={{ padding: '9px 12px' }}>
+                                  <p style={{ fontSize: 13, fontWeight: 600, color: '#172b4d' }}>{task.title}</p>
+                                  {task.notes && <p style={{ fontSize: 11, color: '#6b778c', marginTop: 2 }}>{String(task.notes).substring(0, 60)}...</p>}
+                                </td>
+                                <td style={{ padding: '9px 12px' }}><StatusBadge value={task.status} onChange={async v => { await supabase.from('tasks').update({ status: v }).eq('id', task.id); load() }} /></td>
+                                <td style={{ padding: '9px 12px', fontSize: 12, color: task.due_date && new Date(task.due_date) < new Date() ? '#de350b' : '#42526e', fontWeight: 600 }}>
+                                  {task.due_date ? new Date(task.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}
+                                </td>
+                                <td style={{ padding: '9px 12px' }}><PriorityBadge value={task.priority} onChange={async v => { await supabase.from('tasks').update({ priority: v }).eq('id', task.id); load() }} /></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )
+                })}
+              </>
+            )
+          })()
 
-          ) : (
+          : view === 'inbox' ? (() => {
+            const typeColors = { mention: { bg: '#e9f2ff', color: '#0052cc', label: '@Mention' }, comment_on_owned: { bg: '#e3fcef', color: '#00875a', label: 'Comment' } }
+            return (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                  <div>
+                    <h2 style={{ fontWeight: 800, fontSize: 18, color: 'var(--indigo)' }}>Notifications</h2>
+                    <p style={{ fontSize: 13, color: '#6b778c', fontWeight: 600, marginTop: 2 }}>Comments on your tasks and @mentions</p>
+                  </div>
+                  {unreadCount > 0 && <button onClick={markAllRead} style={{ marginLeft: 'auto', background: 'none', border: '1px solid #dfe1e6', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#6b778c', fontFamily: 'Nunito, sans-serif' }}>Mark all read</button>}
+                </div>
+                {notifications.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: 60, color: '#6b778c' }}>
+                    <p style={{ fontSize: 32, marginBottom: 8 }}>🔔</p>
+                    <p style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>All caught up</p>
+                    <p style={{ fontSize: 13 }}>You will see @mentions and comments on your tasks here</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {notifications.map(n => {
+                      const tc = typeColors[n.type] || typeColors.comment_on_owned
+                      const notifTask = tasks.find(t => t.id === n.task_id)
+                      return (
+                        <div key={n.id} onClick={async () => { await markRead(n.id); if (notifTask) setSelectedTask(notifTask) }}
+                          style={{ background: n.read ? '#fff' : '#f0f4ff', borderRadius: 10, border: '1px solid ' + (n.read ? '#dfe1e6' : '#c0d4ff'), padding: '14px 16px', cursor: 'pointer', display: 'flex', gap: 12, alignItems: 'flex-start' }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#f8f9ff'}
+                          onMouseLeave={e => e.currentTarget.style.background = n.read ? '#fff' : '#f0f4ff'}>
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: n.read ? 'transparent' : '#0052cc', flexShrink: 0, marginTop: 6 }} />
+                          <OwnerAvatar name={n.from_user} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                              <span style={{ fontWeight: 700, fontSize: 13, color: '#172b4d' }}>{n.from_user}</span>
+                              <span style={{ background: tc.bg, color: tc.color, borderRadius: 3, padding: '1px 7px', fontSize: 11, fontWeight: 700 }}>{tc.label}</span>
+                              <span style={{ fontSize: 11, color: '#a0aec0', marginLeft: 'auto' }}>{new Date(n.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                            <p style={{ fontSize: 12, color: '#6b778c', marginBottom: 4 }}>on <span style={{ fontWeight: 700, color: '#42526e' }}>{n.task_title}</span></p>
+                            <div style={{ background: '#f8f9fc', borderRadius: 6, padding: '6px 10px' }}>
+                              <CommentBody body={n.body.substring(0, 120) + (n.body.length > 120 ? '...' : '')} />
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </>
+            )
+          })()
+
+          : (
             <>
               {filteredProjects.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: 60, color: '#6b778c' }}>
