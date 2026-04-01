@@ -236,8 +236,12 @@ function ProgressBar({ value, onChange }) {
         <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 3, transition: 'width 0.3s' }} />
       </div>
       {onChange ? (
-        <input type="number" min="0" max="100" value={pct} onChange={e => onChange(parseInt(e.target.value) || 0)}
-          style={{ width: 36, fontSize: 11, fontWeight: 700, color: '#42526e', border: 'none', background: 'transparent', textAlign: 'right', padding: 0 }} />
+        <select value={pct} onChange={e => onChange(parseInt(e.target.value))}
+          style={{ fontSize: 11, fontWeight: 700, color: '#42526e', border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, minWidth: 36, fontFamily: 'Nunito, sans-serif' }}>
+          {Array.from({ length: 20 }, (_, i) => i * 5).map(v => (
+            <option key={v} value={v}>{v}%</option>
+          ))}
+        </select>
       ) : <span style={{ fontSize: 11, fontWeight: 700, color: '#42526e', minWidth: 28, textAlign: 'right' }}>{pct}%</span>}
     </div>
   )
@@ -579,22 +583,50 @@ function TaskRow({ task, allTasks, depth, onUpdate, onDelete, onAddSubtask, onSe
 
 // ── Project Section ────────────────────────────────────────────────────────
 // ── Mini Timeline Bar ──────────────────────────────────────────────────────
-function MiniTimeline({ startDate, dueDate, color }) {
-  if (!startDate && !dueDate) return <span style={{ color: '#c1c7d0', fontSize: 11 }}>—</span>
+// ── Timeline cell — inline date range picker + progress bar ───────────────
+function TimelineCell({ startDate, dueDate, onChangeStart, onChangeEnd, color }) {
+  const [editing, setEditing] = useState(false)
   const now = new Date()
-  const start = startDate ? new Date(startDate) : now
-  const end = dueDate ? new Date(dueDate) : now
-  const total = Math.max(end - start, 86400000)
-  const elapsed = Math.min(Math.max(now - start, 0), total)
-  const pct = Math.round((elapsed / total) * 100)
   const isOverdue = dueDate && new Date(dueDate) < now
   const barColor = isOverdue ? '#de350b' : color || '#0052cc'
+
+  // Calculate bar fill based on today vs start→end
+  let pct = 0
+  if (startDate && dueDate) {
+    const s = new Date(startDate), e = new Date(dueDate)
+    const total = Math.max(e - s, 86400000)
+    pct = Math.round((Math.min(Math.max(now - s, 0), total) / total) * 100)
+  }
+
+  const fmt = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '?'
+
+  if (editing) return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#fff', border: '1px solid var(--aqua)', borderRadius: 4, padding: '2px 6px' }}>
+      <input type="date" value={startDate || ''} onChange={e => onChangeStart(e.target.value)} autoFocus
+        style={{ border: 'none', outline: 'none', fontSize: 11, fontFamily: 'Nunito, sans-serif', color: '#172b4d', width: 110 }} />
+      <span style={{ color: '#a0aec0', fontSize: 11 }}>→</span>
+      <input type="date" value={dueDate || ''} onChange={e => onChangeEnd(e.target.value)}
+        style={{ border: 'none', outline: 'none', fontSize: 11, fontFamily: 'Nunito, sans-serif', color: '#172b4d', width: 110 }} />
+      <span onClick={() => setEditing(false)} style={{ cursor: 'pointer', color: '#a0aec0', fontSize: 14, marginLeft: 2 }}>✓</span>
+    </div>
+  )
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-      <div style={{ flex: 1, height: 6, background: '#f0f1f3', borderRadius: 3, overflow: 'hidden', minWidth: 60 }}>
-        <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 3 }} />
-      </div>
-      {dueDate && <span style={{ fontSize: 10, color: isOverdue ? '#de350b' : '#6b778c', fontWeight: 600, whiteSpace: 'nowrap' }}>{new Date(dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>}
+    <div onClick={() => setEditing(true)} style={{ cursor: 'pointer', minWidth: 120 }}
+      title="Click to set dates">
+      {startDate || dueDate ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 10, color: '#6b778c', fontWeight: 600 }}>{fmt(startDate)}</span>
+            <span style={{ fontSize: 10, color: isOverdue ? '#de350b' : '#6b778c', fontWeight: 600 }}>{fmt(dueDate)}</span>
+          </div>
+          <div style={{ height: 6, background: '#f0f1f3', borderRadius: 3, overflow: 'hidden' }}>
+            <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 3 }} />
+          </div>
+        </div>
+      ) : (
+        <span style={{ fontSize: 11, color: '#c1c7d0', fontStyle: 'italic' }}>Set dates…</span>
+      )}
     </div>
   )
 }
@@ -635,7 +667,11 @@ function ProjectGroup({ group, allTasks, projectColor, onUpdate, onDelete, onAdd
         <div style={{ flex: 1, padding: '8px 8px 8px 4px', fontWeight: 800, fontSize: 13, color: tint.text }}>{group.title}</div>
         <div style={{ padding: '8px 12px', fontSize: 11, color: tint.text, fontWeight: 700, opacity: 0.7 }}>{children.length} task{children.length !== 1 ? 's' : ''}</div>
         {/* Spacer cols */}
-        <div style={{ width: 60 }} /><div style={{ width: 120 }} /><div style={{ width: 90 }} /><div style={{ width: 90 }} /><div style={{ width: 70 }} /><div style={{ width: 130 }} /><div style={{ width: 90 }} /><div style={{ width: 80 }} />
+        <div style={{ width: 56 }} /><div style={{ width: 120 }} /><div style={{ width: 220 }} /><div style={{ width: 64 }} /><div style={{ width: 90 }} /><div style={{ width: 90 }} />
+        {/* Delete group */}
+        <span onClick={() => onDelete(group.id)} title="Delete group"
+          style={{ padding: '0 12px', color: '#c1c7d0', cursor: 'pointer', fontSize: 16, flexShrink: 0 }}
+          onMouseEnter={e => e.currentTarget.style.color='#de350b'} onMouseLeave={e => e.currentTarget.style.color='#c1c7d0'}>×</span>
       </div>
       {/* Child tasks */}
       {!collapsed && children.map(task => (
@@ -663,61 +699,53 @@ function ProjectGroup({ group, allTasks, projectColor, onUpdate, onDelete, onAdd
 }
 
 // ── Project Table Row (Monday.com style) ───────────────────────────────────
-function ProjectTableRow({ task, allTasks, projectColor, onUpdate, onDelete, onAddSubtask, onSelect, depth = 0 }) {
+function ProjectTableRow({ task, allTasks, projectColor, onUpdate, onDelete, onSelect, depth = 0 }) {
   const update = async (field, value) => { await supabase.from('tasks').update({ [field]: value }).eq('id', task.id); onUpdate() }
   const indent = depth * 20
   const effort = task.start_date && task.due_date
     ? Math.max(1, Math.ceil((new Date(task.due_date) - new Date(task.start_date)) / 86400000))
     : null
-  const isOverdue = task.due_date && task.due_date < new Date().toISOString().split('T')[0] && task.status !== 'done'
 
   return (
-    <div className="proj-row" style={{ display: 'flex', alignItems: 'center', borderLeft: `4px solid ${projectColor}`, borderBottom: '1px solid #f0f1f3', minHeight: 38, background: 'transparent' }}
+    <div style={{ display: 'flex', alignItems: 'center', borderLeft: `4px solid ${projectColor}`, borderBottom: '1px solid #f0f1f3', minHeight: 40, background: 'transparent' }}
       onMouseEnter={e => e.currentTarget.style.background = '#f8f9ff'}
       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
       {/* Task name */}
       <div style={{ flex: 1, paddingLeft: 8 + indent, paddingRight: 8, display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
         <InlineEdit value={task.title} onSave={v => update('title', v)}
-          style={{ fontWeight: depth === 0 ? 600 : 400, fontSize: 13, color: '#172b4d', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }} />
+          style={{ fontWeight: depth === 0 ? 600 : 400, fontSize: 13, color: '#172b4d', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} />
         <span onClick={() => onSelect && onSelect(task)} title="Open detail"
-          style={{ color: '#c1c7d0', cursor: 'pointer', fontSize: 13, flexShrink: 0 }}>↗</span>
-        <span onClick={() => onDelete(task.id)}
-          style={{ color: '#c1c7d0', cursor: 'pointer', fontSize: 14, flexShrink: 0 }}>×</span>
+          style={{ color: '#c1c7d0', cursor: 'pointer', fontSize: 12, flexShrink: 0 }} onMouseEnter={e => e.currentTarget.style.color='#6b778c'} onMouseLeave={e => e.currentTarget.style.color='#c1c7d0'}>↗</span>
+        <span onClick={() => onDelete(task.id)} title="Delete task"
+          style={{ color: '#c1c7d0', cursor: 'pointer', fontSize: 14, flexShrink: 0 }} onMouseEnter={e => e.currentTarget.style.color='#de350b'} onMouseLeave={e => e.currentTarget.style.color='#c1c7d0'}>×</span>
       </div>
       {/* Owner */}
-      <div style={{ width: 60, padding: '4px 8px', display: 'flex', alignItems: 'center' }}>
-        <AssigneeSelect value={task.assigned_to} onChange={v => update('assigned_to', v)} compact />
+      <div style={{ width: 56, padding: '4px 6px', display: 'flex', alignItems: 'center' }}>
+        <AssigneeSelect value={task.assigned_to} onChange={v => update('assigned_to', v)} />
       </div>
       {/* Status */}
-      <div style={{ width: 120, padding: '4px 8px' }}>
+      <div style={{ width: 120, padding: '4px 6px' }}>
         <StatusBadge value={task.status} onChange={v => update('status', v)} />
       </div>
-      {/* Start date */}
-      <div style={{ width: 90, padding: '4px 6px' }}>
-        <input type="date" value={task.start_date || ''} onChange={e => update('start_date', e.target.value)}
-          style={{ border: 'none', background: 'transparent', fontSize: 11, fontWeight: 600, color: '#42526e', cursor: 'pointer', width: '100%', fontFamily: 'Nunito, sans-serif' }} />
+      {/* Timeline — combined date range picker + bar */}
+      <div style={{ width: 220, padding: '4px 8px' }}>
+        <TimelineCell
+          startDate={task.start_date} dueDate={task.due_date} color={projectColor}
+          onChangeStart={v => update('start_date', v)}
+          onChangeEnd={v => update('due_date', v)} />
       </div>
-      {/* End/Due date */}
-      <div style={{ width: 90, padding: '4px 6px' }}>
-        <input type="date" value={task.due_date || ''} onChange={e => update('due_date', e.target.value)}
-          style={{ border: 'none', background: 'transparent', fontSize: 11, fontWeight: 600, color: isOverdue ? '#de350b' : '#42526e', cursor: 'pointer', width: '100%', fontFamily: 'Nunito, sans-serif' }} />
-      </div>
-      {/* Effort — calculated from start→end */}
-      <div style={{ width: 70, padding: '4px 8px', textAlign: 'center' }}>
+      {/* Effort — auto from dates */}
+      <div style={{ width: 64, padding: '4px 6px', textAlign: 'center' }}>
         {effort
-          ? <span style={{ fontSize: 12, fontWeight: 700, color: '#0052cc', background: '#e9f2ff', borderRadius: 10, padding: '2px 8px' }}>{effort}d</span>
+          ? <span style={{ fontSize: 11, fontWeight: 700, color: '#0052cc', background: '#e9f2ff', borderRadius: 10, padding: '2px 7px' }}>{effort}d</span>
           : <span style={{ fontSize: 11, color: '#c1c7d0' }}>—</span>}
       </div>
-      {/* Timeline bar */}
-      <div style={{ width: 130, padding: '4px 8px' }}>
-        <MiniTimeline startDate={task.start_date} dueDate={task.due_date} color={projectColor} />
-      </div>
       {/* Priority */}
-      <div style={{ width: 90, padding: '4px 8px' }}>
+      <div style={{ width: 90, padding: '4px 6px' }}>
         <PriorityBadge value={task.priority} onChange={v => update('priority', v)} />
       </div>
       {/* Progress */}
-      <div style={{ width: 80, padding: '4px 8px' }}>
+      <div style={{ width: 90, padding: '4px 6px' }}>
         <ProgressBar value={task.progress} onChange={v => update('progress', v)} />
       </div>
     </div>
@@ -936,6 +964,16 @@ function ProjectSection({ project, tasks, allTasks, onUpdate, onDelete, onAddTas
           </div>
           <span style={{ fontSize: 12, fontWeight: 800, color: '#fff' }}>{pct}%</span>
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)' }}>{doneTasks}/{totalTasks}</span>
+          <button onClick={() => {
+            if (window.confirm(`Delete project "${project.name}" and all its tasks? This cannot be undone.`)) {
+              supabase.from('tasks').delete().eq('project_id', project.id)
+                .then(() => supabase.from('projects').delete().eq('id', project.id))
+                .then(() => onUpdate())
+            }
+          }} title="Delete project"
+            style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', fontSize: 12, fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}
+            onMouseEnter={e => e.currentTarget.style.background='rgba(222,53,11,0.6)'}
+            onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.15)'}>🗑 Delete</button>
         </div>
       </div>
 
@@ -958,14 +996,12 @@ function ProjectSection({ project, tasks, allTasks, onUpdate, onDelete, onAddTas
             {/* Column headers */}
             <div style={{ display: 'flex', alignItems: 'center', background: '#f8f9fc', borderBottom: '2px solid #dfe1e6', paddingLeft: 32 }}>
               <div style={{ flex: 1, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Task</div>
-              <div style={{ width: 60, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Owner</div>
-              <div style={{ width: 120, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Status</div>
-              <div style={{ width: 90, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Start</div>
-              <div style={{ width: 90, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>End</div>
-              <div style={{ width: 70, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Effort</div>
-              <div style={{ width: 130, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Timeline</div>
-              <div style={{ width: 90, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Priority</div>
-              <div style={{ width: 80, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Progress</div>
+              <div style={{ width: 56, padding: '7px 6px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Owner</div>
+              <div style={{ width: 120, padding: '7px 6px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Status</div>
+              <div style={{ width: 220, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Timeline</div>
+              <div style={{ width: 64, padding: '7px 6px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Effort</div>
+              <div style={{ width: 90, padding: '7px 6px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Priority</div>
+              <div style={{ width: 90, padding: '7px 6px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Progress</div>
             </div>
 
             {/* Groups with their tasks */}
