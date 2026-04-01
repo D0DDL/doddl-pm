@@ -793,19 +793,17 @@ function ProjectTableRow({ task, allTasks, projectColor, onUpdate, onDelete, onS
   const [localStart,    setLocalStart]    = useState(task.start_date || '')
   const [localEnd,      setLocalEnd]      = useState(task.due_date   || '')
 
-  // Sync status, priority, progress from props whenever they change (reflects DB truth)
-  // But keep start/end dates local-only (managed by TimelineCell)
-  useEffect(() => { setLocalStatus(task.status || 'not_started') }, [task.status])
-  useEffect(() => { setLocalPriority(task.priority || 'medium') }, [task.priority])
-  useEffect(() => { setLocalProgress(task.progress || 0) }, [task.progress])
-  useEffect(() => { setLocalAssignee(task.assigned_to || '') }, [task.assigned_to])
-  useEffect(() => { setLocalTitle(task.title || '') }, [task.title])
-
-  // Only sync dates on first mount or task ID change (never wipe mid-edit)
+  // Only sync ALL fields when navigating to a different task (task.id changes)
+  // Never sync mid-interaction — prevents status/dates being wiped by reload race condition
   const taskIdRef = useRef(task.id)
   useEffect(() => {
     if (task.id !== taskIdRef.current) {
       taskIdRef.current = task.id
+      setLocalTitle(task.title || '')
+      setLocalStatus(task.status || 'not_started')
+      setLocalAssignee(task.assigned_to || '')
+      setLocalPriority(task.priority || 'medium')
+      setLocalProgress(task.progress || 0)
       setLocalStart(task.start_date || '')
       setLocalEnd(task.due_date || '')
     }
@@ -944,8 +942,9 @@ function ProjectSection({ project, tasks, allTasks, onUpdate, onDelete, onAddTas
   const [addingGroup, setAddingGroup] = useState(false)
   const [groupName, setGroupName] = useState('')
   const color = getProjectColor(project, colorIndex)
-  const totalTasks = tasks.length
-  const doneTasks = tasks.filter(t => t.status === 'done').length
+  const realTasks = tasks.filter(t => !t.is_group)
+  const totalTasks = realTasks.length
+  const doneTasks = realTasks.filter(t => t.status === 'done').length
   const pct = totalTasks ? Math.round(doneTasks / totalTasks * 100) : 0
 
   // Separate groups from regular tasks
@@ -1870,11 +1869,12 @@ export default function Home() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
                   {projects.map((project, i) => {
                     const pTasks   = visibleTasks.filter(t => t.project_id === project.id)
-                    const total    = pTasks.length
-                    const done     = pTasks.filter(t => t.status === 'done').length
-                    const inProg   = pTasks.filter(t => ['in_progress','on_track'].includes(t.status)).length
-                    const blocked  = pTasks.filter(t => ['blocked','at_risk'].includes(t.status)).length
-                    const overdue  = pTasks.filter(t => t.due_date && t.due_date < new Date().toISOString().split('T')[0] && t.status !== 'done').length
+                    const realP    = pTasks.filter(t => !t.is_group)
+                    const total    = realP.length
+                    const done     = realP.filter(t => t.status === 'done').length
+                    const inProg   = realP.filter(t => ['in_progress','on_track'].includes(t.status)).length
+                    const blocked  = realP.filter(t => ['blocked','at_risk'].includes(t.status)).length
+                    const overdue  = realP.filter(t => t.due_date && t.due_date < new Date().toISOString().split('T')[0] && t.status !== 'done').length
                     const pct      = total ? Math.round(done / total * 100) : 0
                     const color    = getProjectColor(project, i)
                     const prioMap  = { critical: '#de350b', high: '#ff8b00', medium: '#0052cc', low: '#6b778c' }
