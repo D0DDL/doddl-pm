@@ -793,16 +793,19 @@ function ProjectTableRow({ task, allTasks, projectColor, onUpdate, onDelete, onS
   const [localStart,    setLocalStart]    = useState(task.start_date || '')
   const [localEnd,      setLocalEnd]      = useState(task.due_date   || '')
 
-  // Only sync from props on initial mount or when task.id changes (navigating to different task)
+  // Sync status, priority, progress from props whenever they change (reflects DB truth)
+  // But keep start/end dates local-only (managed by TimelineCell)
+  useEffect(() => { setLocalStatus(task.status || 'not_started') }, [task.status])
+  useEffect(() => { setLocalPriority(task.priority || 'medium') }, [task.priority])
+  useEffect(() => { setLocalProgress(task.progress || 0) }, [task.progress])
+  useEffect(() => { setLocalAssignee(task.assigned_to || '') }, [task.assigned_to])
+  useEffect(() => { setLocalTitle(task.title || '') }, [task.title])
+
+  // Only sync dates on first mount or task ID change (never wipe mid-edit)
   const taskIdRef = useRef(task.id)
   useEffect(() => {
     if (task.id !== taskIdRef.current) {
       taskIdRef.current = task.id
-      setLocalTitle(task.title || '')
-      setLocalStatus(task.status || 'not_started')
-      setLocalAssignee(task.assigned_to || '')
-      setLocalPriority(task.priority || 'medium')
-      setLocalProgress(task.progress || 0)
       setLocalStart(task.start_date || '')
       setLocalEnd(task.due_date || '')
     }
@@ -816,8 +819,8 @@ function ProjectTableRow({ task, allTasks, projectColor, onUpdate, onDelete, onS
     setLocalStatus(v)
     const updates = { status: v }
     if (v === 'done') { updates.progress = 100; setLocalProgress(100) }
-    await supabase.from('tasks').update(updates).eq('id', task.id)
-    onUpdate()  // refresh parent so project % and tile stats update
+    const { error } = await supabase.from('tasks').update(updates).eq('id', task.id)
+    if (!error) onUpdate()  // only reload if save succeeded
   }
 
   return (
