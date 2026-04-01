@@ -633,100 +633,73 @@ function CalendarPicker({ value, onChange, label }) {
   )
 }
 
-function TimelineCell({ startDate, dueDate, onChangeStart, onChangeEnd, color }) {
-  const [open, setOpen]           = useState(false)
-  const [localStart, setLocalStart] = useState(startDate || '')
-  const [localEnd,   setLocalEnd]   = useState(dueDate   || '')
-  const pendingStart = useRef(null)   // useRef = synchronous, not async like useState
-  const ref        = useRef()
-  const displayRef = useRef()
-  const [anchorPos, setAnchorPos] = useState(null)
+function TimelineCell({ taskId, startDate, dueDate, color, onDone }) {
+  const [open, setOpen]     = useState(false)
+  const [stage, setStage]   = useState('start') // 'start' | 'end'
+  const [s, setS]           = useState(startDate || '')
+  const [e, setE]           = useState(dueDate   || '')
+  const anchorRef           = useRef()
+  const [pos, setPos]       = useState(null)
 
-  // Only sync from props when picker is closed
-  useEffect(() => {
-    if (!open) {
-      setLocalStart(startDate || '')
-      setLocalEnd(dueDate || '')
-    }
-  }, [startDate, dueDate, open])
-
-  // Close on outside click
-  useEffect(() => {
-    if (!open) return
-    const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open])
+  // Sync when props change (but not while picker is open)
+  useEffect(() => { if (!open) { setS(startDate || ''); setE(dueDate || '') } }, [startDate, dueDate])
 
   const openPicker = () => {
-    const rect = displayRef.current?.getBoundingClientRect()
-    if (rect) setAnchorPos({ top: rect.bottom + 4, left: rect.left })
-    pendingStart.current = null
-    setOpen('start')
+    const r = anchorRef.current?.getBoundingClientRect()
+    if (r) setPos({ top: r.bottom + 4, left: r.left })
+    setStage('start')
+    setOpen(true)
   }
 
-  const handleStartPick = (v) => {
-    pendingStart.current = v   // synchronous ref — guaranteed available in handleEndPick
-    setLocalStart(v)
-    setOpen('end')
+  const pickStart = (v) => {
+    setS(v)
+    // Save start directly to DB — no React callback, no reload
+    window._supabase_save = window._supabase_save || {}
+    supabase.from('tasks').update({ start_date: v }).eq('id', taskId)
+    setStage('end')
   }
 
-  const handleEndPick = (v) => {
-    setLocalEnd(v)
+  const pickEnd = (v) => {
+    setE(v)
     setOpen(false)
-    // Both values are now known synchronously
-    const s = pendingStart.current || localStart
-    pendingStart.current = null
-    if (s) onChangeStart(s)
-    onChangeEnd(v)
+    // Save end directly, then trigger single reload
+    supabase.from('tasks').update({ due_date: v }).eq('id', taskId).then(() => onDone())
   }
 
   const now = new Date()
-  const isOverdue = localEnd && new Date(localEnd) < now
-  const barColor  = isOverdue ? '#de350b' : color || '#0052cc'
+  const isOverdue = e && new Date(e) < now
+  const bar = isOverdue ? '#de350b' : color || '#0052cc'
   let pct = 0
-  if (localStart && localEnd) {
-    const s = new Date(localStart), e = new Date(localEnd)
-    const total = Math.max(e - s, 86400000)
-    pct = Math.round((Math.min(Math.max(now - s, 0), total) / total) * 100)
+  if (s && e) {
+    const sd = new Date(s), ed = new Date(e)
+    pct = Math.round(Math.min(Math.max((now - sd) / Math.max(ed - sd, 86400000), 0), 1) * 100)
   }
-  const fmt = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : null
+  const fmt = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day:'numeric', month:'short' }) : null
 
   return (
-    <div ref={ref}>
-      <div ref={displayRef} onClick={() => open ? setOpen(false) : openPicker()}
-        style={{ cursor: 'pointer' }} title="Click to set dates">
-        {localStart || localEnd ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 4 }}>
-              <span style={{ fontSize: 10, color: open === 'start' ? 'var(--indigo)' : '#6b778c', fontWeight: 700 }}>
-                {fmt(localStart) || <span style={{ color: '#c1c7d0' }}>Start</span>}
-              </span>
-              <span style={{ fontSize: 10, color: isOverdue ? '#de350b' : open === 'end' ? 'var(--indigo)' : '#6b778c', fontWeight: 700 }}>
-                {fmt(localEnd) || <span style={{ color: '#c1c7d0' }}>End</span>}
-              </span>
+    <>
+      <div ref={anchorRef} onClick={open ? () => setOpen(false) : openPicker} style={{ cursor:'pointer' }}>
+        {s || e ? (
+          <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', gap:4 }}>
+              <span style={{ fontSize:10, fontWeight:700, color: stage==='start'&&open ? 'var(--indigo)' : '#6b778c' }}>{fmt(s) || <span style={{color:'#c1c7d0'}}>Start</span>}</span>
+              <span style={{ fontSize:10, fontWeight:700, color: isOverdue ? '#de350b' : stage==='end'&&open ? 'var(--indigo)' : '#6b778c' }}>{fmt(e) || <span style={{color:'#c1c7d0'}}>End</span>}</span>
             </div>
-            <div style={{ height: 6, background: '#f0f1f3', borderRadius: 3, overflow: 'hidden' }}>
-              <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 3 }} />
+            <div style={{ height:6, background:'#f0f1f3', borderRadius:3, overflow:'hidden' }}>
+              <div style={{ width:`${pct}%`, height:'100%', background:bar, borderRadius:3 }} />
             </div>
           </div>
-        ) : (
-          <span style={{ fontSize: 11, color: '#c1c7d0', fontStyle: 'italic' }}>Set dates…</span>
-        )}
+        ) : <span style={{ fontSize:11, color:'#c1c7d0', fontStyle:'italic' }}>Set dates…</span>}
       </div>
-      {open && anchorPos && (
-        <div style={{ position: 'fixed', top: anchorPos.top, left: anchorPos.left, zIndex: 9999 }}>
+      {open && pos && (
+        <div style={{ position:'fixed', top:pos.top, left:pos.left, zIndex:9999 }}>
           <CalendarPicker
-            value={open === 'start' ? localStart : localEnd}
-            onChange={open === 'start' ? handleStartPick : handleEndPick}
-            label={open === 'start' ? '① Pick start date' : '② Pick end date'} />
+            value={stage === 'start' ? s : e}
+            onChange={stage === 'start' ? pickStart : pickEnd}
+            label={stage === 'start' ? '① Pick start date' : '② Pick end date'} />
         </div>
       )}
-    </div>
+    </>
   )
 }
 // ── Owner Avatar ───────────────────────────────────────────────────────────
@@ -829,10 +802,7 @@ function ProjectTableRow({ task, allTasks, projectColor, onUpdate, onDelete, onS
       </div>
       {/* Timeline — combined date range picker + bar */}
       <div style={{ width: 170, padding: '4px 8px' }}>
-        <TimelineCell
-          startDate={task.start_date} dueDate={task.due_date} color={projectColor}
-          onChangeStart={v => saveSilent('start_date', v)}
-          onChangeEnd={async v => { await saveSilent('due_date', v); onUpdate() }} />
+        <TimelineCell taskId={task.id} startDate={task.start_date} dueDate={task.due_date} color={projectColor} onDone={onUpdate} />
       </div>
       {/* Effort — auto from dates */}
       <div style={{ width: 60, padding: '4px 6px', textAlign: 'center' }}>
