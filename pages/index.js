@@ -801,7 +801,6 @@ function ProjectTableRow({ task, allTasks, projectColor, onUpdate, onDelete, onS
           startDate={task.start_date} dueDate={task.due_date} color={projectColor}
           onSave={async (start, end) => {
             await supabase.from('tasks').update({ start_date: start, due_date: end }).eq('id', task.id)
-            onUpdate()
           }} />
       </div>
       {/* Effort — auto from dates */}
