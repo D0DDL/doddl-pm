@@ -633,70 +633,65 @@ function CalendarPicker({ value, onChange, label }) {
   )
 }
 
-function TimelineCell({ taskId, startDate, dueDate, color, onDone }) {
-  const [open, setOpen]     = useState(false)
-  const [stage, setStage]   = useState('start') // 'start' | 'end'
-  const [s, setS]           = useState(startDate || '')
-  const [e, setE]           = useState(dueDate   || '')
-  const anchorRef           = useRef()
-  const [pos, setPos]       = useState(null)
+function TimelineCell({ startDate, dueDate, color, onSave }) {
+  const [stage, setStage] = useState(null)   // null | 'start' | 'end'
+  const [s, setS]         = useState(startDate || '')
+  const [e, setE]         = useState(dueDate   || '')
+  const anchorRef         = useRef()
+  const [pos, setPos]     = useState(null)
+  const savedStart        = useRef(startDate || '')
 
-  // Sync when props change (but not while picker is open)
-  useEffect(() => { if (!open) { setS(startDate || ''); setE(dueDate || '') } }, [startDate, dueDate])
+  useEffect(() => { if (!stage) { setS(startDate || ''); setE(dueDate || '') } }, [startDate, dueDate])
 
-  const openPicker = () => {
+  const open = (which) => {
     const r = anchorRef.current?.getBoundingClientRect()
     if (r) setPos({ top: r.bottom + 4, left: r.left })
-    setStage('start')
-    setOpen(true)
+    setStage(which)
   }
 
   const pickStart = (v) => {
     setS(v)
-    // Save start directly to DB — no React callback, no reload
-    window._supabase_save = window._supabase_save || {}
-    supabase.from('tasks').update({ start_date: v }).eq('id', taskId)
+    savedStart.current = v
     setStage('end')
   }
 
   const pickEnd = (v) => {
     setE(v)
-    setOpen(false)
-    // Save end directly, then trigger single reload
-    supabase.from('tasks').update({ due_date: v }).eq('id', taskId).then(() => onDone())
+    setStage(null)
+    onSave(savedStart.current, v)
   }
 
   const now = new Date()
-  const isOverdue = e && new Date(e) < now
-  const bar = isOverdue ? '#de350b' : color || '#0052cc'
+  const over = e && new Date(e) < now
+  const bar  = over ? '#de350b' : color || '#0052cc'
   let pct = 0
   if (s && e) {
     const sd = new Date(s), ed = new Date(e)
-    pct = Math.round(Math.min(Math.max((now - sd) / Math.max(ed - sd, 86400000), 0), 1) * 100)
+    pct = Math.round(Math.min(Math.max((now-sd)/Math.max(ed-sd,86400000),0),1)*100)
   }
-  const fmt = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day:'numeric', month:'short' }) : null
+  const fmt = (d) => d ? new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : null
 
   return (
     <>
-      <div ref={anchorRef} onClick={open ? () => setOpen(false) : openPicker} style={{ cursor:'pointer' }}>
-        {s || e ? (
-          <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
-            <div style={{ display:'flex', justifyContent:'space-between', gap:4 }}>
-              <span style={{ fontSize:10, fontWeight:700, color: stage==='start'&&open ? 'var(--indigo)' : '#6b778c' }}>{fmt(s) || <span style={{color:'#c1c7d0'}}>Start</span>}</span>
-              <span style={{ fontSize:10, fontWeight:700, color: isOverdue ? '#de350b' : stage==='end'&&open ? 'var(--indigo)' : '#6b778c' }}>{fmt(e) || <span style={{color:'#c1c7d0'}}>End</span>}</span>
+      <div ref={anchorRef} onClick={() => stage ? setStage(null) : open('start')} style={{cursor:'pointer'}}>
+        {s||e ? (
+          <div style={{display:'flex',flexDirection:'column',gap:3}}>
+            <div style={{display:'flex',justifyContent:'space-between',gap:4}}>
+              <span style={{fontSize:10,fontWeight:700,color:stage==='start'?'var(--indigo)':'#6b778c'}}>{fmt(s)||<span style={{color:'#c1c7d0'}}>Start</span>}</span>
+              <span style={{fontSize:10,fontWeight:700,color:over?'#de350b':stage==='end'?'var(--indigo)':'#6b778c'}}>{fmt(e)||<span style={{color:'#c1c7d0'}}>End</span>}</span>
             </div>
-            <div style={{ height:6, background:'#f0f1f3', borderRadius:3, overflow:'hidden' }}>
-              <div style={{ width:`${pct}%`, height:'100%', background:bar, borderRadius:3 }} />
+            <div style={{height:6,background:'#f0f1f3',borderRadius:3,overflow:'hidden'}}>
+              <div style={{width:`${pct}%`,height:'100%',background:bar,borderRadius:3}}/>
             </div>
           </div>
-        ) : <span style={{ fontSize:11, color:'#c1c7d0', fontStyle:'italic' }}>Set dates…</span>}
+        ) : <span style={{fontSize:11,color:'#c1c7d0',fontStyle:'italic'}}>Set dates…</span>}
       </div>
-      {open && pos && (
-        <div style={{ position:'fixed', top:pos.top, left:pos.left, zIndex:9999 }}>
+      {stage && pos && (
+        <div style={{position:'fixed',top:pos.top,left:pos.left,zIndex:9999}}>
           <CalendarPicker
-            value={stage === 'start' ? s : e}
-            onChange={stage === 'start' ? pickStart : pickEnd}
-            label={stage === 'start' ? '① Pick start date' : '② Pick end date'} />
+            value={stage==='start'?s:e}
+            onChange={stage==='start'?pickStart:pickEnd}
+            label={stage==='start'?'① Pick start date':'② Pick end date'}/>
         </div>
       )}
     </>
@@ -802,7 +797,12 @@ function ProjectTableRow({ task, allTasks, projectColor, onUpdate, onDelete, onS
       </div>
       {/* Timeline — combined date range picker + bar */}
       <div style={{ width: 170, padding: '4px 8px' }}>
-        <TimelineCell taskId={task.id} startDate={task.start_date} dueDate={task.due_date} color={projectColor} onDone={onUpdate} />
+        <TimelineCell
+          startDate={task.start_date} dueDate={task.due_date} color={projectColor}
+          onSave={async (start, end) => {
+            await supabase.from('tasks').update({ start_date: start, due_date: end }).eq('id', task.id)
+            onUpdate()
+          }} />
       </div>
       {/* Effort — auto from dates */}
       <div style={{ width: 60, padding: '4px 6px', textAlign: 'center' }}>
