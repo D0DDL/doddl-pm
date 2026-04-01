@@ -634,57 +634,60 @@ function CalendarPicker({ value, onChange, label }) {
 }
 
 function TimelineCell({ startDate, dueDate, onChangeStart, onChangeEnd, color }) {
-  const [open, setOpen] = useState(false)   // false | 'start' | 'end'
+  const [open, setOpen]           = useState(false)
   const [localStart, setLocalStart] = useState(startDate || '')
   const [localEnd,   setLocalEnd]   = useState(dueDate   || '')
-  const [pendingStart, setPendingStart] = useState(null)
-  const ref = useRef()
+  const pendingStart = useRef(null)   // useRef = synchronous, not async like useState
+  const ref        = useRef()
   const displayRef = useRef()
   const [anchorPos, setAnchorPos] = useState(null)
 
-  // Only sync from props when NOT actively editing
-  useEffect(() => { if (!open) { setLocalStart(startDate || ''); setLocalEnd(dueDate || '') } }, [startDate, dueDate, open])
+  // Only sync from props when picker is closed
+  useEffect(() => {
+    if (!open) {
+      setLocalStart(startDate || '')
+      setLocalEnd(dueDate || '')
+    }
+  }, [startDate, dueDate, open])
 
   // Close on outside click
   useEffect(() => {
     if (!open) return
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) {
-      // User dismissed — save whatever we have
-      if (pendingStart) { onChangeStart(pendingStart); setPendingStart(null) }
-      setOpen(false)
-    }}
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) {
+        setOpen(false)
+      }
+    }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
-  }, [open, pendingStart])
+  }, [open])
 
-  const openPicker = (which) => {
+  const openPicker = () => {
     const rect = displayRef.current?.getBoundingClientRect()
     if (rect) setAnchorPos({ top: rect.bottom + 4, left: rect.left })
-    setOpen(which)
+    pendingStart.current = null
+    setOpen('start')
   }
 
   const handleStartPick = (v) => {
+    pendingStart.current = v   // synchronous ref — guaranteed available in handleEndPick
     setLocalStart(v)
-    setPendingStart(v)   // hold until end is also picked
     setOpen('end')
-    // Reposition for end picker
-    const rect = displayRef.current?.getBoundingClientRect()
-    if (rect) setAnchorPos({ top: rect.bottom + 4, left: rect.left })
   }
 
   const handleEndPick = (v) => {
     setLocalEnd(v)
     setOpen(false)
-    // Now save both — start first (silent), then end triggers reload
-    const startToSave = pendingStart || localStart
-    setPendingStart(null)
-    if (startToSave) onChangeStart(startToSave)
+    // Both values are now known synchronously
+    const s = pendingStart.current || localStart
+    pendingStart.current = null
+    if (s) onChangeStart(s)
     onChangeEnd(v)
   }
 
   const now = new Date()
   const isOverdue = localEnd && new Date(localEnd) < now
-  const barColor = isOverdue ? '#de350b' : color || '#0052cc'
+  const barColor  = isOverdue ? '#de350b' : color || '#0052cc'
   let pct = 0
   if (localStart && localEnd) {
     const s = new Date(localStart), e = new Date(localEnd)
@@ -695,7 +698,7 @@ function TimelineCell({ startDate, dueDate, onChangeStart, onChangeEnd, color })
 
   return (
     <div ref={ref}>
-      <div ref={displayRef} onClick={() => open ? setOpen(false) : openPicker('start')}
+      <div ref={displayRef} onClick={() => open ? setOpen(false) : openPicker()}
         style={{ cursor: 'pointer' }} title="Click to set dates">
         {localStart || localEnd ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
