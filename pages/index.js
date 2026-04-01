@@ -69,6 +69,7 @@ function getProjectColor(project, index) {
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
+const APP_VERSION = '2.1.0' // forces bundle refresh
 const STATUSES = [
   { key: 'not_started', label: 'Not Started', color: '#c1c7d0' },
   { key: 'in_progress', label: 'In Progress', color: '#0052cc' },
