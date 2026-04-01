@@ -635,7 +635,7 @@ function ProjectGroup({ group, allTasks, projectColor, onUpdate, onDelete, onAdd
         <div style={{ flex: 1, padding: '8px 8px 8px 4px', fontWeight: 800, fontSize: 13, color: tint.text }}>{group.title}</div>
         <div style={{ padding: '8px 12px', fontSize: 11, color: tint.text, fontWeight: 700, opacity: 0.7 }}>{children.length} task{children.length !== 1 ? 's' : ''}</div>
         {/* Spacer cols */}
-        <div style={{ width: 60 }} /><div style={{ width: 130 }} /><div style={{ width: 90 }} /><div style={{ width: 90 }} /><div style={{ width: 90 }} /><div style={{ width: 80 }} />
+        <div style={{ width: 60 }} /><div style={{ width: 120 }} /><div style={{ width: 90 }} /><div style={{ width: 90 }} /><div style={{ width: 70 }} /><div style={{ width: 130 }} /><div style={{ width: 90 }} /><div style={{ width: 80 }} />
       </div>
       {/* Child tasks */}
       {!collapsed && children.map(task => (
@@ -675,7 +675,7 @@ function ProjectTableRow({ task, allTasks, projectColor, onUpdate, onDelete, onA
     <div className="proj-row" style={{ display: 'flex', alignItems: 'center', borderLeft: `4px solid ${projectColor}`, borderBottom: '1px solid #f0f1f3', minHeight: 38, background: 'transparent' }}
       onMouseEnter={e => e.currentTarget.style.background = '#f8f9ff'}
       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-      {/* Task name — inline editable */}
+      {/* Task name */}
       <div style={{ flex: 1, paddingLeft: 8 + indent, paddingRight: 8, display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
         <InlineEdit value={task.title} onSave={v => update('title', v)}
           style={{ fontWeight: depth === 0 ? 600 : 400, fontSize: 13, color: '#172b4d', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }} />
@@ -689,19 +689,28 @@ function ProjectTableRow({ task, allTasks, projectColor, onUpdate, onDelete, onA
         <AssigneeSelect value={task.assigned_to} onChange={v => update('assigned_to', v)} compact />
       </div>
       {/* Status */}
-      <div style={{ width: 130, padding: '4px 8px' }}>
+      <div style={{ width: 120, padding: '4px 8px' }}>
         <StatusBadge value={task.status} onChange={v => update('status', v)} />
       </div>
-      {/* Effort (days) */}
-      <div style={{ width: 90, padding: '4px 8px', textAlign: 'center' }}>
+      {/* Start date */}
+      <div style={{ width: 90, padding: '4px 6px' }}>
+        <input type="date" value={task.start_date || ''} onChange={e => update('start_date', e.target.value)}
+          style={{ border: 'none', background: 'transparent', fontSize: 11, fontWeight: 600, color: '#42526e', cursor: 'pointer', width: '100%', fontFamily: 'Nunito, sans-serif' }} />
+      </div>
+      {/* End/Due date */}
+      <div style={{ width: 90, padding: '4px 6px' }}>
+        <input type="date" value={task.due_date || ''} onChange={e => update('due_date', e.target.value)}
+          style={{ border: 'none', background: 'transparent', fontSize: 11, fontWeight: 600, color: isOverdue ? '#de350b' : '#42526e', cursor: 'pointer', width: '100%', fontFamily: 'Nunito, sans-serif' }} />
+      </div>
+      {/* Effort — calculated from start→end */}
+      <div style={{ width: 70, padding: '4px 8px', textAlign: 'center' }}>
         {effort
           ? <span style={{ fontSize: 12, fontWeight: 700, color: '#0052cc', background: '#e9f2ff', borderRadius: 10, padding: '2px 8px' }}>{effort}d</span>
           : <span style={{ fontSize: 11, color: '#c1c7d0' }}>—</span>}
       </div>
-      {/* Due date — inline editable */}
-      <div style={{ width: 90, padding: '4px 6px' }}>
-        <input type="date" value={task.due_date || ''} onChange={e => update('due_date', e.target.value)}
-          style={{ border: 'none', background: 'transparent', fontSize: 11, fontWeight: 600, color: isOverdue ? '#de350b' : '#42526e', cursor: 'pointer', width: '100%', fontFamily: 'Nunito, sans-serif' }} />
+      {/* Timeline bar */}
+      <div style={{ width: 130, padding: '4px 8px' }}>
+        <MiniTimeline startDate={task.start_date} dueDate={task.due_date} color={projectColor} />
       </div>
       {/* Priority */}
       <div style={{ width: 90, padding: '4px 8px' }}>
@@ -950,9 +959,11 @@ function ProjectSection({ project, tasks, allTasks, onUpdate, onDelete, onAddTas
             <div style={{ display: 'flex', alignItems: 'center', background: '#f8f9fc', borderBottom: '2px solid #dfe1e6', paddingLeft: 32 }}>
               <div style={{ flex: 1, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Task</div>
               <div style={{ width: 60, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Owner</div>
-              <div style={{ width: 130, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Status</div>
-              <div style={{ width: 90, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Effort</div>
-              <div style={{ width: 90, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Due date</div>
+              <div style={{ width: 120, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Status</div>
+              <div style={{ width: 90, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Start</div>
+              <div style={{ width: 90, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>End</div>
+              <div style={{ width: 70, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Effort</div>
+              <div style={{ width: 130, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Timeline</div>
               <div style={{ width: 90, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Priority</div>
               <div style={{ width: 80, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Progress</div>
             </div>
