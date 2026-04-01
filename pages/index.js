@@ -637,21 +637,50 @@ function TimelineCell({ startDate, dueDate, onChangeStart, onChangeEnd, color })
   const [open, setOpen] = useState(false)   // false | 'start' | 'end'
   const [localStart, setLocalStart] = useState(startDate || '')
   const [localEnd,   setLocalEnd]   = useState(dueDate   || '')
+  const [pendingStart, setPendingStart] = useState(null)
   const ref = useRef()
+  const displayRef = useRef()
+  const [anchorPos, setAnchorPos] = useState(null)
 
-  useEffect(() => { setLocalStart(startDate || '') }, [startDate])
-  useEffect(() => { setLocalEnd(dueDate     || '') }, [dueDate])
+  // Only sync from props when NOT actively editing
+  useEffect(() => { if (!open) { setLocalStart(startDate || ''); setLocalEnd(dueDate || '') } }, [startDate, dueDate, open])
 
   // Close on outside click
   useEffect(() => {
     if (!open) return
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) {
+      // User dismissed — save whatever we have
+      if (pendingStart) { onChangeStart(pendingStart); setPendingStart(null) }
+      setOpen(false)
+    }}
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
-  }, [open])
+  }, [open, pendingStart])
 
-  const handleStart = (v) => { setLocalStart(v); onChangeStart(v); setOpen('end') }
-  const handleEnd   = (v) => { setLocalEnd(v);   onChangeEnd(v);   setOpen(false) }
+  const openPicker = (which) => {
+    const rect = displayRef.current?.getBoundingClientRect()
+    if (rect) setAnchorPos({ top: rect.bottom + 4, left: rect.left })
+    setOpen(which)
+  }
+
+  const handleStartPick = (v) => {
+    setLocalStart(v)
+    setPendingStart(v)   // hold until end is also picked
+    setOpen('end')
+    // Reposition for end picker
+    const rect = displayRef.current?.getBoundingClientRect()
+    if (rect) setAnchorPos({ top: rect.bottom + 4, left: rect.left })
+  }
+
+  const handleEndPick = (v) => {
+    setLocalEnd(v)
+    setOpen(false)
+    // Now save both — start first (silent), then end triggers reload
+    const startToSave = pendingStart || localStart
+    setPendingStart(null)
+    if (startToSave) onChangeStart(startToSave)
+    onChangeEnd(v)
+  }
 
   const now = new Date()
   const isOverdue = localEnd && new Date(localEnd) < now
@@ -664,26 +693,19 @@ function TimelineCell({ startDate, dueDate, onChangeStart, onChangeEnd, color })
   }
   const fmt = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : null
 
-  // Use a fixed-position portal so overflow:hidden on table rows doesn't clip the popup
-  const [anchorPos, setAnchorPos] = useState(null)
-  const displayRef = useRef()
-
-  const handleOpen = (which) => {
-    if (open) { setOpen(false); return }
-    const rect = displayRef.current?.getBoundingClientRect()
-    if (rect) setAnchorPos({ top: rect.bottom + 4, left: rect.left })
-    setOpen(which)
-  }
-
   return (
     <div ref={ref}>
-      {/* Display */}
-      <div ref={displayRef} onClick={() => handleOpen('start')} style={{ cursor: 'pointer' }} title="Click to set start then end date">
+      <div ref={displayRef} onClick={() => open ? setOpen(false) : openPicker('start')}
+        style={{ cursor: 'pointer' }} title="Click to set dates">
         {localStart || localEnd ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 4 }}>
-              <span style={{ fontSize: 10, color: '#6b778c', fontWeight: 600 }}>{fmt(localStart) || <span style={{color:'#c1c7d0'}}>Start</span>}</span>
-              <span style={{ fontSize: 10, color: isOverdue ? '#de350b' : '#6b778c', fontWeight: 600 }}>{fmt(localEnd) || <span style={{color:'#c1c7d0'}}>End</span>}</span>
+              <span style={{ fontSize: 10, color: open === 'start' ? 'var(--indigo)' : '#6b778c', fontWeight: 700 }}>
+                {fmt(localStart) || <span style={{ color: '#c1c7d0' }}>Start</span>}
+              </span>
+              <span style={{ fontSize: 10, color: isOverdue ? '#de350b' : open === 'end' ? 'var(--indigo)' : '#6b778c', fontWeight: 700 }}>
+                {fmt(localEnd) || <span style={{ color: '#c1c7d0' }}>End</span>}
+              </span>
             </div>
             <div style={{ height: 6, background: '#f0f1f3', borderRadius: 3, overflow: 'hidden' }}>
               <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 3 }} />
@@ -693,30 +715,17 @@ function TimelineCell({ startDate, dueDate, onChangeStart, onChangeEnd, color })
           <span style={{ fontSize: 11, color: '#c1c7d0', fontStyle: 'italic' }}>Set dates…</span>
         )}
       </div>
-      {/* Fixed-position popup — escapes overflow:hidden clipping */}
-      {open && anchorPos && typeof document !== 'undefined' && (() => {
-        const el = document.getElementById('timeline-portal')
-        if (!el) return null
-        const portalContent = (
-          <div style={{ position: 'fixed', top: anchorPos.top, left: anchorPos.left, zIndex: 9999 }}>
-            <CalendarPicker
-              value={open === 'start' ? localStart : localEnd}
-              onChange={open === 'start' ? handleStart : handleEnd}
-              label={open === 'start' ? '① Pick start date' : '② Pick end date'} />
-          </div>
-        )
-        // Use ReactDOM.createPortal via inline import workaround
-        return <div style={{ position: 'fixed', top: anchorPos.top, left: anchorPos.left, zIndex: 9999 }}>
+      {open && anchorPos && (
+        <div style={{ position: 'fixed', top: anchorPos.top, left: anchorPos.left, zIndex: 9999 }}>
           <CalendarPicker
             value={open === 'start' ? localStart : localEnd}
-            onChange={open === 'start' ? handleStart : handleEnd}
+            onChange={open === 'start' ? handleStartPick : handleEndPick}
             label={open === 'start' ? '① Pick start date' : '② Pick end date'} />
         </div>
-      })()}
+      )}
     </div>
   )
 }
-
 // ── Owner Avatar ───────────────────────────────────────────────────────────
 function OwnerAvatar({ name }) {
   if (!name) return <div style={{ width: 28, height: 28 }} />
@@ -820,7 +829,7 @@ function ProjectTableRow({ task, allTasks, projectColor, onUpdate, onDelete, onS
         <TimelineCell
           startDate={task.start_date} dueDate={task.due_date} color={projectColor}
           onChangeStart={v => saveSilent('start_date', v)}
-          onChangeEnd={v => { saveSilent('due_date', v); onUpdate() }} />
+          onChangeEnd={async v => { await saveSilent('due_date', v); onUpdate() }} />
       </div>
       {/* Effort — auto from dates */}
       <div style={{ width: 60, padding: '4px 6px', textAlign: 'center' }}>
