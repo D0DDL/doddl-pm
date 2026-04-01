@@ -777,17 +777,44 @@ function ProjectGroup({ group, allTasks, projectColor, onUpdate, onDelete, onAdd
 
 // ── Project Table Row (Monday.com style) ───────────────────────────────────
 function ProjectTableRow({ task, allTasks, projectColor, onUpdate, onDelete, onSelect, depth = 0 }) {
-  // saveSilent: saves to DB without triggering a full reload (avoids destroying local state mid-edit)
-  const saveSilent = async (field, value) => { await supabase.from('tasks').update({ [field]: value }).eq('id', task.id) }
-  const update = async (field, value) => { await supabase.from('tasks').update({ [field]: value }).eq('id', task.id); onUpdate() }
+  // ALL saves are silent — no reload, no re-render, no state wipe
+  const save = async (field, value) => { await supabase.from('tasks').update({ [field]: value }).eq('id', task.id) }
   const indent = depth * 20
-  const [localStart, setLocalStart] = useState(task.start_date || '')
-  const [localEnd,   setLocalEnd]   = useState(task.due_date   || '')
-  useEffect(() => { setLocalStart(task.start_date || '') }, [task.start_date])
-  useEffect(() => { setLocalEnd(task.due_date   || '') }, [task.due_date])
+
+  // Full local state — row is self-contained, never wiped by parent reload
+  const [localTitle,    setLocalTitle]    = useState(task.title      || '')
+  const [localStatus,   setLocalStatus]   = useState(task.status     || 'not_started')
+  const [localAssignee, setLocalAssignee] = useState(task.assigned_to|| '')
+  const [localPriority, setLocalPriority] = useState(task.priority   || 'medium')
+  const [localProgress, setLocalProgress] = useState(task.progress   || 0)
+  const [localStart,    setLocalStart]    = useState(task.start_date || '')
+  const [localEnd,      setLocalEnd]      = useState(task.due_date   || '')
+
+  // Only sync from props on initial mount or when task.id changes (navigating to different task)
+  const taskIdRef = useRef(task.id)
+  useEffect(() => {
+    if (task.id !== taskIdRef.current) {
+      taskIdRef.current = task.id
+      setLocalTitle(task.title || '')
+      setLocalStatus(task.status || 'not_started')
+      setLocalAssignee(task.assigned_to || '')
+      setLocalPriority(task.priority || 'medium')
+      setLocalProgress(task.progress || 0)
+      setLocalStart(task.start_date || '')
+      setLocalEnd(task.due_date || '')
+    }
+  }, [task.id])
+
   const effort = localStart && localEnd
     ? Math.max(1, Math.ceil((new Date(localEnd) - new Date(localStart)) / 86400000))
     : null
+
+  const handleStatus = async (v) => {
+    setLocalStatus(v)
+    const updates = { status: v }
+    if (v === 'done') { updates.progress = 100; setLocalProgress(100) }
+    await supabase.from('tasks').update(updates).eq('id', task.id)
+  }
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', borderLeft: `4px solid ${projectColor}`, borderBottom: '1px solid #f0f1f3', minHeight: 40, background: 'transparent' }}
@@ -795,7 +822,7 @@ function ProjectTableRow({ task, allTasks, projectColor, onUpdate, onDelete, onS
       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
       {/* Task name */}
       <div style={{ flex: 1, paddingLeft: 8 + indent, paddingRight: 8, display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-        <InlineEdit value={task.title} onSave={v => update('title', v)}
+        <InlineEdit value={localTitle} onSave={v => { setLocalTitle(v); save('title', v) }}
           style={{ fontWeight: depth === 0 ? 600 : 400, fontSize: 13, color: '#172b4d', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} />
         <span onClick={() => onSelect && onSelect(task)} title="Open detail"
           style={{ color: '#c1c7d0', cursor: 'pointer', fontSize: 12, flexShrink: 0 }} onMouseEnter={e => e.currentTarget.style.color='#6b778c'} onMouseLeave={e => e.currentTarget.style.color='#c1c7d0'}>↗</span>
@@ -804,24 +831,18 @@ function ProjectTableRow({ task, allTasks, projectColor, onUpdate, onDelete, onS
       </div>
       {/* Owner */}
       <div style={{ width: 56, padding: '4px 6px', display: 'flex', alignItems: 'center' }}>
-        <AssigneeSelect value={task.assigned_to} onChange={v => update('assigned_to', v)} />
+        <AssigneeSelect value={localAssignee} onChange={v => { setLocalAssignee(v); save('assigned_to', v) }} />
       </div>
       {/* Status */}
       <div style={{ width: 120, padding: '4px 6px' }}>
-        <StatusBadge value={task.status} onChange={async v => {
-          const updates = { status: v }
-          if (v === 'done') updates.progress = 100
-          await supabase.from('tasks').update(updates).eq('id', task.id)
-          onUpdate()
-        }} />
+        <StatusBadge value={localStatus} onChange={handleStatus} />
       </div>
       {/* Timeline — combined date range picker + bar */}
       <div style={{ width: 170, padding: '4px 8px' }}>
         <TimelineCell
           startDate={localStart} dueDate={localEnd} color={projectColor}
           onSave={async (start, end) => {
-            setLocalStart(start)
-            setLocalEnd(end)
+            setLocalStart(start); setLocalEnd(end)
             await supabase.from('tasks').update({ start_date: start, due_date: end }).eq('id', task.id)
           }} />
       </div>
@@ -833,11 +854,11 @@ function ProjectTableRow({ task, allTasks, projectColor, onUpdate, onDelete, onS
       </div>
       {/* Priority */}
       <div style={{ width: 90, padding: '4px 6px' }}>
-        <PriorityBadge value={task.priority} onChange={v => update('priority', v)} />
+        <PriorityBadge value={localPriority} onChange={v => { setLocalPriority(v); save('priority', v) }} />
       </div>
       {/* Progress */}
       <div style={{ width: 130, padding: '4px 6px' }}>
-        <ProgressBar value={task.progress} onChange={v => saveSilent('progress', v)} />
+        <ProgressBar value={localProgress} onChange={v => { setLocalProgress(v); save('progress', v) }} />
       </div>
     </div>
   )
