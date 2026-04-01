@@ -128,19 +128,26 @@ function LoginScreen({ onLogin, loading }) {
 function StatusBadge({ value, onChange }) {
   const [open, setOpen] = useState(false)
   const s = statusMap[value] || STATUSES[0]
+  const handleChange = (key) => {
+    setOpen(false)
+    onChange(key)
+  }
   return (
     <div style={{ position: 'relative' }}>
       <div onClick={() => onChange && setOpen(o => !o)} style={{ background: s.color, color: '#fff', borderRadius: 3, padding: '3px 8px', fontSize: 11, fontWeight: 700, cursor: onChange ? 'pointer' : 'default', whiteSpace: 'nowrap', textAlign: 'center' }}>{s.label}</div>
       {open && (
-        <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 999, background: '#fff', border: '1px solid #dfe1e6', borderRadius: 4, boxShadow: '0 4px 16px rgba(0,0,0,0.15)', minWidth: 140, marginTop: 2 }}>
-          {STATUSES.map(st => (
-            <div key={st.key} onClick={() => { onChange(st.key); setOpen(false) }} style={{ padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
-              onMouseEnter={e => e.currentTarget.style.background = '#f4f5f7'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-              <span style={{ width: 10, height: 10, borderRadius: 2, background: st.color, flexShrink: 0 }} />
-              <span style={{ fontSize: 12, fontWeight: 600 }}>{st.label}</span>
-            </div>
-          ))}
-        </div>
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 998 }} onClick={() => setOpen(false)} />
+          <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 999, background: '#fff', border: '1px solid #dfe1e6', borderRadius: 4, boxShadow: '0 4px 16px rgba(0,0,0,0.15)', minWidth: 140, marginTop: 2 }}>
+            {STATUSES.map(st => (
+              <div key={st.key} onClick={() => handleChange(st.key)} style={{ padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+                onMouseEnter={e => e.currentTarget.style.background = '#f4f5f7'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                <span style={{ width: 10, height: 10, borderRadius: 2, background: st.color, flexShrink: 0 }} />
+                <span style={{ fontSize: 12, fontWeight: 600 }}>{st.label}</span>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   )
@@ -155,15 +162,18 @@ function PriorityBadge({ value, onChange }) {
         <span style={{ width: 8, height: 8, borderRadius: '50%', background: p.color }} />{p.label}
       </div>
       {open && (
-        <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 999, background: '#fff', border: '1px solid #dfe1e6', borderRadius: 4, boxShadow: '0 4px 16px rgba(0,0,0,0.15)', minWidth: 120, marginTop: 2 }}>
-          {PRIORITIES.map(pr => (
-            <div key={pr.key} onClick={() => { onChange(pr.key); setOpen(false) }} style={{ padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
-              onMouseEnter={e => e.currentTarget.style.background = '#f4f5f7'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: pr.color }} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: pr.color }}>{pr.label}</span>
-            </div>
-          ))}
-        </div>
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 998 }} onClick={() => setOpen(false)} />
+          <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 999, background: '#fff', border: '1px solid #dfe1e6', borderRadius: 4, boxShadow: '0 4px 16px rgba(0,0,0,0.15)', minWidth: 120, marginTop: 2 }}>
+            {PRIORITIES.map(pr => (
+              <div key={pr.key} onClick={() => { onChange(pr.key); setOpen(false) }} style={{ padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+                onMouseEnter={e => e.currentTarget.style.background = '#f4f5f7'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: pr.color }} />
+                <span style={{ fontSize: 12, fontWeight: 600, color: pr.color }}>{pr.label}</span>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   )
@@ -173,6 +183,7 @@ function AssigneeSelect({ value, onChange }) {
   const [open, setOpen] = useState(false)
   return (
     <div style={{ position: 'relative' }}>
+      {open && <div style={{ position: 'fixed', inset: 0, zIndex: 998 }} onClick={() => setOpen(false)} />}
       <div onClick={() => setOpen(o => !o)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
         {value ? (
           <>
@@ -797,7 +808,12 @@ function ProjectTableRow({ task, allTasks, projectColor, onUpdate, onDelete, onS
       </div>
       {/* Status */}
       <div style={{ width: 120, padding: '4px 6px' }}>
-        <StatusBadge value={task.status} onChange={v => update('status', v)} />
+        <StatusBadge value={task.status} onChange={async v => {
+          const updates = { status: v }
+          if (v === 'done') updates.progress = 95
+          await supabase.from('tasks').update(updates).eq('id', task.id)
+          onUpdate()
+        }} />
       </div>
       {/* Timeline — combined date range picker + bar */}
       <div style={{ width: 170, padding: '4px 8px' }}>
@@ -821,7 +837,7 @@ function ProjectTableRow({ task, allTasks, projectColor, onUpdate, onDelete, onS
       </div>
       {/* Progress */}
       <div style={{ width: 130, padding: '4px 6px' }}>
-        <ProgressBar value={task.progress} onChange={v => update('progress', v)} />
+        <ProgressBar value={task.progress} onChange={v => saveSilent('progress', v)} />
       </div>
     </div>
   )
