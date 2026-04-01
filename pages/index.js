@@ -584,13 +584,59 @@ function TaskRow({ task, allTasks, depth, onUpdate, onDelete, onAddSubtask, onSe
 // ── Project Section ────────────────────────────────────────────────────────
 // ── Mini Timeline Bar ──────────────────────────────────────────────────────
 // ── Timeline cell — inline date range picker + progress bar ───────────────
+// ── Mini date input — text field, dd/mm/yy, parses to yyyy-mm-dd ──────────
+function DateInput({ value, onChange, placeholder, autoFocus }) {
+  // Display as dd/mm/yy, store as yyyy-mm-dd
+  const toDisplay = (iso) => {
+    if (!iso) return ''
+    const [y, m, d] = iso.split('-')
+    return `${d}/${m}/${y.slice(2)}`
+  }
+  const toISO = (display) => {
+    const parts = display.replace(/[^0-9]/g, '')
+    if (parts.length < 6) return null
+    const d = parts.slice(0, 2), m = parts.slice(2, 4), y = parts.slice(4, 6)
+    const full = `20${y}-${m}-${d}`
+    return isNaN(new Date(full).getTime()) ? null : full
+  }
+
+  const [text, setText] = useState(toDisplay(value))
+  useEffect(() => { setText(toDisplay(value)) }, [value])
+
+  const handleChange = (e) => {
+    let v = e.target.value
+    // Auto-insert slashes
+    const digits = v.replace(/\D/g, '')
+    if (digits.length <= 2) v = digits
+    else if (digits.length <= 4) v = `${digits.slice(0,2)}/${digits.slice(2)}`
+    else v = `${digits.slice(0,2)}/${digits.slice(2,4)}/${digits.slice(4,6)}`
+    setText(v)
+    if (digits.length === 6) {
+      const iso = toISO(v)
+      if (iso) onChange(iso)
+    }
+  }
+
+  const handleBlur = () => {
+    const iso = toISO(text)
+    if (iso) onChange(iso)
+    else if (!text) onChange('')
+    else setText(toDisplay(value)) // revert invalid
+  }
+
+  return (
+    <input value={text} onChange={handleChange} onBlur={handleBlur}
+      placeholder={placeholder || 'dd/mm/yy'} autoFocus={autoFocus}
+      maxLength={8}
+      style={{ border: 'none', outline: 'none', fontSize: 11, fontFamily: 'Nunito, sans-serif', color: '#172b4d', width: 56, background: 'transparent' }} />
+  )
+}
+
 function TimelineCell({ startDate, dueDate, onChangeStart, onChangeEnd, color }) {
   const [editing, setEditing] = useState(false)
-  // Local state so input stays responsive while async save is in flight
   const [localStart, setLocalStart] = useState(startDate || '')
   const [localEnd, setLocalEnd] = useState(dueDate || '')
 
-  // Sync from props when task changes externally
   useEffect(() => { setLocalStart(startDate || '') }, [startDate])
   useEffect(() => { setLocalEnd(dueDate || '') }, [dueDate])
 
@@ -605,25 +651,18 @@ function TimelineCell({ startDate, dueDate, onChangeStart, onChangeEnd, color })
     pct = Math.round((Math.min(Math.max(now - s, 0), total) / total) * 100)
   }
 
-  const fmt = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '?'
+  const fmt = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : null
 
-  const handleStartChange = (v) => {
-    setLocalStart(v)
-    onChangeStart(v)
-  }
-  const handleEndChange = (v) => {
-    setLocalEnd(v)
-    onChangeEnd(v)
-  }
+  const handleStart = (v) => { setLocalStart(v); onChangeStart(v) }
+  const handleEnd   = (v) => { setLocalEnd(v);   onChangeEnd(v) }
 
   if (editing) return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#fff', border: '1px solid var(--aqua)', borderRadius: 4, padding: '2px 6px' }}>
-      <input type="date" value={localStart} onChange={e => handleStartChange(e.target.value)} autoFocus
-        style={{ border: 'none', outline: 'none', fontSize: 11, fontFamily: 'Nunito, sans-serif', color: '#172b4d', width: 105 }} />
-      <span style={{ color: '#a0aec0', fontSize: 11 }}>→</span>
-      <input type="date" value={localEnd} onChange={e => handleEndChange(e.target.value)}
-        style={{ border: 'none', outline: 'none', fontSize: 11, fontFamily: 'Nunito, sans-serif', color: '#172b4d', width: 105 }} />
-      <span onClick={() => setEditing(false)} style={{ cursor: 'pointer', color: 'var(--aqua)', fontSize: 14, marginLeft: 2, fontWeight: 800 }}>✓</span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 3, background: '#fff', border: '1px solid var(--aqua)', borderRadius: 4, padding: '3px 6px' }}>
+      <DateInput value={localStart} onChange={handleStart} placeholder="dd/mm/yy" autoFocus />
+      <span style={{ color: '#a0aec0', fontSize: 10 }}>→</span>
+      <DateInput value={localEnd} onChange={handleEnd} placeholder="dd/mm/yy" />
+      <span onClick={() => setEditing(false)}
+        style={{ cursor: 'pointer', color: 'var(--aqua)', fontSize: 13, fontWeight: 800, marginLeft: 2 }}>✓</span>
     </div>
   )
 
@@ -631,9 +670,9 @@ function TimelineCell({ startDate, dueDate, onChangeStart, onChangeEnd, color })
     <div onClick={() => setEditing(true)} style={{ cursor: 'pointer' }} title="Click to set dates">
       {localStart || localEnd ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 10, color: '#6b778c', fontWeight: 600 }}>{fmt(localStart)}</span>
-            <span style={{ fontSize: 10, color: isOverdue ? '#de350b' : '#6b778c', fontWeight: 600 }}>{fmt(localEnd)}</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 4 }}>
+            <span style={{ fontSize: 10, color: '#6b778c', fontWeight: 600 }}>{fmt(localStart) || '—'}</span>
+            <span style={{ fontSize: 10, color: isOverdue ? '#de350b' : '#6b778c', fontWeight: 600 }}>{fmt(localEnd) || '—'}</span>
           </div>
           <div style={{ height: 6, background: '#f0f1f3', borderRadius: 3, overflow: 'hidden' }}>
             <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 3 }} />
