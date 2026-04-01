@@ -815,6 +815,7 @@ function ProjectTableRow({ task, allTasks, projectColor, onUpdate, onDelete, onS
     const updates = { status: v }
     if (v === 'done') { updates.progress = 100; setLocalProgress(100) }
     await supabase.from('tasks').update(updates).eq('id', task.id)
+    onUpdate()  // refresh parent so project % and tile stats update
   }
 
   return (
