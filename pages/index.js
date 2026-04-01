@@ -38,10 +38,30 @@ function getEmailFromName(name) {
   return match ? match.email : ''
 }
 
-// ── Project colours ────────────────────────────────────────────────────────
+// ── Project colours — doddl brand palette, varied ─────────────────────────
 const PROJECT_COLORS = [
-  '#3D157D', '#0052cc', '#00875a', '#de350b', '#ff8b00',
-  '#6554c0', '#00a3bf', '#e65100', '#1565c0', '#2e7d32',
+  '#3D157D', // doddl Indigo
+  '#30BEAA', // doddl Aqua
+  '#0052cc', // Blue
+  '#00875a', // Green
+  '#de350b', // Red
+  '#ff8b00', // Orange
+  '#6554c0', // Purple
+  '#00a3bf', // Teal
+  '#e65100', // Deep Orange
+  '#1565c0', // Dark Blue
+]
+
+// Group header colours — lighter tints of the project colour
+const GROUP_TINTS = [
+  { bg: '#f3eeff', border: '#3D157D', text: '#3D157D' },
+  { bg: '#e6faf8', border: '#30BEAA', text: '#1a8a7a' },
+  { bg: '#e9f2ff', border: '#0052cc', text: '#0052cc' },
+  { bg: '#e3fcef', border: '#00875a', text: '#00875a' },
+  { bg: '#ffebe6', border: '#de350b', text: '#de350b' },
+  { bg: '#fff3e0', border: '#ff8b00', text: '#b85c00' },
+  { bg: '#ede9fe', border: '#6554c0', text: '#6554c0' },
+  { bg: '#e6f7fb', border: '#00a3bf', text: '#006680' },
 ]
 function getProjectColor(project, index) {
   if (project.color && project.color !== '#3D157D') return project.color
@@ -334,98 +354,145 @@ function MentionInput({ value, onChange, onPost, posting, userName }) {
 
 // ── Task Detail Panel ──────────────────────────────────────────────────────
 function TaskDetailPanel({ task, user, onClose, onUpdate }) {
-  const [comments, setComments] = useState([])
+  const [comments, setComments]   = useState([])
   const [newComment, setNewComment] = useState('')
-  const [posting, setPosting] = useState(false)
+  const [posting, setPosting]     = useState(false)
+  const [editTask, setEditTask]   = useState(task)
+  const [saving, setSaving]       = useState(false)
   const userName = getDisplayName(user?.username) || user?.name || 'Unknown'
+
+  // Keep editTask in sync when task prop changes
+  useEffect(() => { setEditTask(task) }, [task.id])
 
   const loadComments = useCallback(async () => {
     const { data } = await supabase.from('comments').select('*').eq('task_id', task.id).order('created_at', { ascending: true })
     setComments(data || [])
   }, [task.id])
-
   useEffect(() => { loadComments() }, [loadComments])
+
+  const save = async (field, value) => {
+    setSaving(true)
+    setEditTask(t => ({ ...t, [field]: value }))
+    await supabase.from('tasks').update({ [field]: value }).eq('id', task.id)
+    setSaving(false)
+    onUpdate()
+  }
 
   const postComment = async () => {
     if (!newComment.trim()) return
     setPosting(true)
-
-    // Extract @mentions
     const mentionMatches = newComment.match(/@(\w+)/g) || []
-    const mentions = mentionMatches.map(m => m.slice(1)).filter(n =>
-      TEAM.some(t => t.name.toLowerCase() === n.toLowerCase())
-    )
-
-    // Insert comment
-    const { data: commentData } = await supabase.from('comments')
-      .insert([{ task_id: task.id, author: userName, body: newComment, mentions }])
-      .select().single()
-
-    // Create notifications
+    const mentions = mentionMatches.map(m => m.slice(1)).filter(n => TEAM.some(t => t.name.toLowerCase() === n.toLowerCase()))
+    const { data: commentData } = await supabase.from('comments').insert([{ task_id: task.id, author: userName, body: newComment, mentions }]).select().single()
     const notifs = []
-
-    // Notify @mentioned users
     for (const name of mentions) {
-      if (name.toLowerCase() !== userName.toLowerCase()) {
+      if (name.toLowerCase() !== userName.toLowerCase())
         notifs.push({ user_name: name, type: 'mention', comment_id: commentData?.id, task_id: task.id, task_title: task.title, from_user: userName, body: newComment, read: false })
-      }
     }
-
-    // Notify task owner if different from commenter
-    if (task.assigned_to && task.assigned_to.toLowerCase() !== userName.toLowerCase() && !mentions.map(m => m.toLowerCase()).includes(task.assigned_to.toLowerCase())) {
+    if (task.assigned_to && task.assigned_to.toLowerCase() !== userName.toLowerCase() && !mentions.map(m => m.toLowerCase()).includes(task.assigned_to.toLowerCase()))
       notifs.push({ user_name: task.assigned_to, type: 'comment_on_owned', comment_id: commentData?.id, task_id: task.id, task_title: task.title, from_user: userName, body: newComment, read: false })
-    }
-
     if (notifs.length > 0) await supabase.from('notifications').insert(notifs)
-
     setNewComment(''); setPosting(false); loadComments()
   }
 
-  const s = statusMap[task.status] || STATUSES[0]
+  const effort = editTask.start_date && editTask.due_date
+    ? Math.max(1, Math.ceil((new Date(editTask.due_date) - new Date(editTask.start_date)) / 86400000))
+    : null
+
+  const s = statusMap[editTask.status] || STATUSES[0]
+
+  const FieldLabel = ({ label }) => (
+    <p style={{ fontSize: 10, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>{label}</p>
+  )
+
   return (
-    <div style={{ position: 'fixed', right: 0, top: 52, bottom: 0, width: 380, background: '#fff', borderLeft: '1px solid #dfe1e6', zIndex: 500, display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 20px rgba(0,0,0,0.08)' }}>
-      <div style={{ padding: '16px 20px', borderBottom: '1px solid #dfe1e6', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+    <div style={{ position: 'fixed', right: 0, top: 52, bottom: 0, width: 400, background: '#fff', borderLeft: '1px solid #dfe1e6', zIndex: 500, display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 20px rgba(0,0,0,0.08)' }}>
+      {/* Header */}
+      <div style={{ padding: '14px 20px', borderBottom: '1px solid #dfe1e6', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: '#fafbfc' }}>
         <div style={{ flex: 1, marginRight: 12 }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', marginBottom: 4 }}>Task</p>
-          <p style={{ fontSize: 15, fontWeight: 800, color: '#172b4d', lineHeight: 1.3 }}>{task.title}</p>
-          <div style={{ marginTop: 8 }}><span style={{ background: s.color, color: '#fff', borderRadius: 3, padding: '2px 8px', fontSize: 11, fontWeight: 700 }}>{s.label}</span></div>
-        </div>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#6b778c' }}>×</button>
-      </div>
-      <div style={{ padding: '12px 20px', borderBottom: '1px solid #f0f1f3', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        {[['Assignee', task.assigned_to || '—'], ['Due', task.due_date || '—'], ['Priority', task.priority || '—'], ['Progress', (task.progress || 0) + '%']].map(([k, v]) => (
-          <div key={k}><p style={{ fontSize: 10, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', marginBottom: 2 }}>{k}</p><p style={{ fontSize: 13, fontWeight: 600, color: '#172b4d' }}>{v}</p></div>
-        ))}
-      </div>
-      {task.notes && <div style={{ padding: '12px 20px', borderBottom: '1px solid #f0f1f3' }}>
-        <p style={{ fontSize: 10, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', marginBottom: 4 }}>Notes</p>
-        <p style={{ fontSize: 13, color: '#42526e', lineHeight: 1.5 }}>{String(task.notes).substring(0, 300)}</p>
-      </div>}
-      {task.tags?.length > 0 && <div style={{ padding: '8px 20px', borderBottom: '1px solid #f0f1f3', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-        {task.tags.map((tag, i) => <span key={i} style={{ background: TAG_COLORS[i % TAG_COLORS.length], borderRadius: 10, padding: '2px 8px', fontSize: 11, fontWeight: 700, color: '#172b4d' }}>{tag}</span>)}
-      </div>}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 20px' }}>
-        <p style={{ fontSize: 10, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', marginBottom: 12 }}>Comments ({comments.length})</p>
-        {comments.length === 0 && <p style={{ fontSize: 13, color: '#a0aec0', fontWeight: 600 }}>No comments yet. Type @ to mention someone.</p>}
-        {comments.map(c => (
-          <div key={c.id} style={{ marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <OwnerAvatar name={c.author} />
-              <div>
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#172b4d' }}>{c.author}</span>
-                <span style={{ fontSize: 11, color: '#a0aec0', marginLeft: 8 }}>{new Date(c.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-              </div>
-              {c.mentions?.length > 0 && <div style={{ display: 'flex', gap: 3, marginLeft: 'auto' }}>
-                {c.mentions.map(m => <span key={m} style={{ fontSize: 9, background: '#e9f2ff', color: '#0052cc', borderRadius: 3, padding: '1px 4px', fontWeight: 700 }}>@{m}</span>)}
-              </div>}
-            </div>
-            <div style={{ marginLeft: 36, background: '#f8f9fc', borderRadius: 8, padding: '8px 12px' }}>
-              <CommentBody body={c.body} />
-            </div>
+          <p style={{ fontSize: 10, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', marginBottom: 6 }}>TASK {saving && <span style={{ color: 'var(--aqua)' }}>· Saving...</span>}</p>
+          <textarea value={editTask.title} onChange={e => setEditTask(t => ({ ...t, title: e.target.value }))}
+            onBlur={e => save('title', e.target.value)}
+            rows={2} style={{ width: '100%', border: 'none', outline: 'none', fontSize: 15, fontWeight: 800, color: '#172b4d', lineHeight: 1.4, resize: 'none', background: 'transparent', fontFamily: 'Nunito, sans-serif' }} />
+          <div style={{ marginTop: 6 }}>
+            <StatusBadge value={editTask.status} onChange={v => save('status', v)} />
           </div>
-        ))}
+        </div>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#6b778c', flexShrink: 0 }}>×</button>
       </div>
-      <div style={{ padding: '12px 20px', borderTop: '1px solid #dfe1e6' }}>
+
+      {/* Editable fields */}
+      <div style={{ overflowY: 'auto', flex: 1 }}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid #f0f1f3', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <div>
+            <FieldLabel label="Assignee" />
+            <AssigneeSelect value={editTask.assigned_to} onChange={v => save('assigned_to', v)} />
+          </div>
+          <div>
+            <FieldLabel label="Priority" />
+            <PriorityBadge value={editTask.priority} onChange={v => save('priority', v)} />
+          </div>
+          <div>
+            <FieldLabel label="Start Date" />
+            <input type="date" value={editTask.start_date || ''} onChange={e => save('start_date', e.target.value)}
+              style={{ border: '1px solid #dfe1e6', borderRadius: 4, padding: '4px 8px', fontSize: 12, fontFamily: 'Nunito, sans-serif', width: '100%', color: '#172b4d' }} />
+          </div>
+          <div>
+            <FieldLabel label="Due Date" />
+            <input type="date" value={editTask.due_date || ''} onChange={e => save('due_date', e.target.value)}
+              style={{ border: '1px solid #dfe1e6', borderRadius: 4, padding: '4px 8px', fontSize: 12, fontFamily: 'Nunito, sans-serif', width: '100%', color: '#172b4d' }} />
+          </div>
+          <div>
+            <FieldLabel label="Effort" />
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#172b4d' }}>{effort ? `${effort} day${effort !== 1 ? 's' : ''}` : <span style={{ color: '#a0aec0' }}>Set start + due</span>}</p>
+          </div>
+          <div>
+            <FieldLabel label="Progress" />
+            <ProgressBar value={editTask.progress} onChange={v => save('progress', v)} />
+          </div>
+        </div>
+
+        {/* Notes */}
+        <div style={{ padding: '12px 20px', borderBottom: '1px solid #f0f1f3' }}>
+          <FieldLabel label="Notes" />
+          <textarea value={editTask.notes || ''} onChange={e => setEditTask(t => ({ ...t, notes: e.target.value }))}
+            onBlur={e => save('notes', e.target.value)}
+            placeholder="Add notes..." rows={4}
+            style={{ width: '100%', border: '1px solid #dfe1e6', borderRadius: 6, padding: '8px 10px', fontSize: 13, fontFamily: 'Nunito, sans-serif', resize: 'vertical', outline: 'none', color: '#172b4d', lineHeight: 1.5 }} />
+        </div>
+
+        {/* Tags */}
+        <div style={{ padding: '10px 20px', borderBottom: '1px solid #f0f1f3' }}>
+          <FieldLabel label="Tags" />
+          <TagsCell value={editTask.tags} onChange={v => save('tags', v)} />
+        </div>
+
+        {/* Comments */}
+        <div style={{ padding: '12px 20px' }}>
+          <p style={{ fontSize: 10, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 12 }}>Comments ({comments.length})</p>
+          {comments.length === 0 && <p style={{ fontSize: 13, color: '#a0aec0', fontWeight: 600, marginBottom: 12 }}>No comments yet. Type @ to mention someone.</p>}
+          {comments.map(c => (
+            <div key={c.id} style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <OwnerAvatar name={c.author} />
+                <div>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#172b4d' }}>{c.author}</span>
+                  <span style={{ fontSize: 11, color: '#a0aec0', marginLeft: 8 }}>{new Date(c.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+                {c.mentions?.length > 0 && <div style={{ display: 'flex', gap: 3, marginLeft: 'auto' }}>
+                  {c.mentions.map(m => <span key={m} style={{ fontSize: 9, background: '#e9f2ff', color: '#0052cc', borderRadius: 3, padding: '1px 4px', fontWeight: 700 }}>@{m}</span>)}
+                </div>}
+              </div>
+              <div style={{ marginLeft: 36, background: '#f8f9fc', borderRadius: 8, padding: '8px 12px' }}>
+                <CommentBody body={c.body} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Comment input */}
+      <div style={{ padding: '12px 20px', borderTop: '1px solid #dfe1e6', background: '#fafbfc' }}>
         <div style={{ display: 'flex', gap: 8 }}>
           <OwnerAvatar name={userName} />
           <MentionInput value={newComment} onChange={setNewComment} onPost={postComment} posting={posting} userName={userName} />
@@ -545,11 +612,12 @@ function OwnerAvatar({ name }) {
 }
 
 // ── Project Group (sub-section within a project) ───────────────────────────
-function ProjectGroup({ group, allTasks, projectColor, onUpdate, onDelete, onAddSubtask, onSelect, onAddTask, projectId }) {
+function ProjectGroup({ group, allTasks, projectColor, onUpdate, onDelete, onAddSubtask, onSelect, onAddTask, projectId, groupIndex }) {
   const [collapsed, setCollapsed] = useState(false)
   const [addingTask, setAddingTask] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const children = allTasks.filter(t => t.parent_id === group.id)
+  const tint = GROUP_TINTS[groupIndex % GROUP_TINTS.length]
 
   const addTask = async () => {
     if (!newTaskTitle.trim()) return
@@ -559,33 +627,34 @@ function ProjectGroup({ group, allTasks, projectColor, onUpdate, onDelete, onAdd
 
   return (
     <div style={{ marginBottom: 0 }}>
-      {/* Group header row */}
-      <div style={{ display: 'flex', alignItems: 'center', borderLeft: `4px solid ${projectColor}`, background: '#f8f9fc', borderBottom: '1px solid #dfe1e6' }}>
+      {/* Group header */}
+      <div style={{ display: 'flex', alignItems: 'center', background: tint.bg, borderLeft: `4px solid ${tint.border}`, borderBottom: '1px solid #dfe1e6', borderTop: '2px solid #e5e7eb' }}>
         <div style={{ width: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <span onClick={() => setCollapsed(c => !c)} style={{ cursor: 'pointer', fontSize: 10, color: '#6b778c' }}>{collapsed ? '▶' : '▼'}</span>
+          <span onClick={() => setCollapsed(c => !c)} style={{ cursor: 'pointer', fontSize: 10, color: tint.text, fontWeight: 800 }}>{collapsed ? '▶' : '▼'}</span>
         </div>
-        <div style={{ flex: 1, padding: '8px 8px 8px 4px', fontWeight: 800, fontSize: 13, color: '#172b4d' }}>{group.title}</div>
-        <div style={{ width: 130, padding: '8px', fontSize: 11, color: '#6b778c', fontWeight: 600 }}>{children.length} task{children.length !== 1 ? 's' : ''}</div>
-        <div style={{ width: 120 }} /><div style={{ width: 220 }} /><div style={{ width: 110 }} /><div style={{ width: 80 }} />
+        <div style={{ flex: 1, padding: '8px 8px 8px 4px', fontWeight: 800, fontSize: 13, color: tint.text }}>{group.title}</div>
+        <div style={{ padding: '8px 12px', fontSize: 11, color: tint.text, fontWeight: 700, opacity: 0.7 }}>{children.length} task{children.length !== 1 ? 's' : ''}</div>
+        {/* Spacer cols */}
+        <div style={{ width: 60 }} /><div style={{ width: 130 }} /><div style={{ width: 90 }} /><div style={{ width: 90 }} /><div style={{ width: 90 }} /><div style={{ width: 80 }} />
       </div>
       {/* Child tasks */}
       {!collapsed && children.map(task => (
-        <ProjectTableRow key={task.id} task={task} allTasks={allTasks} projectColor={projectColor}
+        <ProjectTableRow key={task.id} task={task} allTasks={allTasks} projectColor={tint.border}
           onUpdate={onUpdate} onDelete={onDelete} onAddSubtask={onAddSubtask} onSelect={onSelect} depth={1} />
       ))}
       {!collapsed && (
         addingTask ? (
-          <div style={{ display: 'flex', alignItems: 'center', borderLeft: `4px solid ${projectColor}`, borderBottom: '1px solid #f0f1f3', padding: '4px 8px 4px 32px', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', borderLeft: `4px solid ${tint.border}`, borderBottom: '1px solid #f0f1f3', padding: '4px 8px 4px 32px', gap: 8, background: '#fff' }}>
             <input autoFocus value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') addTask(); if (e.key === 'Escape') setAddingTask(false) }}
-              placeholder="Task title..." style={{ flex: 1, border: '1px solid var(--aqua)', borderRadius: 4, padding: '4px 8px', fontSize: 13, fontFamily: 'Nunito, sans-serif', outline: 'none' }} />
-            <button onClick={addTask} style={{ background: 'var(--aqua)', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 12px', fontSize: 12, cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>Add</button>
+              placeholder="Task title..." style={{ flex: 1, border: `1px solid ${tint.border}`, borderRadius: 4, padding: '4px 8px', fontSize: 13, fontFamily: 'Nunito, sans-serif', outline: 'none' }} />
+            <button onClick={addTask} style={{ background: tint.border, color: '#fff', border: 'none', borderRadius: 4, padding: '4px 12px', fontSize: 12, cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>Add</button>
             <button onClick={() => setAddingTask(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#6b778c' }}>Cancel</button>
           </div>
         ) : (
-          <div style={{ borderLeft: `4px solid ${projectColor}`, borderBottom: '1px solid #f0f1f3' }}>
-            <button onClick={() => setAddingTask(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#6b778c', padding: '6px 8px 6px 32px', fontFamily: 'Nunito, sans-serif', fontWeight: 600 }}
-              onMouseEnter={e => e.currentTarget.style.color = 'var(--aqua)'} onMouseLeave={e => e.currentTarget.style.color = '#6b778c'}>+ Add task</button>
+          <div style={{ borderLeft: `4px solid ${tint.border}`, borderBottom: '1px solid #f0f1f3', background: '#fff' }}>
+            <button onClick={() => setAddingTask(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: tint.text, padding: '6px 8px 6px 32px', fontFamily: 'Nunito, sans-serif', fontWeight: 700, opacity: 0.7 }}
+              onMouseEnter={e => e.currentTarget.style.opacity = 1} onMouseLeave={e => e.currentTarget.style.opacity = 0.7}>+ Add task</button>
           </div>
         )
       )}
@@ -596,35 +665,43 @@ function ProjectGroup({ group, allTasks, projectColor, onUpdate, onDelete, onAdd
 // ── Project Table Row (Monday.com style) ───────────────────────────────────
 function ProjectTableRow({ task, allTasks, projectColor, onUpdate, onDelete, onAddSubtask, onSelect, depth = 0 }) {
   const update = async (field, value) => { await supabase.from('tasks').update({ [field]: value }).eq('id', task.id); onUpdate() }
-  const s = statusMap[task.status] || STATUSES[0]
   const indent = depth * 20
+  const effort = task.start_date && task.due_date
+    ? Math.max(1, Math.ceil((new Date(task.due_date) - new Date(task.start_date)) / 86400000))
+    : null
+  const isOverdue = task.due_date && task.due_date < new Date().toISOString().split('T')[0] && task.status !== 'done'
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', borderLeft: `4px solid ${projectColor}`, borderBottom: '1px solid #f0f1f3', minHeight: 38 }}
+    <div className="proj-row" style={{ display: 'flex', alignItems: 'center', borderLeft: `4px solid ${projectColor}`, borderBottom: '1px solid #f0f1f3', minHeight: 38, background: 'transparent' }}
       onMouseEnter={e => e.currentTarget.style.background = '#f8f9ff'}
       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-      {/* Task name */}
+      {/* Task name — inline editable */}
       <div style={{ flex: 1, paddingLeft: 8 + indent, paddingRight: 8, display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-        <span style={{ cursor: 'pointer', flex: 1, fontSize: 13, fontWeight: depth === 0 ? 600 : 400, color: '#172b4d', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-          onClick={() => onSelect && onSelect(task)}>{task.title}</span>
-        <span onClick={() => onDelete(task.id)} style={{ color: '#c1c7d0', cursor: 'pointer', fontSize: 14, flexShrink: 0, opacity: 0 }}
-          onMouseEnter={e => e.currentTarget.style.opacity = 1} onMouseLeave={e => e.currentTarget.style.opacity = 0}>×</span>
+        <InlineEdit value={task.title} onSave={v => update('title', v)}
+          style={{ fontWeight: depth === 0 ? 600 : 400, fontSize: 13, color: '#172b4d', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }} />
+        <span onClick={() => onSelect && onSelect(task)} title="Open detail"
+          style={{ color: '#c1c7d0', cursor: 'pointer', fontSize: 13, flexShrink: 0 }}>↗</span>
+        <span onClick={() => onDelete(task.id)}
+          style={{ color: '#c1c7d0', cursor: 'pointer', fontSize: 14, flexShrink: 0 }}>×</span>
       </div>
       {/* Owner */}
       <div style={{ width: 60, padding: '4px 8px', display: 'flex', alignItems: 'center' }}>
-        <OwnerAvatar name={task.assigned_to} />
+        <AssigneeSelect value={task.assigned_to} onChange={v => update('assigned_to', v)} compact />
       </div>
       {/* Status */}
       <div style={{ width: 130, padding: '4px 8px' }}>
         <StatusBadge value={task.status} onChange={v => update('status', v)} />
       </div>
-      {/* Timeline */}
-      <div style={{ width: 160, padding: '4px 8px' }}>
-        <MiniTimeline startDate={task.start_date} dueDate={task.due_date} color={projectColor} />
+      {/* Effort (days) */}
+      <div style={{ width: 90, padding: '4px 8px', textAlign: 'center' }}>
+        {effort
+          ? <span style={{ fontSize: 12, fontWeight: 700, color: '#0052cc', background: '#e9f2ff', borderRadius: 10, padding: '2px 8px' }}>{effort}d</span>
+          : <span style={{ fontSize: 11, color: '#c1c7d0' }}>—</span>}
       </div>
-      {/* Due date */}
-      <div style={{ width: 90, padding: '4px 8px', fontSize: 12, color: task.due_date && new Date(task.due_date) < new Date() ? '#de350b' : '#42526e', fontWeight: 600 }}>
-        {task.due_date ? new Date(task.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}
+      {/* Due date — inline editable */}
+      <div style={{ width: 90, padding: '4px 6px' }}>
+        <input type="date" value={task.due_date || ''} onChange={e => update('due_date', e.target.value)}
+          style={{ border: 'none', background: 'transparent', fontSize: 11, fontWeight: 600, color: isOverdue ? '#de350b' : '#42526e', cursor: 'pointer', width: '100%', fontFamily: 'Nunito, sans-serif' }} />
       </div>
       {/* Priority */}
       <div style={{ width: 90, padding: '4px 8px' }}>
@@ -829,27 +906,32 @@ function ProjectSection({ project, tasks, allTasks, onUpdate, onDelete, onAddTas
 
   return (
     <div style={{ marginBottom: 40, background: '#fff', borderRadius: 12, border: '1px solid #dfe1e6', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-      {/* Project header */}
-      <div style={{ padding: '14px 20px', borderLeft: `5px solid ${color}`, borderBottom: '1px solid #dfe1e6', display: 'flex', alignItems: 'center', gap: 12, background: '#fafbfc' }}>
+      {/* Project header — solid doddl brand colour */}
+      <div style={{ padding: '14px 20px', background: color, display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontWeight: 800, fontSize: 16, color: '#172b4d' }}>{project.name}</span>
-            {project.owner && <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><OwnerAvatar name={project.owner} /><span style={{ fontSize: 12, color: '#6b778c', fontWeight: 600 }}>{project.owner}</span></div>}
-            {project.due_date && <span style={{ fontSize: 11, background: '#f0f1f3', borderRadius: 10, padding: '2px 10px', color: '#42526e', fontWeight: 600 }}>Due {new Date(project.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 800, fontSize: 16, color: '#fff' }}>{project.name}</span>
+            {project.owner && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: '#fff' }}>{project.owner.charAt(0)}</div>
+                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: 600 }}>{project.owner}</span>
+              </div>
+            )}
+            {project.due_date && <span style={{ fontSize: 11, background: 'rgba(255,255,255,0.2)', borderRadius: 10, padding: '2px 10px', color: '#fff', fontWeight: 600 }}>Due {new Date(project.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
           </div>
-          {project.description && <p style={{ fontSize: 12, color: '#6b778c', marginTop: 4 }}>{project.description}</p>}
+          {project.description && <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 3 }}>{project.description}</p>}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 100, height: 6, background: '#e5e7eb', borderRadius: 3, overflow: 'hidden' }}>
-            <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 3 }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          <div style={{ width: 100, height: 5, background: 'rgba(255,255,255,0.25)', borderRadius: 3, overflow: 'hidden' }}>
+            <div style={{ width: `${pct}%`, height: '100%', background: '#fff', borderRadius: 3 }} />
           </div>
-          <span style={{ fontSize: 12, fontWeight: 700, color }}>  {pct}%</span>
-          <span style={{ fontSize: 11, color: '#6b778c' }}>{doneTasks}/{totalTasks}</span>
+          <span style={{ fontSize: 12, fontWeight: 800, color: '#fff' }}>{pct}%</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)' }}>{doneTasks}/{totalTasks}</span>
         </div>
       </div>
 
       {/* Tabs — Monday.com style */}
-      <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #dfe1e6', padding: '0 20px', background: '#fafbfc', gap: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #dfe1e6', padding: '0 20px', background: '#fff', gap: 4 }}>
         <TAB id="table" label="Main Table" icon="☰" />
         <TAB id="kanban" label="Kanban" icon="⊞" />
         <TAB id="gantt" label="Timeline" icon="▬" />
@@ -869,17 +951,17 @@ function ProjectSection({ project, tasks, allTasks, onUpdate, onDelete, onAddTas
               <div style={{ flex: 1, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Task</div>
               <div style={{ width: 60, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Owner</div>
               <div style={{ width: 130, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Status</div>
-              <div style={{ width: 160, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Timeline</div>
+              <div style={{ width: 90, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Effort</div>
               <div style={{ width: 90, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Due date</div>
               <div style={{ width: 90, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Priority</div>
               <div style={{ width: 80, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Progress</div>
             </div>
 
             {/* Groups with their tasks */}
-            {groups.map(group => (
+            {groups.map((group, gi) => (
               <ProjectGroup key={group.id} group={group} allTasks={allTasks} projectColor={color}
-                onUpdate={onUpdate} onDelete={onDelete} onAddSubtask={onAddSubtask} onSelect={onSelect}
-                onAddTask={onAddTask} projectId={project.id} />
+                groupIndex={gi} onUpdate={onUpdate} onDelete={onDelete} onAddSubtask={onAddSubtask}
+                onSelect={onSelect} onAddTask={onAddTask} projectId={project.id} />
             ))}
 
             {/* Ungrouped tasks */}
