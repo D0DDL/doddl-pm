@@ -117,7 +117,7 @@ Never hardcode. Never log. Never commit .env.local.
 Decompose pages/index.js (~1957 lines) into components.
 
 Target structure:
-pages/components/
+components/                          # at repo root — Next.js 14 Pages Router treats every .jsx under pages/ as a route, so components live outside pages/
   TaskRow.jsx
   TaskDetailPanel.jsx
   ProjectSection.jsx
@@ -125,6 +125,11 @@ pages/components/
   StatusBadge.jsx
   PriorityBadge.jsx
   MyWorkView.jsx
+  (plus shared leaf components extracted during decomposition: AssigneeSelect, ProgressBar, TagsCell, InlineEdit, DateCell, OwnerAvatar, CalendarPicker, TimelineCell, LoginScreen, CommentBody, MentionInput, ProjectTableRow, ProjectGroup, ProjectDashboard, GanttView, AddTaskModal, AddProjectModal)
+lib/
+  constants.js    (new — STATUSES, PRIORITIES, COL_WIDTHS, SOURCE_COLORS, TAG_COLORS + maps)
+  team.js         (new — TEAM roster, name/email helpers, PROJECT_COLORS, GROUP_TINTS, getProjectColor)
+  msal.js         (new — MSAL_CONFIG, getMsal)
 pages/api/
   projects.js     (new)
   task-groups.js  (new)

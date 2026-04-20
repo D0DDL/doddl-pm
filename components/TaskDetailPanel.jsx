@@ -1,0 +1,170 @@
+import { useState, useEffect, useCallback } from 'react'
+import { supabase } from '../lib/supabase'
+import { TEAM, getDisplayName } from '../lib/team'
+import { STATUSES, statusMap } from '../lib/constants'
+import StatusBadge from './StatusBadge'
+import AssigneeSelect from './AssigneeSelect'
+import PriorityBadge from './PriorityBadge'
+import ProgressBar from './ProgressBar'
+import TagsCell from './TagsCell'
+import OwnerAvatar from './OwnerAvatar'
+import CommentBody from './CommentBody'
+import MentionInput from './MentionInput'
+import ApprovalTaskPanel from './ApprovalTaskPanel'
+
+export default function TaskDetailPanel({ task, user, onClose, onUpdate }) {
+  const [comments, setComments]   = useState([])
+  const [newComment, setNewComment] = useState('')
+  const [posting, setPosting]     = useState(false)
+  const [editTask, setEditTask]   = useState(task)
+  const [saving, setSaving]       = useState(false)
+  const userName = getDisplayName(user?.username) || user?.name || 'Unknown'
+
+  // Keep editTask in sync when task prop changes
+  useEffect(() => { setEditTask(task) }, [task.id])
+
+  const loadComments = useCallback(async () => {
+    const { data } = await supabase.from('comments').select('*').eq('task_id', task.id).order('created_at', { ascending: true })
+    setComments(data || [])
+  }, [task.id])
+  useEffect(() => { loadComments() }, [loadComments])
+
+  const save = async (field, value) => {
+    setSaving(true)
+    setEditTask(t => ({ ...t, [field]: value }))
+    await supabase.from('tasks').update({ [field]: value }).eq('id', task.id)
+    setSaving(false)
+    onUpdate()
+  }
+
+  const postComment = async () => {
+    if (!newComment.trim()) return
+    setPosting(true)
+    const mentionMatches = newComment.match(/@(\w+)/g) || []
+    const mentions = mentionMatches.map(m => m.slice(1)).filter(n => TEAM.some(t => t.name.toLowerCase() === n.toLowerCase()))
+    const { data: commentData } = await supabase.from('comments').insert([{ task_id: task.id, author: userName, body: newComment, mentions }]).select().single()
+    const notifs = []
+    for (const name of mentions) {
+      if (name.toLowerCase() !== userName.toLowerCase())
+        notifs.push({ user_name: name, type: 'mention', comment_id: commentData?.id, task_id: task.id, task_title: task.title, from_user: userName, body: newComment, read: false })
+    }
+    if (task.assigned_to && task.assigned_to.toLowerCase() !== userName.toLowerCase() && !mentions.map(m => m.toLowerCase()).includes(task.assigned_to.toLowerCase()))
+      notifs.push({ user_name: task.assigned_to, type: 'comment_on_owned', comment_id: commentData?.id, task_id: task.id, task_title: task.title, from_user: userName, body: newComment, read: false })
+    if (notifs.length > 0) await supabase.from('notifications').insert(notifs)
+    setNewComment(''); setPosting(false); loadComments()
+  }
+
+  const effort = editTask.start_date && editTask.due_date
+    ? Math.max(1, Math.ceil((new Date(editTask.due_date) - new Date(editTask.start_date)) / 86400000))
+    : null
+
+  const s = statusMap[editTask.status] || STATUSES[0]
+
+  const FieldLabel = ({ label }) => (
+    <p style={{ fontSize: 10, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>{label}</p>
+  )
+
+  return (
+    <div style={{ position: 'fixed', right: 0, top: 52, bottom: 0, width: 400, background: '#fff', borderLeft: '1px solid #dfe1e6', zIndex: 500, display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 20px rgba(0,0,0,0.08)' }}>
+      {/* Header */}
+      <div style={{ padding: '14px 20px', borderBottom: '1px solid #dfe1e6', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: '#fafbfc' }}>
+        <div style={{ flex: 1, marginRight: 12 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', marginBottom: 6 }}>
+            {editTask.task_type && editTask.task_type !== 'standard'
+              ? <span style={{ background: '#ede9fe', color: '#6554c0', borderRadius: 10, padding: '1px 8px', fontSize: 10, fontWeight: 700, letterSpacing: '0.04em' }}>{editTask.task_type.replace(/_/g, ' ')}</span>
+              : 'TASK'}
+            {saving && <span style={{ color: 'var(--aqua)', marginLeft: 8 }}>· Saving...</span>}
+          </p>
+          <textarea value={editTask.title} onChange={e => setEditTask(t => ({ ...t, title: e.target.value }))}
+            onBlur={e => save('title', e.target.value)}
+            rows={2} style={{ width: '100%', border: 'none', outline: 'none', fontSize: 15, fontWeight: 800, color: '#172b4d', lineHeight: 1.4, resize: 'none', background: 'transparent', fontFamily: 'Nunito, sans-serif' }} />
+          <div style={{ marginTop: 6 }}>
+            <StatusBadge value={editTask.status} onChange={v => save('status', v)} />
+          </div>
+        </div>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#6b778c', flexShrink: 0 }}>×</button>
+      </div>
+
+      {/* Editable fields */}
+      <div style={{ overflowY: 'auto', flex: 1 }}>
+        {editTask.task_type === 'approval' && (
+          <ApprovalTaskPanel task={editTask} userName={userName} onUpdate={onUpdate} />
+        )}
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid #f0f1f3', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <div>
+            <FieldLabel label="Assignee" />
+            <AssigneeSelect value={editTask.assigned_to} onChange={v => save('assigned_to', v)} />
+          </div>
+          <div>
+            <FieldLabel label="Priority" />
+            <PriorityBadge value={editTask.priority} onChange={v => save('priority', v)} />
+          </div>
+          <div>
+            <FieldLabel label="Start Date" />
+            <input type="date" value={editTask.start_date || ''} onChange={e => save('start_date', e.target.value)}
+              style={{ border: '1px solid #dfe1e6', borderRadius: 4, padding: '4px 8px', fontSize: 12, fontFamily: 'Nunito, sans-serif', width: '100%', color: '#172b4d' }} />
+          </div>
+          <div>
+            <FieldLabel label="Due Date" />
+            <input type="date" value={editTask.due_date || ''} onChange={e => save('due_date', e.target.value)}
+              style={{ border: '1px solid #dfe1e6', borderRadius: 4, padding: '4px 8px', fontSize: 12, fontFamily: 'Nunito, sans-serif', width: '100%', color: '#172b4d' }} />
+          </div>
+          <div>
+            <FieldLabel label="Effort" />
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#172b4d' }}>{effort ? `${effort} day${effort !== 1 ? 's' : ''}` : <span style={{ color: '#a0aec0' }}>Set start + due</span>}</p>
+          </div>
+          <div>
+            <FieldLabel label="Progress" />
+            <ProgressBar value={editTask.progress} onChange={v => save('progress', v)} />
+          </div>
+        </div>
+
+        {/* Notes */}
+        <div style={{ padding: '12px 20px', borderBottom: '1px solid #f0f1f3' }}>
+          <FieldLabel label="Notes" />
+          <textarea value={editTask.notes || ''} onChange={e => setEditTask(t => ({ ...t, notes: e.target.value }))}
+            onBlur={e => save('notes', e.target.value)}
+            placeholder="Add notes..." rows={4}
+            style={{ width: '100%', border: '1px solid #dfe1e6', borderRadius: 6, padding: '8px 10px', fontSize: 13, fontFamily: 'Nunito, sans-serif', resize: 'vertical', outline: 'none', color: '#172b4d', lineHeight: 1.5 }} />
+        </div>
+
+        {/* Tags */}
+        <div style={{ padding: '10px 20px', borderBottom: '1px solid #f0f1f3' }}>
+          <FieldLabel label="Tags" />
+          <TagsCell value={editTask.tags} onChange={v => save('tags', v)} />
+        </div>
+
+        {/* Comments */}
+        <div style={{ padding: '12px 20px' }}>
+          <p style={{ fontSize: 10, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 12 }}>Comments ({comments.length})</p>
+          {comments.length === 0 && <p style={{ fontSize: 13, color: '#a0aec0', fontWeight: 600, marginBottom: 12 }}>No comments yet. Type @ to mention someone.</p>}
+          {comments.map(c => (
+            <div key={c.id} style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <OwnerAvatar name={c.author} />
+                <div>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#172b4d' }}>{c.author}</span>
+                  <span style={{ fontSize: 11, color: '#a0aec0', marginLeft: 8 }}>{new Date(c.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+                {c.mentions?.length > 0 && <div style={{ display: 'flex', gap: 3, marginLeft: 'auto' }}>
+                  {c.mentions.map(m => <span key={m} style={{ fontSize: 9, background: '#e9f2ff', color: '#0052cc', borderRadius: 3, padding: '1px 4px', fontWeight: 700 }}>@{m}</span>)}
+                </div>}
+              </div>
+              <div style={{ marginLeft: 36, background: '#f8f9fc', borderRadius: 8, padding: '8px 12px' }}>
+                <CommentBody body={c.body} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Comment input */}
+      <div style={{ padding: '12px 20px', borderTop: '1px solid #dfe1e6', background: '#fafbfc' }}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <OwnerAvatar name={userName} />
+          <MentionInput value={newComment} onChange={setNewComment} onPost={postComment} posting={posting} userName={userName} />
+        </div>
+      </div>
+    </div>
+  )
+}
