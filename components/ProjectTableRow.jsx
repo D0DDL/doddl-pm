@@ -8,8 +8,12 @@ import InlineEdit from './InlineEdit'
 import TimelineCell from './TimelineCell'
 
 export default function ProjectTableRow({ task, allTasks, projectColor, onUpdate, onDelete, onSelect, depth = 0 }) {
-  // ALL saves are silent — no reload, no re-render, no state wipe
-  const save = async (field, value) => { await supabase.from('tasks').update({ [field]: value }).eq('id', task.id) }
+  // Saves write to DB then trigger parent refresh. The taskIdRef guard (below)
+  // prevents the refresh from wiping mid-interaction local state.
+  const save = async (field, value) => {
+    const { error } = await supabase.from('tasks').update({ [field]: value }).eq('id', task.id)
+    if (!error) onUpdate()
+  }
   const indent = depth * 20
 
   // Full local state — row is self-contained, never wiped by parent reload
@@ -76,7 +80,8 @@ export default function ProjectTableRow({ task, allTasks, projectColor, onUpdate
           startDate={localStart} dueDate={localEnd} color={projectColor}
           onSave={async (start, end) => {
             setLocalStart(start); setLocalEnd(end)
-            await supabase.from('tasks').update({ start_date: start, due_date: end }).eq('id', task.id)
+            const { error } = await supabase.from('tasks').update({ start_date: start, due_date: end }).eq('id', task.id)
+            if (!error) onUpdate()
           }} />
       </div>
       {/* Effort — auto from dates */}

@@ -52,14 +52,17 @@ export default function Home() {
   const userName = getDisplayName(user?.username) || user?.name?.split(' ')[0] || ''
 
   const load = useCallback(async () => {
-    setLoading(true)
     const [{ data: t }, { data: p }] = await Promise.all([
       supabase.from('tasks').select('*').order('created_at', { ascending: true }),
       supabase.from('projects').select('*').order('created_at', { ascending: false }),
     ])
-    setTasks(t || []); setProjects(p || []); setLoading(false)
+    setTasks(t || []); setProjects(p || [])
   }, [])
-  useEffect(() => { if (user) load() }, [user, load])
+  useEffect(() => {
+    if (!user) return
+    setLoading(true)
+    load().finally(() => setLoading(false))
+  }, [user, load])
 
   const loadNotifications = useCallback(async () => {
     if (!userName) return
