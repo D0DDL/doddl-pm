@@ -1,20 +1,66 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { getProjectColor } from '../lib/team'
-import { PROJ_COL_WIDTHS as W } from '../lib/constants'
+import { PROJ_COL_WIDTHS as W_DEFAULT } from '../lib/constants'
 import ProjectGroup from './ProjectGroup'
 import ProjectTableRow from './ProjectTableRow'
 import ProjectDashboard from './ProjectDashboard'
 import KanbanBoard from './KanbanBoard'
 import ProjectGanttChart from './ProjectGanttChart'
 
+const WIDTHS_STORAGE_KEY = 'doddl-pm-project-col-widths'
+const MIN_W = { select: 28, owner: 60, status: 70, timeline: 110, effort: 40, priority: 60, progress: 80 }
+const MAX_W = { select: 28, owner: 200, status: 200, timeline: 340, effort: 100, priority: 160, progress: 300 }
+
 export default function ProjectSection({ project, tasks, allTasks, onUpdate, onDelete, onAddTask, onAddSubtask, onSelect, colorIndex, projects, user }) {
   const [projectTab, setProjectTab] = useState('table')
   const [addingGroup, setAddingGroup] = useState(false)
   const [groupName, setGroupName] = useState('')
-  const [selectedIds, setSelectedIds] = useState(new Set())      // UI #8 — multi-select
+  const [selectedIds, setSelectedIds] = useState(new Set())
   const [groupingSel, setGroupingSel] = useState(false)
   const [selGroupName, setSelGroupName] = useState('')
+  // UI #5 — user-draggable column widths, persisted to localStorage
+  const [W, setW] = useState(W_DEFAULT)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const raw = window.localStorage.getItem(WIDTHS_STORAGE_KEY)
+      if (raw) {
+        const saved = JSON.parse(raw)
+        setW(cur => ({ ...cur, ...saved }))
+      }
+    } catch { /* ignore */ }
+  }, [])
+  const drag = useRef(null)   // { col, startX, startW }
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!drag.current) return
+      const { col, startX, startW } = drag.current
+      const delta = e.clientX - startX
+      const next = Math.min(MAX_W[col], Math.max(MIN_W[col], startW + delta))
+      setW(cur => ({ ...cur, [col]: next }))
+    }
+    const onUp = () => {
+      if (!drag.current) return
+      drag.current = null
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      // Persist once at drag-end (avoids writing every pixel during drag)
+      setW(cur => {
+        try { window.localStorage.setItem(WIDTHS_STORAGE_KEY, JSON.stringify(cur)) } catch { /* ignore */ }
+        return cur
+      })
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
+  }, [])
+  const startDragCol = (col) => (e) => {
+    e.preventDefault(); e.stopPropagation()
+    drag.current = { col, startX: e.clientX, startW: W[col] }
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+  }
   const color = getProjectColor(project, colorIndex)
 
   const onToggleSelect = (id) => {
@@ -131,16 +177,26 @@ export default function ProjectSection({ project, tasks, allTasks, onUpdate, onD
               </div>
             )}
 
-            {/* Column headers */}
+            {/* Column headers — each sized col has a draggable right-edge handle (UI #5) */}
             <div style={{ display: 'flex', alignItems: 'center', background: '#f8f9fc', borderBottom: '2px solid #dfe1e6', paddingLeft: 32 }}>
               <div style={{ width: W.select }} />
               <div style={{ flex: 1, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Task</div>
-              <div style={{ width: W.owner, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Owner</div>
-              <div style={{ width: W.status, padding: '7px 6px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Status</div>
-              <div style={{ width: W.timeline, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Timeline</div>
-              <div style={{ width: W.effort, padding: '7px 6px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Effort</div>
-              <div style={{ width: W.priority, padding: '7px 6px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Priority</div>
-              <div style={{ width: W.progress, padding: '7px 6px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>Progress</div>
+              {[
+                { col: 'owner',    label: 'Owner' },
+                { col: 'status',   label: 'Status' },
+                { col: 'timeline', label: 'Timeline' },
+                { col: 'effort',   label: 'Effort' },
+                { col: 'priority', label: 'Priority' },
+                { col: 'progress', label: 'Progress' },
+              ].map(({ col, label }) => (
+                <div key={col} style={{ width: W[col], padding: '7px 6px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', position: 'relative' }}>
+                  {label}
+                  <div onMouseDown={startDragCol(col)} title="Drag to resize"
+                    style={{ position: 'absolute', top: 0, right: -3, bottom: 0, width: 6, cursor: 'col-resize' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(61,21,125,0.15)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'} />
+                </div>
+              ))}
             </div>
 
             {/* Groups with their tasks */}
@@ -148,7 +204,7 @@ export default function ProjectSection({ project, tasks, allTasks, onUpdate, onD
               <ProjectGroup key={group.id} group={group} allTasks={allTasks} projectColor={color}
                 groupIndex={gi} onUpdate={onUpdate} onDelete={onDelete} onAddSubtask={onAddSubtask}
                 onSelect={onSelect} onAddTask={onAddTask} projectId={project.id}
-                selectedIds={selectedIds} onToggleSelect={onToggleSelect} />
+                selectedIds={selectedIds} onToggleSelect={onToggleSelect} widths={W} />
             ))}
 
             {/* Ungrouped tasks */}
@@ -157,7 +213,7 @@ export default function ProjectSection({ project, tasks, allTasks, onUpdate, onD
                 {ungroupedTasks.map(task => (
                   <ProjectTableRow key={task.id} task={task} projectColor={color}
                     onUpdate={onUpdate} onDelete={onDelete} onSelect={onSelect}
-                    selected={selectedIds.has(task.id)} onToggleSelect={onToggleSelect} />
+                    selected={selectedIds.has(task.id)} onToggleSelect={onToggleSelect} widths={W} />
                 ))}
               </div>
             )}

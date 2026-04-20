@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { PROJ_COL_WIDTHS as W } from '../lib/constants'
+import { PROJ_COL_WIDTHS as W_DEFAULT } from '../lib/constants'
 import StatusBadge from './StatusBadge'
 import AssigneeSelect from './AssigneeSelect'
 import PriorityBadge from './PriorityBadge'
 import ProgressBar from './ProgressBar'
 import TimelineCell from './TimelineCell'
 
-export default function ProjectTableRow({ task, projectColor, onUpdate, onDelete, onSelect, depth = 0, selected, onToggleSelect }) {
+export default function ProjectTableRow({ task, projectColor, onUpdate, onDelete, onSelect, depth = 0, selected, onToggleSelect, widths }) {
+  const W = widths || W_DEFAULT
   // Saves write to DB then trigger parent refresh. The taskIdRef guard (below)
   // prevents the refresh from wiping mid-interaction local state.
   const save = async (field, value) => {
@@ -24,6 +25,12 @@ export default function ProjectTableRow({ task, projectColor, onUpdate, onDelete
   const [localStart,    setLocalStart]    = useState(task.start_date || '')
   const [localEnd,      setLocalEnd]      = useState(task.due_date   || '')
 
+  // UI #8 — inline title edit
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [titleDraft, setTitleDraft] = useState(task.title || '')
+  const [hovering, setHovering] = useState(false)
+  const titleInputRef = useRef(null)
+
   const taskIdRef = useRef(task.id)
   useEffect(() => {
     if (task.id !== taskIdRef.current) {
@@ -34,8 +41,28 @@ export default function ProjectTableRow({ task, projectColor, onUpdate, onDelete
       setLocalProgress(task.progress || 0)
       setLocalStart(task.start_date || '')
       setLocalEnd(task.due_date || '')
+      setEditingTitle(false)
+      setTitleDraft(task.title || '')
     }
   }, [task.id])
+  useEffect(() => { if (editingTitle) titleInputRef.current?.focus() }, [editingTitle])
+
+  const startEditTitle = (e) => {
+    e?.stopPropagation()
+    setTitleDraft(task.title || '')
+    setEditingTitle(true)
+  }
+  const commitTitle = async () => {
+    const next = titleDraft.trim()
+    setEditingTitle(false)
+    if (!next || next === task.title) return
+    const { error } = await supabase.from('tasks').update({ title: next }).eq('id', task.id)
+    if (!error) onUpdate()
+  }
+  const cancelTitle = () => {
+    setTitleDraft(task.title || '')
+    setEditingTitle(false)
+  }
 
   const effort = localStart && localEnd
     ? Math.max(1, Math.ceil((new Date(localEnd) - new Date(localStart)) / 86400000))
@@ -72,20 +99,40 @@ export default function ProjectTableRow({ task, projectColor, onUpdate, onDelete
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', borderLeft: `4px solid ${projectColor}`, borderBottom: '1px solid #f0f1f3', minHeight: 40, background: selected ? '#f0f4ff' : 'transparent' }}
-      onMouseEnter={e => { if (!selected) e.currentTarget.style.background = '#f8f9ff' }}
-      onMouseLeave={e => { if (!selected) e.currentTarget.style.background = 'transparent' }}>
+      onMouseEnter={e => { setHovering(true); if (!selected) e.currentTarget.style.background = '#f8f9ff' }}
+      onMouseLeave={e => { setHovering(false); if (!selected) e.currentTarget.style.background = 'transparent' }}>
       {/* Checkbox */}
       <div style={{ width: W.select, paddingLeft: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
         <input type="checkbox" checked={!!selected} onChange={() => onToggleSelect && onToggleSelect(task.id)}
           onClick={e => e.stopPropagation()}
           style={{ cursor: 'pointer', width: 14, height: 14 }} />
       </div>
-      {/* Task name — single click opens detail panel */}
+      {/* Task name — click opens detail; dbl-click OR pencil icon inline-edits */}
       <div style={{ flex: 1, paddingLeft: indent, paddingRight: 8, display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-        <span onClick={() => onSelect && onSelect(task)} title="Open task detail"
-          style={{ fontWeight: depth === 0 ? 600 : 400, fontSize: 13, color: '#172b4d', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }}>
-          {task.title}
-        </span>
+        {editingTitle ? (
+          <input ref={titleInputRef} value={titleDraft}
+            onChange={e => setTitleDraft(e.target.value)}
+            onBlur={commitTitle}
+            onKeyDown={e => {
+              if (e.key === 'Enter') { e.preventDefault(); commitTitle() }
+              if (e.key === 'Escape') { e.preventDefault(); cancelTitle() }
+            }}
+            onClick={e => e.stopPropagation()}
+            style={{ flex: 1, border: '1px solid var(--aqua)', borderRadius: 4, padding: '2px 6px', fontSize: 13, fontWeight: depth === 0 ? 600 : 400, fontFamily: 'Nunito, sans-serif', outline: 'none', color: '#172b4d' }} />
+        ) : (
+          <span onClick={() => onSelect && onSelect(task)}
+            onDoubleClick={startEditTitle}
+            title="Click to open detail · double-click to rename"
+            style={{ fontWeight: depth === 0 ? 600 : 400, fontSize: 13, color: '#172b4d', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }}>
+            {task.title}
+          </span>
+        )}
+        {!editingTitle && (
+          <span onClick={startEditTitle} title="Rename inline"
+            style={{ color: '#c1c7d0', cursor: 'pointer', fontSize: 12, flexShrink: 0, opacity: hovering ? 1 : 0, transition: 'opacity 0.12s' }}
+            onMouseEnter={e => e.currentTarget.style.color = '#6b778c'}
+            onMouseLeave={e => e.currentTarget.style.color = '#c1c7d0'}>✎</span>
+        )}
         <span onClick={() => onDelete(task.id)} title="Delete task"
           style={{ color: '#c1c7d0', cursor: 'pointer', fontSize: 14, flexShrink: 0 }}
           onMouseEnter={e => e.currentTarget.style.color='#de350b'} onMouseLeave={e => e.currentTarget.style.color='#c1c7d0'}>×</span>

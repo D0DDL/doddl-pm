@@ -7,7 +7,7 @@ import LoginScreen from '../components/LoginScreen'
 import GlobalStyles from '../components/GlobalStyles'
 import AppHeader from '../components/AppHeader'
 import AppSidebar from '../components/AppSidebar'
-import TaskDetailPanel from '../components/TaskDetailPanel'
+import TaskDetailPanel, { TASK_PANEL } from '../components/TaskDetailPanel'
 import AddTaskModal from '../components/AddTaskModal'
 import AddProjectModal from '../components/AddProjectModal'
 import MyWorkView from '../components/MyWorkView'
@@ -32,6 +32,14 @@ export default function Home() {
   const [addTaskParentId, setAddTaskParentId]   = useState(null)
   const [search, setSearch]                     = useState('')
   const [selectedTask, setSelectedTask]         = useState(null)
+  const [taskPanelW, setTaskPanelW]             = useState(TASK_PANEL.DEFAULT)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const n = Number(window.sessionStorage.getItem(TASK_PANEL.STORAGE_KEY))
+      if (Number.isFinite(n) && n >= TASK_PANEL.MIN && n <= TASK_PANEL.MAX) setTaskPanelW(n)
+    } catch { /* ignore */ }
+  }, [])
 
   useEffect(() => {
     (async () => {
@@ -109,7 +117,7 @@ export default function Home() {
           activeProject={activeProject} setActiveProject={setActiveProject}
           myFlowCount={myOpenTasksCount} unreadCount={unreadCount} />
 
-        <main style={{ flex: 1, overflowY: 'auto', padding: 20, marginRight: selectedTask ? 380 : 0 }}>
+        <main style={{ flex: 1, overflowY: 'auto', padding: 20, marginRight: selectedTask ? taskPanelW : 0 }}>
           {loading ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60%', color: '#6b778c', fontWeight: 600 }}>Loading...</div>
           ) : view === 'mywork' ? (
@@ -140,7 +148,7 @@ export default function Home() {
         </main>
       </div>
 
-      {selectedTask && <TaskDetailPanel task={selectedTask} user={user} allTasks={tasks} onClose={() => setSelectedTask(null)} onUpdate={load} />}
+      {selectedTask && <TaskDetailPanel task={selectedTask} user={user} allTasks={tasks} onClose={() => setSelectedTask(null)} onUpdate={load} panelW={taskPanelW} setPanelW={setTaskPanelW} />}
       {showAddTask && <AddTaskModal projects={projects} parentId={addTaskParentId} projectId={addTaskProjectId} allTasks={tasks} onClose={() => setShowAddTask(false)} onSaved={load} currentUser={user} />}
       {showAddProject && <AddProjectModal onClose={() => setShowAddProject(false)} onSaved={load} colorIndex={projects.length} />}
       <div id="timeline-portal" />

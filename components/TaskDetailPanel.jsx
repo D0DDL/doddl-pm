@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { TEAM, getDisplayName } from '../lib/team'
 import { STATUSES, statusMap } from '../lib/constants'
@@ -12,7 +12,10 @@ import CommentBody from './CommentBody'
 import MentionInput from './MentionInput'
 import ApprovalTaskPanel from './ApprovalTaskPanel'
 
-export default function TaskDetailPanel({ task, user, onClose, onUpdate, allTasks = [] }) {
+const MIN_W = 300, MAX_W = 800, DEFAULT_W = 400, STORAGE_KEY = 'doddl-pm-detail-panel-width'
+export const TASK_PANEL = { MIN: MIN_W, MAX: MAX_W, DEFAULT: DEFAULT_W, STORAGE_KEY }
+
+export default function TaskDetailPanel({ task, user, onClose, onUpdate, allTasks = [], panelW, setPanelW }) {
   const [comments, setComments]   = useState([])
   const [newComment, setNewComment] = useState('')
   const [posting, setPosting]     = useState(false)
@@ -20,8 +23,56 @@ export default function TaskDetailPanel({ task, user, onClose, onUpdate, allTask
   const [saving, setSaving]       = useState(false)
   const userName = getDisplayName(user?.username) || user?.name || 'Unknown'
 
+  // UI #6 — resize drag (width state is owned by the parent so the main content
+  // can reserve the matching marginRight).
+  const drag = useRef(null)
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!drag.current) return
+      const next = Math.max(MIN_W, Math.min(MAX_W, window.innerWidth - e.clientX))
+      setPanelW(next)
+    }
+    const onUp = () => {
+      if (!drag.current) return
+      drag.current = null
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      try { window.sessionStorage.setItem(STORAGE_KEY, String(panelW)) } catch { /* ignore */ }
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
+  }, [panelW, setPanelW])
+  const startPanelDrag = (e) => {
+    e.preventDefault()
+    drag.current = true
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+  }
+
+  // UI #9 — click-to-edit task title
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [titleDraft, setTitleDraft] = useState(task.title || '')
+  const titleInputRef = useRef(null)
+
   // Keep editTask in sync when task prop changes
-  useEffect(() => { setEditTask(task) }, [task.id])
+  useEffect(() => {
+    setEditTask(task)
+    setTitleDraft(task.title || '')
+    setEditingTitle(false)
+  }, [task.id])
+  useEffect(() => { if (editingTitle) titleInputRef.current?.focus() }, [editingTitle])
+
+  const commitTitle = async () => {
+    const next = titleDraft.trim()
+    setEditingTitle(false)
+    if (!next || next === editTask.title) return
+    await save('title', next)
+  }
+  const cancelTitle = () => {
+    setTitleDraft(editTask.title || '')
+    setEditingTitle(false)
+  }
 
   const loadComments = useCallback(async () => {
     const { data } = await supabase.from('comments').select('*').eq('task_id', task.id).order('created_at', { ascending: true })
@@ -80,7 +131,12 @@ export default function TaskDetailPanel({ task, user, onClose, onUpdate, allTask
   )
 
   return (
-    <div style={{ position: 'fixed', right: 0, top: 52, bottom: 0, width: 400, background: '#fff', borderLeft: '1px solid #dfe1e6', zIndex: 500, display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 20px rgba(0,0,0,0.08)' }}>
+    <div style={{ position: 'fixed', right: 0, top: 52, bottom: 0, width: panelW, background: '#fff', borderLeft: '1px solid #dfe1e6', zIndex: 500, display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 20px rgba(0,0,0,0.08)' }}>
+      {/* Left-edge drag handle (UI #6) */}
+      <div onMouseDown={startPanelDrag} title="Drag to resize panel"
+        style={{ position: 'absolute', top: 0, left: -3, bottom: 0, width: 6, cursor: 'col-resize', zIndex: 501 }}
+        onMouseEnter={e => e.currentTarget.style.background = 'rgba(61,21,125,0.15)'}
+        onMouseLeave={e => e.currentTarget.style.background = 'transparent'} />
       {/* Header */}
       <div style={{ padding: '14px 20px', borderBottom: '1px solid #dfe1e6', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: '#fafbfc' }}>
         <div style={{ flex: 1, marginRight: 12 }}>
@@ -90,9 +146,22 @@ export default function TaskDetailPanel({ task, user, onClose, onUpdate, allTask
               : 'TASK'}
             {saving && <span style={{ color: 'var(--aqua)', marginLeft: 8 }}>· Saving...</span>}
           </p>
-          <textarea value={editTask.title} onChange={e => setEditTask(t => ({ ...t, title: e.target.value }))}
-            onBlur={e => save('title', e.target.value)}
-            rows={2} style={{ width: '100%', border: 'none', outline: 'none', fontSize: 15, fontWeight: 800, color: '#172b4d', lineHeight: 1.4, resize: 'none', background: 'transparent', fontFamily: 'Nunito, sans-serif' }} />
+          {/* UI #9 — click title to edit. Enter saves, Escape reverts. */}
+          {editingTitle ? (
+            <textarea ref={titleInputRef} value={titleDraft}
+              onChange={e => setTitleDraft(e.target.value)}
+              onBlur={commitTitle}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitTitle() }
+                if (e.key === 'Escape') { e.preventDefault(); cancelTitle() }
+              }}
+              rows={2} style={{ width: '100%', border: '1px solid var(--aqua)', borderRadius: 4, padding: '4px 6px', outline: 'none', fontSize: 15, fontWeight: 800, color: '#172b4d', lineHeight: 1.4, resize: 'none', background: '#fff', fontFamily: 'Nunito, sans-serif' }} />
+          ) : (
+            <div onClick={() => setEditingTitle(true)} title="Click to edit title"
+              style={{ width: '100%', fontSize: 15, fontWeight: 800, color: '#172b4d', lineHeight: 1.4, cursor: 'text', minHeight: 24, wordBreak: 'break-word' }}>
+              {editTask.title || <span style={{ color: '#c1c7d0' }}>(untitled — click to name)</span>}
+            </div>
+          )}
           <div style={{ marginTop: 6 }}>
             <StatusBadge value={editTask.status} onChange={v => save('status', v)} />
           </div>
