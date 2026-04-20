@@ -16,10 +16,9 @@ export default function AppHeader({ search, setSearch, userName, handleLogout, o
         <button onClick={onAddProjectClick}
           style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 6, padding: '6px 14px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Project</button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#30BEAA', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13 }}>
-            {userName.charAt(0) || '?'}
-          </div>
-          <span style={{ fontSize: 12, opacity: 0.8 }}>{userName}</span>
+          <span style={{ background: '#30BEAA', color: '#fff', fontWeight: 800, fontSize: 12, padding: '4px 12px', borderRadius: 11 }}>
+            {userName || '?'}
+          </span>
           <button onClick={handleLogout} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', fontSize: 11, borderRadius: 4, padding: '3px 8px', cursor: 'pointer', opacity: 0.7 }}>Sign out</button>
         </div>
       </div>

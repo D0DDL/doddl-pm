@@ -67,10 +67,9 @@ export default function ProjectSection({ project, tasks, allTasks, onUpdate, onD
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 800, fontSize: 16, color: '#fff' }}>{project.name}</span>
             {project.owner && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: '#fff' }}>{project.owner.charAt(0)}</div>
-                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: 600 }}>{project.owner}</span>
-              </div>
+              <span style={{ display: 'inline-flex', alignItems: 'center', background: 'rgba(255,255,255,0.25)', color: '#fff', fontWeight: 700, fontSize: 11, padding: '3px 10px', borderRadius: 11 }}>
+                {project.owner}
+              </span>
             )}
             {project.due_date && <span style={{ fontSize: 11, background: 'rgba(255,255,255,0.2)', borderRadius: 10, padding: '2px 10px', color: '#fff', fontWeight: 600 }}>Due {new Date(project.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
           </div>

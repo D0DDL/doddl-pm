@@ -110,10 +110,11 @@ export default function MyWorkView({ visibleTasks, userName, projects, setSelect
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
-        <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--aqua)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 20, color: '#fff', flexShrink: 0 }}>{(userName||'?').charAt(0)}</div>
         <div>
-          <h2 style={{ fontWeight: 800, fontSize: 20, color: 'var(--indigo)' }}>My Work</h2>
-          <p style={{ fontSize: 13, color: '#6b778c', fontWeight: 600 }}>{myTasks.length} active · {userName} · all sources</p>
+          <h2 style={{ fontWeight: 800, fontSize: 20, color: 'var(--indigo)' }}>
+            My Work — <span style={{ background: 'var(--aqua)', color: '#fff', fontSize: 16, fontWeight: 800, padding: '3px 12px', borderRadius: 12 }}>{userName || '?'}</span>
+          </h2>
+          <p style={{ fontSize: 13, color: '#6b778c', fontWeight: 600, marginTop: 4 }}>{myTasks.length} active · all sources</p>
         </div>
       </div>
 
