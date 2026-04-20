@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getProjectColor } from '../lib/team'
-import { STATUSES, statusMap, PROJ_COL_WIDTHS as W } from '../lib/constants'
+import { PROJ_COL_WIDTHS as W } from '../lib/constants'
 import ProjectGroup from './ProjectGroup'
 import ProjectTableRow from './ProjectTableRow'
 import ProjectDashboard from './ProjectDashboard'
 import KanbanBoard from './KanbanBoard'
-import OwnerAvatar from './OwnerAvatar'
+import ProjectGanttChart from './ProjectGanttChart'
 
 export default function ProjectSection({ project, tasks, allTasks, onUpdate, onDelete, onAddTask, onAddSubtask, onSelect, colorIndex, projects, user }) {
   const [projectTab, setProjectTab] = useState('table')
@@ -58,57 +58,6 @@ export default function ProjectSection({ project, tasks, allTasks, onUpdate, onD
       color: projectTab === id ? color : '#6b778c', marginBottom: -1
     }}>{icon} {label}</button>
   )
-
-  // Project-level Gantt
-  const ProjectGantt = () => {
-    const ganttTasks = tasks.filter(t => !t.is_group)
-    if (ganttTasks.length === 0) return <div style={{ padding: 40, textAlign: 'center', color: '#6b778c' }}>No tasks with dates to display</div>
-    const allDates = ganttTasks.flatMap(t => [t.start_date, t.due_date]).filter(Boolean).map(d => new Date(d))
-    const minDate = allDates.length ? new Date(Math.min(...allDates)) : new Date()
-    const maxDate = allDates.length ? new Date(Math.max(...allDates)) : new Date()
-    minDate.setDate(minDate.getDate() - 3); maxDate.setDate(maxDate.getDate() + 7)
-    const totalDays = Math.max(Math.ceil((maxDate - minDate) / 86400000), 14)
-    const dayW = Math.max(24, Math.min(40, 800 / totalDays))
-    const labelW = 220
-    const today = new Date()
-    const todayPos = Math.ceil((today - minDate) / 86400000) * dayW
-    const weeks = []; let cur = new Date(minDate)
-    while (cur <= maxDate) { weeks.push(new Date(cur)); cur.setDate(cur.getDate() + 7) }
-    return (
-      <div style={{ overflowX: 'auto', marginTop: 12, border: '1px solid #dfe1e6', borderRadius: 8 }}>
-        <div style={{ minWidth: labelW + totalDays * dayW + 20 }}>
-          <div style={{ display: 'flex', background: '#f8f9fc', borderBottom: '2px solid #dfe1e6', position: 'sticky', top: 0, zIndex: 5 }}>
-            <div style={{ width: labelW, flexShrink: 0, padding: '8px 12px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', borderRight: '1px solid #dfe1e6' }}>Task</div>
-            <div style={{ flex: 1, position: 'relative', height: 36 }}>
-              {weeks.map((w, i) => <div key={i} style={{ position: 'absolute', left: Math.ceil((w - minDate) / 86400000) * dayW, top: 0, bottom: 0, borderLeft: '1px solid #e5e7eb', padding: '10px 4px', fontSize: 10, fontWeight: 700, color: '#6b778c', whiteSpace: 'nowrap' }}>{w.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</div>)}
-            </div>
-          </div>
-          <div style={{ position: 'relative' }}>
-            <div style={{ position: 'absolute', left: labelW + todayPos, top: 0, bottom: 0, width: 2, background: '#de350b', zIndex: 4, pointerEvents: 'none' }} />
-            {ganttTasks.map(task => {
-              const s = statusMap[task.status] || STATUSES[0]
-              const start = task.start_date ? Math.ceil((new Date(task.start_date) - minDate) / 86400000) * dayW : null
-              const end = task.due_date ? Math.ceil((new Date(task.due_date) - minDate) / 86400000) * dayW + dayW : null
-              const barW = start !== null && end !== null ? Math.max(end - start, dayW) : null
-              return (
-                <div key={task.id} style={{ display: 'flex', borderBottom: '1px solid #f0f1f3', minHeight: 34 }}>
-                  <div style={{ width: labelW, flexShrink: 0, padding: '7px 12px', borderRight: '1px solid #f0f1f3', fontSize: 12, color: '#172b4d', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <OwnerAvatar name={task.assigned_to} />
-                    <span title={task.title}>{task.title}</span>
-                  </div>
-                  <div style={{ flex: 1, position: 'relative', background: '#fff' }}>
-                    {barW && <div style={{ position: 'absolute', left: start, top: 6, height: 20, width: barW, background: s.color, borderRadius: 4, opacity: 0.85, display: 'flex', alignItems: 'center', paddingLeft: 6, overflow: 'hidden' }}>
-                      <span style={{ fontSize: 10, color: '#fff', fontWeight: 700, whiteSpace: 'nowrap' }}>{task.title}</span>
-                    </div>}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div style={{ marginBottom: 40, background: '#fff', borderRadius: 12, border: '1px solid #dfe1e6', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
@@ -237,7 +186,7 @@ export default function ProjectSection({ project, tasks, allTasks, onUpdate, onD
         )}
 
         {projectTab === 'kanban' && <KanbanBoard tasks={tasks} project={project} onSelect={onSelect} onUpdate={onUpdate} onAddTask={onAddTask} />}
-        {projectTab === 'gantt' && <ProjectGantt />}
+        {projectTab === 'gantt' && <ProjectGanttChart tasks={tasks} onSelectTask={onSelect} />}
         {projectTab === 'dashboard' && <ProjectDashboard project={project} tasks={tasks} color={color} />}
       </div>
     </div>

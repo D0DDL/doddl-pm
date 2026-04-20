@@ -12,7 +12,7 @@ import CommentBody from './CommentBody'
 import MentionInput from './MentionInput'
 import ApprovalTaskPanel from './ApprovalTaskPanel'
 
-export default function TaskDetailPanel({ task, user, onClose, onUpdate }) {
+export default function TaskDetailPanel({ task, user, onClose, onUpdate, allTasks = [] }) {
   const [comments, setComments]   = useState([])
   const [newComment, setNewComment] = useState('')
   const [posting, setPosting]     = useState(false)
@@ -117,6 +117,39 @@ export default function TaskDetailPanel({ task, user, onClose, onUpdate }) {
             <FieldLabel label="Progress" />
             <ProgressBar value={editTask.progress} onChange={v => save('progress', v)} />
           </div>
+        </div>
+
+        {/* Dependencies (feature #13) */}
+        <div style={{ padding: '12px 20px', borderBottom: '1px solid #f0f1f3' }}>
+          <FieldLabel label="Depends on" />
+          {(() => {
+            const candidates = allTasks.filter(t => t.id !== editTask.id && t.project_id === editTask.project_id && !t.is_group)
+            const current = editTask.depends_on ? allTasks.find(t => t.id === editTask.depends_on) : null
+            const blocked = current && current.status !== 'done'
+            return (
+              <>
+                <select value={editTask.depends_on || ''} onChange={e => save('depends_on', e.target.value || null)}
+                  style={{ width: '100%', border: '1px solid #dfe1e6', borderRadius: 6, padding: '6px 10px', fontSize: 13, fontFamily: 'Nunito, sans-serif', background: '#fff', color: '#172b4d' }}>
+                  <option value="">— No dependency —</option>
+                  {candidates.map(t => (
+                    <option key={t.id} value={t.id}>
+                      {(t.status === 'done' ? '✓ ' : '◯ ') + (t.title || '(untitled)').slice(0, 70)}
+                    </option>
+                  ))}
+                </select>
+                {current && (
+                  <p style={{ fontSize: 11, marginTop: 6, color: blocked ? '#de350b' : '#00875a', fontWeight: 700 }}>
+                    {blocked
+                      ? `⚠ Blocked — "${(current.title || '').slice(0, 40)}" is not done yet (status: ${current.status})`
+                      : `✓ Dependency satisfied — "${(current.title || '').slice(0, 40)}" is done`}
+                  </p>
+                )}
+                {!candidates.length && !current && (
+                  <p style={{ fontSize: 11, marginTop: 6, color: '#a0aec0' }}>No other tasks in this project to depend on yet.</p>
+                )}
+              </>
+            )
+          })()}
         </div>
 
         {/* Notes */}

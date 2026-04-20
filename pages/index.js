@@ -137,7 +137,7 @@ export default function Home() {
         </main>
       </div>
 
-      {selectedTask && <TaskDetailPanel task={selectedTask} user={user} onClose={() => setSelectedTask(null)} onUpdate={load} />}
+      {selectedTask && <TaskDetailPanel task={selectedTask} user={user} allTasks={tasks} onClose={() => setSelectedTask(null)} onUpdate={load} />}
       {showAddTask && <AddTaskModal projects={projects} parentId={addTaskParentId} projectId={addTaskProjectId} allTasks={tasks} onClose={() => setShowAddTask(false)} onSaved={load} currentUser={user} />}
       {showAddProject && <AddProjectModal onClose={() => setShowAddProject(false)} onSaved={load} colorIndex={projects.length} />}
       <div id="timeline-portal" />
