@@ -32,8 +32,6 @@ export default function Home() {
   const [addTaskParentId, setAddTaskParentId]   = useState(null)
   const [search, setSearch]                     = useState('')
   const [selectedTask, setSelectedTask]         = useState(null)
-  const [mwFilter, setMwFilter]                 = useState({ status: '', priority: '', project: '' })
-  const [mwSort, setMwSort]                     = useState('due')
 
   useEffect(() => {
     (async () => {
@@ -113,11 +111,9 @@ export default function Home() {
           {loading ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60%', color: '#6b778c', fontWeight: 600 }}>Loading...</div>
           ) : view === 'mywork' ? (
-            <MyWorkView visibleTasks={visibleTasks} userName={userName}
-              mwFilter={mwFilter} setMwFilter={setMwFilter} mwSort={mwSort} setMwSort={setMwSort}
-              projects={projects} setSelectedTask={setSelectedTask} load={load} />
+            <MyWorkView myFlowTasks={myFlowTasks} setSelectedTask={setSelectedTask} load={load} />
           ) : view === 'myprojects' ? (
-            <MyProjectsView myFlowTasks={myFlowTasks} setSelectedTask={setSelectedTask} load={load} />
+            <MyProjectsView projects={projects} visibleTasks={visibleTasks} userName={userName} setActiveProject={setActiveProject} />
           ) : view === 'inbox' ? (
             <InboxView notifications={notifications} tasks={tasks} unreadCount={unreadCount}
               markRead={markRead} markAllRead={markAllRead} setSelectedTask={setSelectedTask} />

@@ -1,65 +1,97 @@
-import { supabase } from '../lib/supabase'
-import { SOURCE_COLORS } from '../lib/constants'
-import StatusBadge from './StatusBadge'
-import PriorityBadge from './PriorityBadge'
+import { getProjectColor } from '../lib/team'
+import OwnerAvatar from './OwnerAvatar'
 
-const SOURCE_ORDER = ['teamsmaestro', 'teams', 'email']
+// My Projects — projects where the current user is the owner.
+// Clicking a project navigates into its detail view.
+export default function MyProjectsView({ projects, visibleTasks, userName, setActiveProject }) {
+  const mine = projects.filter(p => (p.owner || '').toLowerCase() === (userName || '').toLowerCase())
 
-export default function MyProjectsView({ myFlowTasks, setSelectedTask, load }) {
-  const grouped = SOURCE_ORDER.reduce((acc, src) => { acc[src] = myFlowTasks.filter(t => t.source === src); return acc }, {})
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <div>
           <h2 style={{ fontWeight: 800, fontSize: 18, color: 'var(--indigo)' }}>My Projects</h2>
-          <p style={{ fontSize: 13, color: '#6b778c', fontWeight: 600, marginTop: 2 }}>Your actions from Email, Teams and TeamsMAestro — visible only to you</p>
+          <p style={{ fontSize: 13, color: '#6b778c', fontWeight: 600, marginTop: 2 }}>Projects you own</p>
         </div>
-        <div style={{ marginLeft: 'auto', background: '#f0f4ff', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, color: 'var(--indigo)' }}>{myFlowTasks.length} tasks</div>
+        <div style={{ marginLeft: 'auto', background: '#f0f4ff', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, color: 'var(--indigo)' }}>
+          {mine.length} project{mine.length !== 1 ? 's' : ''}
+        </div>
       </div>
-      {myFlowTasks.length === 0 ? (
+
+      {mine.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 60, color: '#6b778c' }}>
-          <p style={{ fontSize: 32, marginBottom: 8 }}>📬</p>
-          <p style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>No tasks yet</p>
-          <p style={{ fontSize: 13 }}>Tasks from Email, Teams and TeamsMAestro assigned to you will appear here</p>
+          <p style={{ fontSize: 32, marginBottom: 8 }}>📋</p>
+          <p style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>You don&apos;t own any projects yet</p>
+          <p style={{ fontSize: 13 }}>Projects where your name is set as the owner will appear here</p>
         </div>
-      ) : SOURCE_ORDER.map(src => {
-        const srcTasks = grouped[src]
-        if (!srcTasks.length) return null
-        const srcInfo = SOURCE_COLORS[src] || SOURCE_COLORS.manual
-        return (
-          <div key={src} style={{ marginBottom: 28 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <span style={{ background: srcInfo.bg, color: srcInfo.color, borderRadius: 4, padding: '3px 10px', fontSize: 12, fontWeight: 700 }}>{srcInfo.label}</span>
-              <span style={{ fontSize: 12, color: '#6b778c', fontWeight: 600 }}>{srcTasks.length} task{srcTasks.length !== 1 ? 's' : ''}</span>
-            </div>
-            <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #dfe1e6', overflow: 'hidden' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead><tr style={{ background: '#f8f9fc', borderBottom: '1px solid #dfe1e6' }}>
-                  {['Task', 'Status', 'Due', 'Priority'].map(h => <th key={h} style={{ padding: '7px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase' }}>{h}</th>)}
-                </tr></thead>
-                <tbody>
-                  {srcTasks.map(task => (
-                    <tr key={task.id} style={{ borderBottom: '1px solid #f0f1f3', cursor: 'pointer' }}
-                      onClick={() => setSelectedTask(task)}
-                      onMouseEnter={e => e.currentTarget.style.background = '#f8f9ff'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                      <td style={{ padding: '9px 12px' }}>
-                        <p style={{ fontSize: 13, fontWeight: 600, color: '#172b4d' }}>{task.title}</p>
-                        {task.notes && <p style={{ fontSize: 11, color: '#6b778c', marginTop: 2 }}>{String(task.notes).substring(0, 60)}...</p>}
-                      </td>
-                      <td style={{ padding: '9px 12px' }}><StatusBadge value={task.status} onChange={async v => { await supabase.from('tasks').update({ status: v }).eq('id', task.id); load() }} /></td>
-                      <td style={{ padding: '9px 12px', fontSize: 12, color: task.due_date && new Date(task.due_date) < new Date() ? '#de350b' : '#42526e', fontWeight: 600 }}>
-                        {task.due_date ? new Date(task.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}
-                      </td>
-                      <td style={{ padding: '9px 12px' }}><PriorityBadge value={task.priority} onChange={async v => { await supabase.from('tasks').update({ priority: v }).eq('id', task.id); load() }} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )
-      })}
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+          {mine.map((project) => {
+            // Find index in the full projects array so colour assignment is stable
+            const i = projects.findIndex(p => p.id === project.id)
+            const pTasks   = visibleTasks.filter(t => t.project_id === project.id)
+            const realP    = pTasks.filter(t => !t.is_group)
+            const total    = realP.length
+            const done     = realP.filter(t => t.status === 'done').length
+            const inProg   = realP.filter(t => ['in_progress','on_track'].includes(t.status)).length
+            const overdue  = realP.filter(t => t.due_date && t.due_date < new Date().toISOString().split('T')[0] && t.status !== 'done').length
+            const pct      = total ? Math.round(done / total * 100) : 0
+            const color    = getProjectColor(project, i >= 0 ? i : 0)
+            const prioMap  = { critical: '#de350b', high: '#ff8b00', medium: '#0052cc', low: '#6b778c' }
+            const prioColor = prioMap[project.priority] || '#6b778c'
+            return (
+              <div key={project.id} onClick={() => setActiveProject(project.id)}
+                style={{ background: '#fff', borderRadius: 12, border: '1px solid #dfe1e6', overflow: 'hidden', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', transition: 'box-shadow 0.15s, transform 0.15s' }}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.12)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.06)'; e.currentTarget.style.transform = 'translateY(0)' }}>
+                <div style={{ height: 6, background: color }} />
+                <div style={{ padding: '18px 20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <h3 style={{ fontWeight: 800, fontSize: 15, color: '#172b4d', lineHeight: 1.3, flex: 1, marginRight: 8 }}>{project.name}</h3>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: prioColor, background: prioColor + '18', borderRadius: 10, padding: '2px 8px', whiteSpace: 'nowrap', flexShrink: 0 }}>{(project.priority || 'medium').toUpperCase()}</span>
+                  </div>
+                  {project.description && (
+                    <p style={{ fontSize: 12, color: '#6b778c', lineHeight: 1.5, marginBottom: 14, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{project.description}</p>
+                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <OwnerAvatar name={project.owner} />
+                      <span style={{ fontSize: 12, color: '#42526e', fontWeight: 600 }}>{project.owner}</span>
+                    </div>
+                    {project.due_date && (
+                      <span style={{ fontSize: 11, color: '#6b778c', background: '#f0f1f3', borderRadius: 6, padding: '2px 8px', marginLeft: 'auto' }}>
+                        Due {new Date(project.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <span style={{ fontSize: 11, color: '#6b778c', fontWeight: 600 }}>Progress</span>
+                      <span style={{ fontSize: 11, fontWeight: 800, color }}>{pct}%</span>
+                    </div>
+                    <div style={{ height: 6, background: '#f0f1f3', borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 3, transition: 'width 0.4s' }} />
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+                    {[
+                      { label: 'Total',    value: total,   col: '#172b4d', bg: '#f0f1f3' },
+                      { label: 'Done',     value: done,    col: '#00875a', bg: '#e3fcef' },
+                      { label: 'Active',   value: inProg,  col: '#0052cc', bg: '#e9f2ff' },
+                      { label: 'Overdue',  value: overdue, col: overdue > 0 ? '#de350b' : '#6b778c', bg: overdue > 0 ? '#ffebe6' : '#f0f1f3' },
+                    ].map(({ label, value, col, bg }) => (
+                      <div key={label} style={{ background: bg, borderRadius: 6, padding: '6px 8px', textAlign: 'center' }}>
+                        <p style={{ fontSize: 16, fontWeight: 800, color: col, lineHeight: 1 }}>{value}</p>
+                        <p style={{ fontSize: 10, color: '#6b778c', fontWeight: 600, marginTop: 2 }}>{label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </>
   )
 }
