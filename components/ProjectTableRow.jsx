@@ -49,6 +49,27 @@ export default function ProjectTableRow({ task, projectColor, onUpdate, onDelete
     if (!error) onUpdate()
   }
 
+  // UI #11 — progress % drives status:
+  //   0%         → not_started
+  //   1..99%     → in_progress
+  //   100%       → done
+  // Exception: if already at an explicit "state" value (on_track / at_risk /
+  // blocked), we keep that — only flip from vanilla not_started / in_progress /
+  // done to the auto-derived value, so a user's explicit state isn't clobbered.
+  const handleProgress = async (v) => {
+    const pct = Math.max(0, Math.min(100, Number(v) || 0))
+    setLocalProgress(pct)
+    const updates = { progress: pct }
+    const auto = pct === 0 ? 'not_started' : pct === 100 ? 'done' : 'in_progress'
+    const vanilla = new Set(['not_started', 'in_progress', 'done'])
+    if (vanilla.has(localStatus) && auto !== localStatus) {
+      updates.status = auto
+      setLocalStatus(auto)
+    }
+    const { error } = await supabase.from('tasks').update(updates).eq('id', task.id)
+    if (!error) onUpdate()
+  }
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', borderLeft: `4px solid ${projectColor}`, borderBottom: '1px solid #f0f1f3', minHeight: 40, background: selected ? '#f0f4ff' : 'transparent' }}
       onMouseEnter={e => { if (!selected) e.currentTarget.style.background = '#f8f9ff' }}
@@ -99,7 +120,7 @@ export default function ProjectTableRow({ task, projectColor, onUpdate, onDelete
       </div>
       {/* Progress */}
       <div style={{ width: W.progress, padding: '4px 6px' }}>
-        <ProgressBar value={localProgress} onChange={v => { setLocalProgress(v); save('progress', v) }} />
+        <ProgressBar value={localProgress} onChange={handleProgress} />
       </div>
     </div>
   )

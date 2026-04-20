@@ -82,7 +82,9 @@ export default function Home() {
   // Visibility: flow tasks only show to the assigned user unless linked to a project
   const visibleTasks = tasks.filter(t => (t.source === 'manual' || !t.source || t.project_id || !t.assigned_to) || t.assigned_to.toLowerCase() === userName.toLowerCase())
   const filteredTasks = search ? visibleTasks.filter(t => t.title?.toLowerCase().includes(search.toLowerCase())) : visibleTasks
-  const myFlowTasks   = visibleTasks.filter(t => ['email','teams','teamsmaestro'].includes(t.source) && t.assigned_to?.toLowerCase() === userName.toLowerCase())
+  // Count of every open task (not done, not a group) assigned to the current user,
+  // used as the sidebar badge next to My Work.
+  const myOpenTasksCount = visibleTasks.filter(t => !t.is_group && t.status !== 'done' && t.assigned_to?.toLowerCase() === userName.toLowerCase()).length
   const unreadCount   = notifications.filter(n => !n.read).length
 
   if (authLoading) return (
@@ -105,13 +107,14 @@ export default function Home() {
       <div style={{ display: 'flex', height: 'calc(100vh - 52px)' }}>
         <AppSidebar view={view} setView={setView} projects={projects}
           activeProject={activeProject} setActiveProject={setActiveProject}
-          myFlowCount={myFlowTasks.length} unreadCount={unreadCount} />
+          myFlowCount={myOpenTasksCount} unreadCount={unreadCount} />
 
         <main style={{ flex: 1, overflowY: 'auto', padding: 20, marginRight: selectedTask ? 380 : 0 }}>
           {loading ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60%', color: '#6b778c', fontWeight: 600 }}>Loading...</div>
           ) : view === 'mywork' ? (
-            <MyWorkView myFlowTasks={myFlowTasks} setSelectedTask={setSelectedTask} load={load} />
+            <MyWorkView visibleTasks={visibleTasks} userName={userName}
+              projects={projects} setSelectedTask={setSelectedTask} load={load} />
           ) : view === 'myprojects' ? (
             <MyProjectsView projects={projects} visibleTasks={visibleTasks} userName={userName} setActiveProject={setActiveProject} />
           ) : view === 'inbox' ? (

@@ -49,15 +49,23 @@ export default function ProjectGanttChart({ tasks, onSelectTask }) {
   const maxDate = new Date(Math.max(...allDates))
   minDate.setDate(minDate.getDate() - 3); maxDate.setDate(maxDate.getDate() + 7)
   const totalDays = Math.max(Math.ceil((maxDate - minDate) / 86400000), 14)
-  const dayW  = Math.max(24, Math.min(40, 900 / totalDays))
+  // Minimum 18px/day so weekly labels always have >= 126px of breathing room —
+  // well above the ~46px needed for "20 Apr 2026" style formatting.
+  const dayW  = Math.max(18, Math.min(40, 1100 / totalDays))
   const labelW = 240
   const rowH   = 34
   const barTop = 7
   const barH   = 20
   const today = new Date()
   const todayPos = Math.ceil((today - minDate) / 86400000) * dayW
-  const weeks = []; let cur = new Date(minDate)
-  while (cur <= maxDate) { weeks.push(new Date(cur)); cur.setDate(cur.getDate() + 7) }
+  // Pick a label cadence that guarantees readable spacing at any zoom.
+  const weekPx = 7 * dayW
+  const labelEveryN = weekPx >= 90 ? 1 : weekPx >= 55 ? 2 : 4
+  const weeks = []; let cur = new Date(minDate), wi = 0
+  while (cur <= maxDate) {
+    weeks.push({ date: new Date(cur), label: wi % labelEveryN === 0 })
+    cur.setDate(cur.getDate() + 7); wi++
+  }
 
   const xStart = (d) => Math.ceil((new Date(d) - minDate) / 86400000) * dayW
   const xEnd   = (d) => Math.ceil((new Date(d) - minDate) / 86400000) * dayW + dayW
@@ -95,13 +103,17 @@ export default function ProjectGanttChart({ tasks, onSelectTask }) {
         selStyle={selStyle} toggleStyle={toggleStyle} />
       <div style={{ overflowX: 'auto', marginTop: 12, border: '1px solid #dfe1e6', borderRadius: 8 }}>
         <div style={{ minWidth: labelW + chartWidth + 20 }}>
-          {/* Header: week labels */}
+          {/* Header: week labels — gridlines at every week, text labels only
+              at cadence that fits the available pixel width */}
           <div style={{ display: 'flex', background: '#f8f9fc', borderBottom: '2px solid #dfe1e6', position: 'sticky', top: 0, zIndex: 5 }}>
             <div style={{ width: labelW, flexShrink: 0, padding: '8px 12px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', borderRight: '1px solid #dfe1e6' }}>Task</div>
             <div style={{ flex: 1, position: 'relative', height: 36 }}>
               {weeks.map((w, i) => (
-                <div key={i} style={{ position: 'absolute', left: Math.ceil((w - minDate) / 86400000) * dayW, top: 0, bottom: 0, borderLeft: '1px solid #e5e7eb', padding: '10px 4px', fontSize: 10, fontWeight: 700, color: '#6b778c', whiteSpace: 'nowrap' }}>
-                  {w.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                <div key={i} style={{ position: 'absolute', left: Math.ceil((w.date - minDate) / 86400000) * dayW, top: 0, bottom: 0, borderLeft: '1px solid #e5e7eb' }} />
+              ))}
+              {weeks.filter(w => w.label).map((w, i) => (
+                <div key={`t-${i}`} style={{ position: 'absolute', left: Math.ceil((w.date - minDate) / 86400000) * dayW + 4, top: 10, fontSize: 10, fontWeight: 700, color: '#6b778c', whiteSpace: 'nowrap' }}>
+                  {w.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                 </div>
               ))}
             </div>

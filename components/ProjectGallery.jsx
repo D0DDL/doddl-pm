@@ -169,12 +169,20 @@ function GanttView({ projects, projectsAll, setActiveProject }) {
   const maxDate = new Date(Math.max(...allDates))
   minDate.setDate(minDate.getDate() - 7); maxDate.setDate(maxDate.getDate() + 14)
   const totalDays = Math.max(Math.ceil((maxDate - minDate) / 86400000), 30)
-  const dayW = Math.max(4, Math.min(16, 1200 / totalDays))
+  // Minimum 8 px/day so the chart doesn't squash below readability. Horizontal
+  // scroll is preferred to an unreadable chart.
+  const dayW = Math.max(8, Math.min(24, 2000 / totalDays))
   const labelW = 220
   const today = new Date()
   const todayPos = Math.ceil((today - minDate) / 86400000) * dayW
-  const weeks = []; let cur = new Date(minDate)
-  while (cur <= maxDate) { weeks.push(new Date(cur)); cur.setDate(cur.getDate() + 7) }
+  // Label cadence adapts to week spacing: 1/2/4 weeks between text labels.
+  const weekPx = 7 * dayW
+  const labelEveryN = weekPx >= 90 ? 1 : weekPx >= 55 ? 2 : 4
+  const weeks = []; let cur = new Date(minDate), wi = 0
+  while (cur <= maxDate) {
+    weeks.push({ date: new Date(cur), label: wi % labelEveryN === 0 })
+    cur.setDate(cur.getDate() + 7); wi++
+  }
   return (
     <div style={{ overflowX: 'auto', background: '#fff', border: '1px solid #dfe1e6', borderRadius: 10 }}>
       <div style={{ minWidth: labelW + totalDays * dayW + 20 }}>
@@ -182,8 +190,11 @@ function GanttView({ projects, projectsAll, setActiveProject }) {
           <div style={{ width: labelW, flexShrink: 0, padding: '8px 12px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', borderRight: '1px solid #dfe1e6' }}>Project</div>
           <div style={{ flex: 1, position: 'relative', height: 34 }}>
             {weeks.map((w, i) => (
-              <div key={i} style={{ position: 'absolute', left: Math.ceil((w - minDate) / 86400000) * dayW, top: 0, bottom: 0, borderLeft: '1px solid #e5e7eb', padding: '10px 4px', fontSize: 10, fontWeight: 700, color: '#6b778c', whiteSpace: 'nowrap' }}>
-                {w.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+              <div key={`g-${i}`} style={{ position: 'absolute', left: Math.ceil((w.date - minDate) / 86400000) * dayW, top: 0, bottom: 0, borderLeft: '1px solid #e5e7eb' }} />
+            ))}
+            {weeks.filter(w => w.label).map((w, i) => (
+              <div key={`t-${i}`} style={{ position: 'absolute', left: Math.ceil((w.date - minDate) / 86400000) * dayW + 4, top: 10, fontSize: 10, fontWeight: 700, color: '#6b778c', whiteSpace: 'nowrap' }}>
+                {w.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
               </div>
             ))}
           </div>

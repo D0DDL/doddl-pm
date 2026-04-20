@@ -31,8 +31,23 @@ export default function TaskDetailPanel({ task, user, onClose, onUpdate, allTask
 
   const save = async (field, value) => {
     setSaving(true)
-    setEditTask(t => ({ ...t, [field]: value }))
-    await supabase.from('tasks').update({ [field]: value }).eq('id', task.id)
+    const patch = { [field]: value }
+    // UI #11 — progress→status cascade (mirrors ProjectTableRow.handleProgress)
+    if (field === 'progress') {
+      const pct = Math.max(0, Math.min(100, Number(value) || 0))
+      patch.progress = pct
+      const auto = pct === 0 ? 'not_started' : pct === 100 ? 'done' : 'in_progress'
+      const vanilla = new Set(['not_started', 'in_progress', 'done'])
+      if (vanilla.has(editTask.status) && auto !== editTask.status) {
+        patch.status = auto
+      }
+    }
+    // And the reverse: marking status='done' auto-bumps progress to 100
+    if (field === 'status' && value === 'done' && (editTask.progress ?? 0) !== 100) {
+      patch.progress = 100
+    }
+    setEditTask(t => ({ ...t, ...patch }))
+    await supabase.from('tasks').update(patch).eq('id', task.id)
     setSaving(false)
     onUpdate()
   }
