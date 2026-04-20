@@ -95,7 +95,7 @@ Never hardcode. Never log. Never commit .env.local.
 - CSS/styling changes
 
 ### PROPOSE and wait for Jon approval before:
-- Any SQL migration against Supabase
+- Any SQL migration against production Supabase (staging migrations may be applied directly per Hard Rule 3)
 - Any change to authentication logic
 - Any change to pages/api/tasks.js
 - Adding new environment variables
@@ -199,7 +199,7 @@ AWAITING APPROVAL: [anything needing Jon sign-off]
 
 1. staging branch only — never main
 2. Staging Supabase only — never ikcjciscttsvpxoijnqe
-3. SQL migrations proposed first, applied only after Jon confirms
+3. SQL migrations — Claude Code may apply directly to staging Supabase (iknwprxycshrickpswjz). Production Supabase (ikcjciscttsvpxoijnqe) migrations remain manual, Jon-only.
 4. MSAL auth never modified without explicit instruction
 5. pages/api/tasks.js never modified (Power Automate depends on it)
 6. No npm package installed without stating name, version, reason first
