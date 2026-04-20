@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabase'
 import { STATUSES, PRIORITIES, priorityMap } from '../lib/constants'
 import OwnerAvatar from './OwnerAvatar'
 
-export default function KanbanBoard({ tasks, project, onSelect, onUpdate, onAddTask }) {
+export default function KanbanBoard({ tasks, project, onSelect, onUpdate, onPatch, onAddTask }) {
   const cols = STATUSES.map(s => ({ ...s, tasks: tasks.filter(t => t.status === s.key && !t.is_group) }))
   return (
     <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 16, paddingTop: 12 }}>
@@ -29,7 +29,7 @@ export default function KanbanBoard({ tasks, project, onSelect, onUpdate, onAddT
                   {task.assigned_to && <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}><OwnerAvatar name={task.assigned_to} /><span style={{ fontSize: 11, color: '#42526e' }}>{task.assigned_to}</span></div>}
                   <div style={{ display: 'flex', gap: 3, marginTop: 8, flexWrap: 'wrap' }}>
                     {STATUSES.filter(s => s.key !== col.key).slice(0, 2).map(s => (
-                      <button key={s.key} onClick={async e => { e.stopPropagation(); await supabase.from('tasks').update({ status: s.key }).eq('id', task.id); onUpdate() }}
+                      <button key={s.key} onClick={async e => { e.stopPropagation(); if (onPatch) onPatch(task.id, { status: s.key }); await supabase.from('tasks').update({ status: s.key }).eq('id', task.id); onUpdate() }}
                         style={{ fontSize: 9, padding: '2px 5px', borderRadius: 3, border: `1px solid ${s.color}`, background: 'transparent', color: s.color, cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>→ {s.label}</button>
                     ))}
                   </div>

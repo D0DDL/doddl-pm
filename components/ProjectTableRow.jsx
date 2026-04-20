@@ -7,8 +7,10 @@ import PriorityBadge from './PriorityBadge'
 import ProgressBar from './ProgressBar'
 import TimelineCell from './TimelineCell'
 
-export default function ProjectTableRow({ task, projectColor, onUpdate, onDelete, onSelect, depth = 0, selected, onToggleSelect, widths }) {
+export default function ProjectTableRow({ task, projectColor, onUpdate, onPatch, onDelete, onSelect, depth = 0, selected, onToggleSelect, widths }) {
   const W = widths || W_DEFAULT
+  // Safe wrapper — onPatch is optional; if parent didn't wire it, just no-op.
+  const patchParent = (p) => { if (onPatch) onPatch(task.id, p) }
   // Saves write to DB then trigger parent refresh. The taskIdRef guard (below)
   // prevents the refresh from wiping mid-interaction local state.
   const save = async (field, value) => {
@@ -72,6 +74,7 @@ export default function ProjectTableRow({ task, projectColor, onUpdate, onDelete
     setLocalStatus(v)
     const updates = { status: v }
     if (v === 'done') { updates.progress = 100; setLocalProgress(100) }
+    patchParent(updates)   // optimistic — so header pct, gallery % etc update instantly
     const { error } = await supabase.from('tasks').update(updates).eq('id', task.id)
     if (!error) onUpdate()
   }
@@ -93,6 +96,7 @@ export default function ProjectTableRow({ task, projectColor, onUpdate, onDelete
       updates.status = auto
       setLocalStatus(auto)
     }
+    patchParent(updates)   // optimistic
     const { error } = await supabase.from('tasks').update(updates).eq('id', task.id)
     if (!error) onUpdate()
   }

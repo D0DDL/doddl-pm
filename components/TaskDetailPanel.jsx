@@ -15,7 +15,7 @@ import ApprovalTaskPanel from './ApprovalTaskPanel'
 const MIN_W = 300, MAX_W = 800, DEFAULT_W = 400, STORAGE_KEY = 'doddl-pm-detail-panel-width'
 export const TASK_PANEL = { MIN: MIN_W, MAX: MAX_W, DEFAULT: DEFAULT_W, STORAGE_KEY }
 
-export default function TaskDetailPanel({ task, user, onClose, onUpdate, allTasks = [], panelW, setPanelW }) {
+export default function TaskDetailPanel({ task, user, onClose, onUpdate, onPatch, allTasks = [], panelW, setPanelW }) {
   const [comments, setComments]   = useState([])
   const [newComment, setNewComment] = useState('')
   const [posting, setPosting]     = useState(false)
@@ -98,6 +98,7 @@ export default function TaskDetailPanel({ task, user, onClose, onUpdate, allTask
       patch.progress = 100
     }
     setEditTask(t => ({ ...t, ...patch }))
+    if (onPatch) onPatch(task.id, patch)   // optimistic propagation to parent tasks array
     await supabase.from('tasks').update(patch).eq('id', task.id)
     setSaving(false)
     onUpdate()

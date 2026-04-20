@@ -77,6 +77,14 @@ export default function Home() {
   }, [userName])
   useEffect(() => { if (userName) loadNotifications() }, [userName, loadNotifications])
 
+  // Optimistic single-task patch — used by row-level and sidebar edits so the
+  // project-header progress bar (and any other derived count) updates in the
+  // same React tick, before the DB round-trip completes. load() still runs
+  // afterwards via onUpdate so any server-side changes are reconciled.
+  const patchTask = useCallback((id, patch) => {
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t))
+  }, [])
+
   const markRead    = async id => { await supabase.from('notifications').update({ read: true }).eq('id', id); loadNotifications() }
   const markAllRead = async () => { await supabase.from('notifications').update({ read: true }).eq('user_name', userName).eq('read', false); loadNotifications() }
   const deleteTask  = async id => { await supabase.from('tasks').delete().eq('id', id); load() }
@@ -124,7 +132,8 @@ export default function Home() {
             <MyWorkView visibleTasks={visibleTasks} userName={userName}
               projects={projects} setSelectedTask={setSelectedTask} load={load} />
           ) : view === 'myprojects' ? (
-            <MyProjectsView projects={projects} visibleTasks={visibleTasks} userName={userName} setActiveProject={setActiveProject} />
+            <MyProjectsView projects={projects} visibleTasks={visibleTasks} userName={userName}
+              setActiveProject={(id) => { setView('board'); setActiveProject(id) }} />
           ) : view === 'inbox' ? (
             <InboxView notifications={notifications} tasks={tasks} unreadCount={unreadCount}
               markRead={markRead} markAllRead={markAllRead} setSelectedTask={setSelectedTask} />
@@ -138,7 +147,7 @@ export default function Home() {
               </div>
               <ProjectSection key={activeProjectData.id} project={activeProjectData} colorIndex={activeProjectIdx}
                 tasks={(search ? filteredTasks : visibleTasks).filter(t => t.project_id === activeProjectData.id)}
-                allTasks={visibleTasks} onUpdate={load} onDelete={deleteTask}
+                allTasks={visibleTasks} onUpdate={load} onPatch={patchTask} onDelete={deleteTask}
                 onAddTask={handleAddTask} onAddSubtask={handleAddSubtask} onSelect={setSelectedTask} />
             </>
           ) : (
@@ -148,7 +157,7 @@ export default function Home() {
         </main>
       </div>
 
-      {selectedTask && <TaskDetailPanel task={selectedTask} user={user} allTasks={tasks} onClose={() => setSelectedTask(null)} onUpdate={load} panelW={taskPanelW} setPanelW={setTaskPanelW} />}
+      {selectedTask && <TaskDetailPanel task={selectedTask} user={user} allTasks={tasks} onClose={() => setSelectedTask(null)} onUpdate={load} onPatch={patchTask} panelW={taskPanelW} setPanelW={setTaskPanelW} />}
       {showAddTask && <AddTaskModal projects={projects} parentId={addTaskParentId} projectId={addTaskProjectId} allTasks={tasks} onClose={() => setShowAddTask(false)} onSaved={load} currentUser={user} />}
       {showAddProject && <AddProjectModal onClose={() => setShowAddProject(false)} onSaved={load} colorIndex={projects.length} />}
       <div id="timeline-portal" />

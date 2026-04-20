@@ -12,7 +12,7 @@ const WIDTHS_STORAGE_KEY = 'doddl-pm-project-col-widths'
 const MIN_W = { select: 28, owner: 60, status: 70, timeline: 110, effort: 40, priority: 60, progress: 80 }
 const MAX_W = { select: 28, owner: 200, status: 200, timeline: 340, effort: 100, priority: 160, progress: 300 }
 
-export default function ProjectSection({ project, tasks, allTasks, onUpdate, onDelete, onAddTask, onAddSubtask, onSelect, colorIndex, projects, user }) {
+export default function ProjectSection({ project, tasks, allTasks, onUpdate, onPatch, onDelete, onAddTask, onAddSubtask, onSelect, colorIndex, projects, user }) {
   const [projectTab, setProjectTab] = useState('table')
   const [addingGroup, setAddingGroup] = useState(false)
   const [groupName, setGroupName] = useState('')
@@ -202,7 +202,7 @@ export default function ProjectSection({ project, tasks, allTasks, onUpdate, onD
             {/* Groups with their tasks */}
             {groups.map((group, gi) => (
               <ProjectGroup key={group.id} group={group} allTasks={allTasks} projectColor={color}
-                groupIndex={gi} onUpdate={onUpdate} onDelete={onDelete} onAddSubtask={onAddSubtask}
+                groupIndex={gi} onUpdate={onUpdate} onPatch={onPatch} onDelete={onDelete} onAddSubtask={onAddSubtask}
                 onSelect={onSelect} onAddTask={onAddTask} projectId={project.id}
                 selectedIds={selectedIds} onToggleSelect={onToggleSelect} widths={W} />
             ))}
@@ -212,7 +212,7 @@ export default function ProjectSection({ project, tasks, allTasks, onUpdate, onD
               <div>
                 {ungroupedTasks.map(task => (
                   <ProjectTableRow key={task.id} task={task} projectColor={color}
-                    onUpdate={onUpdate} onDelete={onDelete} onSelect={onSelect}
+                    onUpdate={onUpdate} onPatch={onPatch} onDelete={onDelete} onSelect={onSelect}
                     selected={selectedIds.has(task.id)} onToggleSelect={onToggleSelect} widths={W} />
                 ))}
               </div>
@@ -240,7 +240,7 @@ export default function ProjectSection({ project, tasks, allTasks, onUpdate, onD
           </>
         )}
 
-        {projectTab === 'kanban' && <KanbanBoard tasks={tasks} project={project} onSelect={onSelect} onUpdate={onUpdate} onAddTask={onAddTask} />}
+        {projectTab === 'kanban' && <KanbanBoard tasks={tasks} project={project} onSelect={onSelect} onUpdate={onUpdate} onPatch={onPatch} onAddTask={onAddTask} />}
         {projectTab === 'gantt' && <ProjectGanttChart tasks={tasks} onSelectTask={onSelect} />}
         {projectTab === 'dashboard' && <ProjectDashboard project={project} tasks={tasks} color={color} />}
       </div>

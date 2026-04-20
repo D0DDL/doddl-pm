@@ -4,7 +4,7 @@ import { GROUP_TINTS } from '../lib/team'
 import { PROJ_COL_WIDTHS as W_DEFAULT } from '../lib/constants'
 import ProjectTableRow from './ProjectTableRow'
 
-export default function ProjectGroup({ group, allTasks, projectColor, onUpdate, onDelete, onAddSubtask, onSelect, onAddTask, projectId, groupIndex, selectedIds, onToggleSelect, widths }) {
+export default function ProjectGroup({ group, allTasks, projectColor, onUpdate, onPatch, onDelete, onAddSubtask, onSelect, onAddTask, projectId, groupIndex, selectedIds, onToggleSelect, widths }) {
   const W = widths || W_DEFAULT
   const [collapsed, setCollapsed] = useState(false)
   const [addingTask, setAddingTask] = useState(false)
@@ -37,7 +37,7 @@ export default function ProjectGroup({ group, allTasks, projectColor, onUpdate, 
       {/* Child tasks */}
       {!collapsed && children.map(task => (
         <ProjectTableRow key={task.id} task={task} projectColor={tint.border}
-          onUpdate={onUpdate} onDelete={onDelete} onSelect={onSelect} depth={1}
+          onUpdate={onUpdate} onPatch={onPatch} onDelete={onDelete} onSelect={onSelect} depth={1}
           selected={!!selectedIds?.has(task.id)} onToggleSelect={onToggleSelect} widths={W} />
       ))}
       {!collapsed && (
