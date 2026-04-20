@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { GROUP_TINTS } from '../lib/team'
+import { PROJ_COL_WIDTHS as W } from '../lib/constants'
 import ProjectTableRow from './ProjectTableRow'
 
-export default function ProjectGroup({ group, allTasks, projectColor, onUpdate, onDelete, onAddSubtask, onSelect, onAddTask, projectId, groupIndex }) {
+export default function ProjectGroup({ group, allTasks, projectColor, onUpdate, onDelete, onAddSubtask, onSelect, onAddTask, projectId, groupIndex, selectedIds, onToggleSelect }) {
   const [collapsed, setCollapsed] = useState(false)
   const [addingTask, setAddingTask] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState('')
@@ -20,13 +21,13 @@ export default function ProjectGroup({ group, allTasks, projectColor, onUpdate, 
     <div style={{ marginBottom: 0 }}>
       {/* Group header */}
       <div style={{ display: 'flex', alignItems: 'center', background: tint.bg, borderLeft: `4px solid ${tint.border}`, borderBottom: '1px solid #dfe1e6', borderTop: '2px solid #e5e7eb' }}>
-        <div style={{ width: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: W.select, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <span onClick={() => setCollapsed(c => !c)} style={{ cursor: 'pointer', fontSize: 10, color: tint.text, fontWeight: 800 }}>{collapsed ? '▶' : '▼'}</span>
         </div>
         <div style={{ flex: 1, padding: '8px 8px 8px 4px', fontWeight: 800, fontSize: 13, color: tint.text }}>{group.title}</div>
         <div style={{ padding: '8px 12px', fontSize: 11, color: tint.text, fontWeight: 700, opacity: 0.7 }}>{children.length} task{children.length !== 1 ? 's' : ''}</div>
-        {/* Spacer cols */}
-        <div style={{ width: 68 }} /><div style={{ width: 120 }} /><div style={{ width: 170 }} /><div style={{ width: 60 }} /><div style={{ width: 90 }} /><div style={{ width: 130 }} />
+        {/* Spacer cols — match ProjectTableRow column widths */}
+        <div style={{ width: W.owner }} /><div style={{ width: W.status }} /><div style={{ width: W.timeline }} /><div style={{ width: W.effort }} /><div style={{ width: W.priority }} /><div style={{ width: W.progress }} />
         {/* Delete group */}
         <span onClick={() => onDelete(group.id)} title="Delete group"
           style={{ padding: '0 12px', color: '#c1c7d0', cursor: 'pointer', fontSize: 16, flexShrink: 0 }}
@@ -34,8 +35,9 @@ export default function ProjectGroup({ group, allTasks, projectColor, onUpdate, 
       </div>
       {/* Child tasks */}
       {!collapsed && children.map(task => (
-        <ProjectTableRow key={task.id} task={task} allTasks={allTasks} projectColor={tint.border}
-          onUpdate={onUpdate} onDelete={onDelete} onAddSubtask={onAddSubtask} onSelect={onSelect} depth={1} />
+        <ProjectTableRow key={task.id} task={task} projectColor={tint.border}
+          onUpdate={onUpdate} onDelete={onDelete} onSelect={onSelect} depth={1}
+          selected={!!selectedIds?.has(task.id)} onToggleSelect={onToggleSelect} />
       ))}
       {!collapsed && (
         addingTask ? (
