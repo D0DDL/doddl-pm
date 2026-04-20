@@ -133,7 +133,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Extract all status/priority/source/tag/colour constants to lib/constants.js. Team roster, getDisplayName, colour palettes to lib/team.js. MSAL config and getMsal to lib/msal.js. Rewire all imports. Run npm run build.',
  'in_progress', 'critical',
  '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001',
- 'Claude Code', '2026-04-22', NULL,
+ 'Claude', '2026-04-22', NULL,
  'First step of approved 11-step decomposition plan. Move code only — no new features.',
  1),
 
@@ -142,7 +142,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Extract all listed leaf components to components/ (repo root). Run npm run build after each extraction.',
  'not_started', 'critical',
  '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001',
- 'Claude Code', '2026-04-22', '30000000-0000-0000-0000-000000000001',
+ 'Claude', '2026-04-22', '30000000-0000-0000-0000-000000000001',
  'CRITICAL: components/ at repo root only. Never pages/components/ — that breaks Next.js routing.',
  2),
 
@@ -151,7 +151,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Extract CalendarPicker, TimelineCell, LoginScreen to components/. Run npm run build.',
  'not_started', 'critical',
  '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001',
- 'Claude Code', '2026-04-22', '30000000-0000-0000-0000-000000000002',
+ 'Claude', '2026-04-22', '30000000-0000-0000-0000-000000000002',
  NULL, 3),
 
 ('30000000-0000-0000-0000-000000000004',
@@ -159,7 +159,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Extract CommentBody, MentionInput, TaskDetailPanel to components/. Run npm run build.',
  'not_started', 'critical',
  '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001',
- 'Claude Code', '2026-04-22', '30000000-0000-0000-0000-000000000003',
+ 'Claude', '2026-04-22', '30000000-0000-0000-0000-000000000003',
  NULL, 4),
 
 ('30000000-0000-0000-0000-000000000005',
@@ -167,7 +167,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Extract ProjectTableRow, ProjectGroup, ProjectDashboard, TaskRow to components/. Run npm run build.',
  'not_started', 'critical',
  '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001',
- 'Claude Code', '2026-04-22', '30000000-0000-0000-0000-000000000004',
+ 'Claude', '2026-04-22', '30000000-0000-0000-0000-000000000004',
  NULL, 5),
 
 ('30000000-0000-0000-0000-000000000006',
@@ -175,7 +175,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Extract KanbanBoard and GanttView to components/. Run npm run build.',
  'not_started', 'critical',
  '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001',
- 'Claude Code', '2026-04-22', '30000000-0000-0000-0000-000000000005',
+ 'Claude', '2026-04-22', '30000000-0000-0000-0000-000000000005',
  NULL, 6),
 
 ('30000000-0000-0000-0000-000000000007',
@@ -183,7 +183,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Extract ProjectSection to components/. Run npm run build.',
  'not_started', 'critical',
  '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001',
- 'Claude Code', '2026-04-22', '30000000-0000-0000-0000-000000000006',
+ 'Claude', '2026-04-22', '30000000-0000-0000-0000-000000000006',
  NULL, 7),
 
 ('30000000-0000-0000-0000-000000000008',
@@ -191,7 +191,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Extract AddTaskModal and AddProjectModal to components/. Run npm run build.',
  'not_started', 'critical',
  '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001',
- 'Claude Code', '2026-04-22', '30000000-0000-0000-0000-000000000007',
+ 'Claude', '2026-04-22', '30000000-0000-0000-0000-000000000007',
  NULL, 8),
 
 ('30000000-0000-0000-0000-000000000009',
@@ -199,7 +199,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Extract MyWorkView including MwTaskTable and MwSection sub-components to components/. Run npm run build.',
  'not_started', 'critical',
  '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001',
- 'Claude Code', '2026-04-22', '30000000-0000-0000-0000-000000000008',
+ 'Claude', '2026-04-22', '30000000-0000-0000-0000-000000000008',
  NULL, 9),
 
 ('30000000-0000-0000-0000-000000000010',
@@ -207,7 +207,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Reduce pages/index.js to a clean shell under 150 lines. Run npm run build AND npm run dev. Smoke test all views in browser.',
  'not_started', 'critical',
  '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001',
- 'Claude Code', '2026-04-22', '30000000-0000-0000-0000-000000000009',
+ 'Claude', '2026-04-22', '30000000-0000-0000-0000-000000000009',
  'Acceptance: pages/index.js < 150 lines. npm run build clean. npm run dev runs. All existing functionality works identically — zero regressions.',
  10),
 
@@ -216,7 +216,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Add pages/api/projects.js (GET/POST/PATCH/DELETE) and pages/api/task-groups.js (GET/POST/PATCH/DELETE). Run npm run build.',
  'not_started', 'critical',
  '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001',
- 'Claude Code', '2026-04-22', '30000000-0000-0000-0000-000000000010',
+ 'Claude', '2026-04-22', '30000000-0000-0000-0000-000000000010',
  NULL, 11),
 
 ('30000000-0000-0000-0000-000000000012',
@@ -224,7 +224,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Security vulnerability. Upgrade Next.js to latest 14.2.x. Verify npm run build passes clean after upgrade.',
  'not_started', 'critical',
  '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001',
- 'Claude Code', '2026-04-22', '30000000-0000-0000-0000-000000000011',
+ 'Claude', '2026-04-22', '30000000-0000-0000-0000-000000000011',
  'Acceptance criteria item for Task 1. Must complete before Task 1 is signed off by Jon.',
  12),
 
@@ -238,7 +238,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Validates agent service key from API headers. Invalid or missing key returns 401. Used by all agent API routes as middleware.',
  'not_started', 'critical',
  '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000002',
- 'Claude Code', '2026-04-25', '30000000-0000-0000-0000-000000000012',
+ 'Claude', '2026-04-25', '30000000-0000-0000-0000-000000000012',
  'New env var required: AGENT_SERVICE_KEY. Jon adds to .env.local and Vercel staging environment before this task is tested.',
  1),
 
@@ -256,7 +256,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Agent route for creating and updating tasks. Requires valid AGENT_SERVICE_KEY header. Every write creates a record in agent_audit_log.',
  'not_started', 'critical',
  '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000002',
- 'Claude Code', '2026-04-25', '30000000-0000-0000-0000-000000000014',
+ 'Claude', '2026-04-25', '30000000-0000-0000-0000-000000000014',
  NULL, 3),
 
 ('30000000-0000-0000-0000-000000000016',
@@ -264,7 +264,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Agent route for attaching approval artefacts to tasks. Requires valid AGENT_SERVICE_KEY header. Every write creates a record in agent_audit_log.',
  'not_started', 'critical',
  '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000002',
- 'Claude Code', '2026-04-25', '30000000-0000-0000-0000-000000000015',
+ 'Claude', '2026-04-25', '30000000-0000-0000-0000-000000000015',
  NULL, 4),
 
 ('30000000-0000-0000-0000-000000000017',
@@ -272,7 +272,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Rate limiter: 60 requests per minute per agent ID. Returns 429 on exceeded. Human-facing routes completely unaffected.',
  'not_started', 'high',
  '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000002',
- 'Claude Code', '2026-04-25', '30000000-0000-0000-0000-000000000016',
+ 'Claude', '2026-04-25', '30000000-0000-0000-0000-000000000016',
  NULL, 5),
 
 ('30000000-0000-0000-0000-000000000018',
@@ -303,7 +303,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Registry of all artefact types with their schemas. Used by ApprovalTaskPanel and agent API routes to validate artefact structure before submission.',
  'not_started', 'high',
  '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000003',
- 'Claude Code', '2026-04-29', '30000000-0000-0000-0000-000000000019',
+ 'Claude', '2026-04-29', '30000000-0000-0000-0000-000000000019',
  NULL, 2),
 
 ('30000000-0000-0000-0000-000000000021',
@@ -311,7 +311,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'UI component rendering approval tasks. Shows artefact content, Approve / Reject / Revision Requested buttons. Decision recording must be immutable once submitted.',
  'not_started', 'critical',
  '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000003',
- 'Claude Code', '2026-04-29', '30000000-0000-0000-0000-000000000020',
+ 'Claude', '2026-04-29', '30000000-0000-0000-0000-000000000020',
  'Laura to review approval UI before Task 3 sign-off.',
  3),
 
@@ -320,7 +320,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Once a decision (approved/rejected/revision_requested) is submitted it cannot be overwritten. Enforce at API level, not just UI. Standard tasks visually unchanged.',
  'not_started', 'critical',
  '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000003',
- 'Claude Code', '2026-04-29', '30000000-0000-0000-0000-000000000021',
+ 'Claude', '2026-04-29', '30000000-0000-0000-0000-000000000021',
  'Acceptance: approval task created via agent API renders correctly. Decision immutable after submission. Standard tasks unchanged. npm run build clean.',
  4),
 
@@ -334,7 +334,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Claude Code writes full migration SQL replacing all allow-all policies. Three levels: (1) Human users — full read all tables, INSERT/UPDATE on tasks/task_groups/projects, no access to agent_audit_log. (2) Agent service account — INSERT/UPDATE own tasks via agent_id, INSERT on agent_audit_log, SELECT on tasks/projects/task_groups. (3) System admin — full SELECT all tables, same write as human. Migration must be idempotent.',
  'not_started', 'critical',
  '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000004',
- 'Claude Code', '2026-05-01', '30000000-0000-0000-0000-000000000022',
+ 'Claude', '2026-05-01', '30000000-0000-0000-0000-000000000022',
  'Jon reviews SQL in full before applying. All three policy levels must be clearly named.',
  1),
 
@@ -425,7 +425,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Microsoft Clarity must load ONLY after analytics consent is given. Currently loads on all page visits. This is a GDPR violation. Fix before Phase 0 is considered complete.',
  'not_started', 'critical',
  '10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000006',
- 'Claude Code', '2026-05-09', '30000000-0000-0000-0000-000000000027',
+ 'Claude', '2026-05-09', '30000000-0000-0000-0000-000000000027',
  'Do not wait for other Phase 0 tasks — action this early. Current implementation is non-compliant.',
  5),
 
@@ -492,7 +492,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Append-only breach log table. DPO lead write access only. Never deleted. Required for GDPR/UK GDPR compliance.',
  'not_started', 'critical',
  '10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000008',
- 'Claude Code', '2026-05-09', '30000000-0000-0000-0000-000000000034',
+ 'Claude', '2026-05-09', '30000000-0000-0000-0000-000000000034',
  'STOP GATE. Depends on Supabase DPA being signed (P0-6) first.',
  1),
 
@@ -501,7 +501,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  '72-hour regulatory notification trigger and 48-hour internal alert. Feeds incident task creation in PM tool.',
  'not_started', 'critical',
  '10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000008',
- 'Claude Code', '2026-05-12', '30000000-0000-0000-0000-000000000039',
+ 'Claude', '2026-05-12', '30000000-0000-0000-0000-000000000039',
  'STOP GATE.',
  2),
 
@@ -512,7 +512,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Parse robots.txt before any domain visit. Respect all Disallow rules. Log compliance check result per domain.',
  'not_started', 'medium',
  '10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000009',
- 'Claude Code', '2026-05-14', '30000000-0000-0000-0000-000000000029',
+ 'Claude', '2026-05-14', '30000000-0000-0000-0000-000000000029',
  'Depends on infrastructure as code (P0-2) being in place.',
  1),
 
@@ -521,7 +521,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Classify scraped contacts as: corporate_entity / individual_named_contact / sole_trader. Classification drives routing decision.',
  'not_started', 'medium',
  '10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000009',
- 'Claude Code', '2026-05-14', '30000000-0000-0000-0000-000000000041',
+ 'Claude', '2026-05-14', '30000000-0000-0000-0000-000000000041',
  NULL, 2),
 
 ('30000000-0000-0000-0000-000000000043',
@@ -529,7 +529,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'corporate_entity → Klaviyo pipeline. individual_named_contact / sole_trader → hold queue for manual review. Never auto-contact named individuals.',
  'not_started', 'medium',
  '10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000009',
- 'Claude Code', '2026-05-14', '30000000-0000-0000-0000-000000000042',
+ 'Claude', '2026-05-14', '30000000-0000-0000-0000-000000000042',
  NULL, 3),
 
 -- Task Group 10: API Credentials & Baselines
@@ -604,7 +604,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Reports API preferred over individual calls. Pull: sales, inventory, listings, fees. Append-only writes to Supabase. Scheduled via cron. Credentials from Key Vault only.',
  'not_started', 'critical',
  '10000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000012',
- 'Claude Code', '2026-05-30', '30000000-0000-0000-0000-000000000045',
+ 'Claude', '2026-05-30', '30000000-0000-0000-0000-000000000045',
  'UK connector is the template all other marketplace connectors are built from. Get this right first.',
  1),
 
@@ -613,7 +613,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Same pattern as UK connector. Different marketplace ID.',
  'not_started', 'high',
  '10000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000012',
- 'Claude Code', '2026-06-06', '30000000-0000-0000-0000-000000000050',
+ 'Claude', '2026-06-06', '30000000-0000-0000-0000-000000000050',
  NULL, 2),
 
 ('30000000-0000-0000-0000-000000000052',
@@ -621,7 +621,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Same pattern as UK connector. Different marketplace ID.',
  'not_started', 'high',
  '10000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000012',
- 'Claude Code', '2026-06-06', '30000000-0000-0000-0000-000000000050',
+ 'Claude', '2026-06-06', '30000000-0000-0000-0000-000000000050',
  NULL, 3),
 
 ('30000000-0000-0000-0000-000000000053',
@@ -629,7 +629,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'EU = DE/FR/IT/ES under one account. Single connector, multiple marketplace IDs.',
  'not_started', 'high',
  '10000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000012',
- 'Claude Code', '2026-06-13', '30000000-0000-0000-0000-000000000050',
+ 'Claude', '2026-06-13', '30000000-0000-0000-0000-000000000050',
  NULL, 4),
 
 ('30000000-0000-0000-0000-000000000054',
@@ -637,7 +637,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Same pattern as UK connector. Different marketplace ID.',
  'not_started', 'high',
  '10000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000012',
- 'Claude Code', '2026-06-13', '30000000-0000-0000-0000-000000000050',
+ 'Claude', '2026-06-13', '30000000-0000-0000-0000-000000000050',
  NULL, 5),
 
 ('30000000-0000-0000-0000-000000000055',
@@ -645,7 +645,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Separate API from SP-API. Pull: Sponsored Products, Sponsored Brands, Sponsored Display campaign performance data.',
  'not_started', 'high',
  '10000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000012',
- 'Claude Code', '2026-06-20', '30000000-0000-0000-0000-000000000045',
+ 'Claude', '2026-06-20', '30000000-0000-0000-0000-000000000045',
  'Different API endpoint from SP-API. Same credential set — different access scope.',
  6),
 
@@ -656,7 +656,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Pull: orders, products, inventory, revenue. Append-only writes. Credentials from Key Vault. Cron scheduled.',
  'not_started', 'high',
  '10000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000013',
- 'Claude Code', '2026-06-06', '30000000-0000-0000-0000-000000000045',
+ 'Claude', '2026-06-06', '30000000-0000-0000-0000-000000000045',
  NULL, 1),
 
 ('30000000-0000-0000-0000-000000000057',
@@ -664,7 +664,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Pull: campaign, ad group, keyword performance. Append-only writes. Credentials from Key Vault. Cron scheduled.',
  'not_started', 'high',
  '10000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000013',
- 'Claude Code', '2026-06-06', '30000000-0000-0000-0000-000000000045',
+ 'Claude', '2026-06-06', '30000000-0000-0000-0000-000000000045',
  NULL, 2),
 
 ('30000000-0000-0000-0000-000000000058',
@@ -672,7 +672,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Pull: campaign, ad set, creative performance. Append-only writes. Credentials from Key Vault. Cron scheduled.',
  'not_started', 'high',
  '10000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000013',
- 'Claude Code', '2026-06-06', '30000000-0000-0000-0000-000000000045',
+ 'Claude', '2026-06-06', '30000000-0000-0000-0000-000000000045',
  NULL, 3),
 
 ('30000000-0000-0000-0000-000000000059',
@@ -680,7 +680,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Pull: email campaign and flow performance. Append-only writes. Credentials from Key Vault. Cron scheduled.',
  'not_started', 'high',
  '10000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000013',
- 'Claude Code', '2026-06-13', '30000000-0000-0000-0000-000000000033',
+ 'Claude', '2026-06-13', '30000000-0000-0000-0000-000000000033',
  'Depends on Klaviyo DPA signed (P0-5) AND credentials in Key Vault (P0-18).',
  4),
 
@@ -691,7 +691,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Connector health view in PM layer. Per connector: last run timestamp, status, rows pulled, error count. All 10 connectors visible in one view.',
  'not_started', 'high',
  '10000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000014',
- 'Claude Code', '2026-06-27', '30000000-0000-0000-0000-000000000059',
+ 'Claude', '2026-06-27', '30000000-0000-0000-0000-000000000059',
  'Depends on all 10 connectors (P1-1 through P1-10) being built.',
  1),
 
@@ -700,7 +700,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Failed connector automatically creates an incident task in PM layer assigned to Jon.',
  'not_started', 'medium',
  '10000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000014',
- 'Claude Code', '2026-06-27', '30000000-0000-0000-0000-000000000060',
+ 'Claude', '2026-06-27', '30000000-0000-0000-0000-000000000060',
  NULL, 2);
 
 
@@ -738,7 +738,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Reads from Supabase. Compares current metrics to baselines. Detects anomalies against defined rules. Produces structured daily briefing.',
  'not_started', 'high',
  '10000000-0000-0000-0000-000000000004', '20000000-0000-0000-0000-000000000016',
- 'Claude Code', '2026-08-01', '30000000-0000-0000-0000-000000000063',
+ 'Claude', '2026-08-01', '30000000-0000-0000-0000-000000000063',
  NULL, 1),
 
 ('30000000-0000-0000-0000-000000000065',
@@ -755,7 +755,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Visual dashboard in PM layer. Data by marketplace, channel, product. Agent health status view.',
  'not_started', 'medium',
  '10000000-0000-0000-0000-000000000004', '20000000-0000-0000-0000-000000000016',
- 'Claude Code', '2026-08-15', '30000000-0000-0000-0000-000000000064',
+ 'Claude', '2026-08-15', '30000000-0000-0000-0000-000000000064',
  NULL, 3),
 
 ('30000000-0000-0000-0000-000000000067',
@@ -763,7 +763,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Validates briefing output before delivery. Checks for hallucinations, missing data segments, threshold breaches. Nothing leaves without QA agent approval.',
  'not_started', 'high',
  '10000000-0000-0000-0000-000000000004', '20000000-0000-0000-0000-000000000016',
- 'Claude Code', '2026-08-22', '30000000-0000-0000-0000-000000000064',
+ 'Claude', '2026-08-22', '30000000-0000-0000-0000-000000000064',
  NULL, 4),
 
 -- Task Group 17: Validation
@@ -792,7 +792,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Generates Amazon listing copy: title, bullets, A+ description. Output goes to PM layer approval queue. Laura reviews and approves before any listing change is made.',
  'not_started', 'high',
  '10000000-0000-0000-0000-000000000005', '20000000-0000-0000-0000-000000000018',
- 'Claude Code', '2026-09-26', '30000000-0000-0000-0000-000000000068',
+ 'Claude', '2026-09-26', '30000000-0000-0000-0000-000000000068',
  'Laura is the approver for all copy output. Brand blueprint (P0-20) must be complete before this agent is built.',
  1),
 
@@ -801,7 +801,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Validates copy against brand blueprint, permitted claims, and Amazon character limits. Nothing reaches Laura without passing QA agent first.',
  'not_started', 'high',
  '10000000-0000-0000-0000-000000000005', '20000000-0000-0000-0000-000000000018',
- 'Claude Code', '2026-10-03', '30000000-0000-0000-0000-000000000069',
+ 'Claude', '2026-10-03', '30000000-0000-0000-0000-000000000069',
  NULL, 2),
 
 -- Task Group 19: PPC Agents
@@ -811,7 +811,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Analyses Amazon Ads campaign data. Recommends bid changes and budget reallocation. Jon reviews and approves before any change is executed.',
  'not_started', 'high',
  '10000000-0000-0000-0000-000000000005', '20000000-0000-0000-0000-000000000019',
- 'Claude Code', '2026-09-26', '30000000-0000-0000-0000-000000000068',
+ 'Claude', '2026-09-26', '30000000-0000-0000-0000-000000000068',
  NULL, 1),
 
 ('30000000-0000-0000-0000-000000000072',
@@ -819,7 +819,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Validates recommendations against business rules before submission to PM layer for Jon review.',
  'not_started', 'medium',
  '10000000-0000-0000-0000-000000000005', '20000000-0000-0000-0000-000000000019',
- 'Claude Code', '2026-10-03', '30000000-0000-0000-0000-000000000071',
+ 'Claude', '2026-10-03', '30000000-0000-0000-0000-000000000071',
  NULL, 2),
 
 ('30000000-0000-0000-0000-000000000073',
@@ -827,7 +827,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Same pattern as Amazon PPC agent. Google Ads campaign and keyword data.',
  'not_started', 'medium',
  '10000000-0000-0000-0000-000000000005', '20000000-0000-0000-0000-000000000019',
- 'Claude Code', '2026-10-17', '30000000-0000-0000-0000-000000000072',
+ 'Claude', '2026-10-17', '30000000-0000-0000-0000-000000000072',
  NULL, 3),
 
 ('30000000-0000-0000-0000-000000000074',
@@ -835,7 +835,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Same pattern as Amazon PPC agent. Meta Ads campaign, ad set, and creative performance data.',
  'not_started', 'medium',
  '10000000-0000-0000-0000-000000000005', '20000000-0000-0000-0000-000000000019',
- 'Claude Code', '2026-10-17', '30000000-0000-0000-0000-000000000072',
+ 'Claude', '2026-10-17', '30000000-0000-0000-0000-000000000072',
  NULL, 4),
 
 -- Task Group 20: Other Agents
@@ -845,7 +845,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Generates creative briefs for ad imagery based on performance data and brand blueprint. Briefs go to PM layer for Laura review before any creative work begins.',
  'not_started', 'medium',
  '10000000-0000-0000-0000-000000000005', '20000000-0000-0000-0000-000000000020',
- 'Claude Code', '2026-10-17', '30000000-0000-0000-0000-000000000068',
+ 'Claude', '2026-10-17', '30000000-0000-0000-0000-000000000068',
  NULL, 1),
 
 ('30000000-0000-0000-0000-000000000076',
@@ -853,7 +853,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Monitors keyword rankings across marketplaces. Generates optimisation recommendations. Jon reviews.',
  'not_started', 'medium',
  '10000000-0000-0000-0000-000000000005', '20000000-0000-0000-0000-000000000020',
- 'Claude Code', '2026-10-17', '30000000-0000-0000-0000-000000000068',
+ 'Claude', '2026-10-17', '30000000-0000-0000-0000-000000000068',
  NULL, 2),
 
 ('30000000-0000-0000-0000-000000000077',
@@ -861,7 +861,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Manages B2B prospect pipeline. Routes corporate entities to Klaviyo. Routes named individuals and sole traders to hold queue for manual review. Never auto-contacts individuals.',
  'not_started', 'low',
  '10000000-0000-0000-0000-000000000005', '20000000-0000-0000-0000-000000000020',
- 'Claude Code', '2026-11-14', '30000000-0000-0000-0000-000000000043',
+ 'Claude', '2026-11-14', '30000000-0000-0000-0000-000000000043',
  'Depends on full B2B scraper compliance chain (P0-14, P0-15, P0-16) being complete.',
  3),
 
@@ -889,7 +889,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Build image generation pipeline. Provider options: DALL-E 3 API (£236/mo) vs Midjourney Pro (£47/mo flat). Midjourney saves £189/mo. Jon and Laura to decide before build begins.',
  'not_started', 'medium',
  '10000000-0000-0000-0000-000000000006', '20000000-0000-0000-0000-000000000021',
- 'Claude Code', '2026-12-19', '30000000-0000-0000-0000-000000000078',
+ 'Claude', '2026-12-19', '30000000-0000-0000-0000-000000000078',
  'Open question #1. Jon/Laura decide on provider. Assign to Claude Code once decided.',
  1),
 
@@ -898,7 +898,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Kling API at $0.112 per second. 30-second video ≈ £17. Budget: 50 videos per month. Total ≈ £850/month for video generation.',
  'not_started', 'medium',
  '10000000-0000-0000-0000-000000000006', '20000000-0000-0000-0000-000000000021',
- 'Claude Code', '2026-12-19', '30000000-0000-0000-0000-000000000079',
+ 'Claude', '2026-12-19', '30000000-0000-0000-0000-000000000079',
  NULL, 2),
 
 ('30000000-0000-0000-0000-000000000081',
@@ -906,7 +906,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'ElevenLabs Creator plan at $22/month. 50 videos × 2,000 characters = within plan limits.',
  'not_started', 'medium',
  '10000000-0000-0000-0000-000000000006', '20000000-0000-0000-0000-000000000021',
- 'Claude Code', '2027-01-09', '30000000-0000-0000-0000-000000000080',
+ 'Claude', '2027-01-09', '30000000-0000-0000-0000-000000000080',
  NULL, 3),
 
 -- Task Group 22: QA
@@ -916,7 +916,7 @@ INSERT INTO tasks (id, title, description, status, priority, project_id, group_i
  'Validates all generated creative against brand blueprint before submission to PM layer for human approval. No creative reaches the team without QA agent sign-off.',
  'not_started', 'high',
  '10000000-0000-0000-0000-000000000006', '20000000-0000-0000-0000-000000000022',
- 'Claude Code', '2027-01-09', '30000000-0000-0000-0000-000000000079',
+ 'Claude', '2027-01-09', '30000000-0000-0000-0000-000000000079',
  'Brand blueprint (P0-20) is a hard input requirement. Cannot be built correctly without it.',
  1);
 
