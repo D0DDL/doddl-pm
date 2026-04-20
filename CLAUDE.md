@@ -1,0 +1,201 @@
+# CLAUDE.md — doddl PM Tool Build Agent Operating Document
+**Version:** 1.0 | **Last updated:** April 2026 | **Owner:** Jon Fawcett
+
+---
+
+## READ THIS FIRST — BEFORE DOING ANYTHING ELSE
+
+You are a build agent operating on the doddl-pm codebase. You work in the staging branch only. You do not touch the main branch. You do not touch production infrastructure. Every action you take must be consistent with the rules in this document.
+
+Before writing a single line of code, confirm the following out loud in your response:
+1. You are operating on the staging branch
+2. Your environment variables point to the staging Supabase project (URL contains iknwprxycshrickpswjz)
+3. You understand the four tasks in the build sequence and their order
+4. You understand what requires human approval before you proceed
+
+If any of these cannot be confirmed, stop and report the issue. Do not proceed.
+
+---
+
+## System Overview
+
+**Application name:** doddl-pm  
+**Purpose:** Internal project and task management tool. Being extended to serve as the PM layer for the doddl AI Operating System.  
+**Organisation:** doddl (D0DDL on GitHub)  
+**Primary user:** Jon Fawcett (jon@doddl.com)
+
+---
+
+## Tech Stack
+
+| Layer | Technology | Version |
+|---|---|---|
+| Framework | Next.js | 14.1.0 |
+| Frontend | React | 18.2.0 |
+| Database | Supabase (PostgreSQL) | 2.39.0 |
+| Auth | Microsoft MSAL (Azure AD) | 3.11.1 |
+| Styling | Tailwind CSS | 3.4.1 |
+| Hosting | Vercel | — |
+| Source control | GitHub | D0DDL/doddl-pm |
+
+---
+
+## Current File Structure
+
+pages/
+  api/
+    tasks.js           # EXISTING — do not modify
+  _app.js              # Auth wrapper — do not modify
+  index.js             # MONOLITH ~1957 lines — Task 1 target
+lib/
+  supabase.js
+  supabaseSchema.sql   # Source of truth for schema
+
+---
+
+## Current Database Schema
+
+Three tables. No others exist.
+
+### projects
+id, name, description, status, priority, owner, start_date, due_date, created_at, updated_at
+
+### task_groups  
+id, project_id, name, position, created_at
+
+### tasks
+id, title, description, status, priority, project_id, group_id, assigned_to, due_date, source, message_id, depends_on, notes, position, created_at, updated_at
+
+RLS is enabled on all three tables with open allow-all policies. Do not change RLS until Task 4.
+
+---
+
+## Environment Variables
+
+NEXT_PUBLIC_SUPABASE_URL — staging: https://iknwprxycshrickpswjz.supabase.co  
+NEXT_PUBLIC_SUPABASE_ANON_KEY — staging anon key  
+NEXT_PUBLIC_AZURE_CLIENT_ID — Azure app client ID  
+NEXT_PUBLIC_AZURE_TENANT_ID — Azure tenant ID  
+
+Never hardcode. Never log. Never commit .env.local.
+
+---
+
+## Permission Boundaries
+
+### READ freely:
+- Entire codebase on staging branch
+- lib/supabaseSchema.sql
+- This document
+
+### WRITE in staging without approval:
+- New component files in pages/components/
+- New API route files in pages/api/ (except tasks.js)
+- New SQL migration files in lib/migrations/ (propose only, do not apply)
+- CSS/styling changes
+
+### PROPOSE and wait for Jon approval before:
+- Any SQL migration against Supabase
+- Any change to authentication logic
+- Any change to pages/api/tasks.js
+- Adding new environment variables
+- Installing new npm packages
+
+### NEVER do autonomously:
+- Touch main branch
+- Touch production Supabase (ikcjciscttsvpxoijnqe)
+- Deploy to production Vercel URL
+- Change Azure app registration
+- Delete any table, column, or row
+
+---
+
+## Build Sequence
+
+### TASK 1 — Codebase Decomposition (DO THIS FIRST)
+
+Decompose pages/index.js (~1957 lines) into components.
+
+Target structure:
+pages/components/
+  TaskRow.jsx
+  TaskDetailPanel.jsx
+  ProjectSection.jsx
+  KanbanBoard.jsx
+  StatusBadge.jsx
+  PriorityBadge.jsx
+  MyWorkView.jsx
+pages/api/
+  projects.js     (new)
+  task-groups.js  (new)
+pages/index.js    (shell only, under 150 lines)
+
+Acceptance criteria:
+- pages/index.js under 150 lines
+- Every component has single clear responsibility
+- All existing functionality works identically — zero regressions
+- npm run build passes clean
+- No new features added — decomposition only
+
+### TASK 2 — Agent API Access Layer
+
+Depends on Task 1 complete.
+
+- lib/agentAuth.js — service key validation middleware
+- agent_audit_log table (propose SQL, await approval)
+- pages/api/agent/tasks.js — agent task creation
+- pages/api/agent/artefacts.js — agent artefact attachment
+- Rate limiting: 60 req/min per agent ID, 429 on exceeded
+- New env var required: AGENT_SERVICE_KEY (propose first)
+
+### TASK 3 — Approval Artefact Model
+
+Depends on Task 2 complete.
+
+Schema additions to tasks table (propose SQL, await approval):
+- task_type: standard/approval/go_live/incident
+- artefact_type: text
+- artefact: jsonb
+- decision: approved/rejected/revision_requested
+- decision_notes: text
+- decision_by: text
+- decision_at: timestamptz
+- agent_id: text
+- staging_url: text
+
+New component: pages/components/ApprovalTaskPanel.jsx
+New file: lib/artefactTypes.js
+
+### TASK 4 — RLS Policies
+
+Depends on Tasks 1-3 complete.
+
+Replace allow-all policies with three levels:
+- Human users: full read, write own tasks/projects
+- Agent service account: write tasks + audit_log, read tasks/projects/task_groups
+- System administrator: full read
+
+Propose full migration SQL. Apply to staging only. Full regression test before flagging ready.
+
+---
+
+## Communication Protocol
+
+After each unit of work report:
+COMPLETED: [what was done]
+FILES CHANGED: [list]
+TESTS PASSED: [acceptance criteria]
+NEXT STEP: [what comes next]
+AWAITING APPROVAL: [anything needing Jon sign-off]
+
+---
+
+## Hard Rules
+
+1. staging branch only — never main
+2. Staging Supabase only — never ikcjciscttsvpxoijnqe
+3. SQL migrations proposed first, applied only after Jon confirms
+4. MSAL auth never modified without explicit instruction
+5. pages/api/tasks.js never modified (Power Automate depends on it)
+6. No npm package installed without stating name, version, reason first
+7. No credentials ever in code or git history
