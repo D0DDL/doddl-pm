@@ -131,8 +131,8 @@ export default function Home() {
                 onAddTask={handleAddTask} onAddSubtask={handleAddSubtask} onSelect={setSelectedTask} />
             </>
           ) : (
-            <ProjectGallery projects={projects} visibleTasks={visibleTasks}
-              setActiveProject={setActiveProject} setShowAddProject={setShowAddProject} />
+            <ProjectGallery projects={projects} visibleTasks={visibleTasks} allTasks={tasks}
+              setActiveProject={setActiveProject} setShowAddProject={setShowAddProject} onUpdate={load} />
           )}
         </main>
       </div>

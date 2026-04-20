@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { getProjectColor } from '../lib/team'
+import { exportToExcel, parseImport, applyTaskImport } from '../lib/excelIO'
 import OwnerAvatar from './OwnerAvatar'
 
 const PRIO_COLORS = { critical: '#de350b', high: '#ff8b00', medium: '#0052cc', low: '#6b778c' }
@@ -312,10 +313,44 @@ function DashboardView({ projects, visibleTasks }) {
 }
 
 // ── MAIN GALLERY ──────────────────────────────────────────────────────────
-export default function ProjectGallery({ projects, visibleTasks, setActiveProject, setShowAddProject }) {
+export default function ProjectGallery({ projects, visibleTasks, allTasks, setActiveProject, setShowAddProject, onUpdate }) {
   const [view, setView] = useState('cards')
   const [sortBy, setSortBy] = useState('name')           // name | start_date | due_date | status
   const [statusFilter, setStatusFilter] = useState('')
+  const [importing, setImporting] = useState(false)
+  const [importMsg, setImportMsg] = useState(null)
+  const fileInputRef = useRef(null)
+
+  const handleExport = async () => {
+    try {
+      await exportToExcel({ projects, tasks: allTasks || visibleTasks })
+    } catch (e) { alert('Export failed: ' + e.message) }
+  }
+  const handleImportChange = async (ev) => {
+    const file = ev.target.files?.[0]
+    if (file) { await doImport(file) }
+    ev.target.value = ''
+  }
+  const doImport = async (file) => {
+    setImporting(true); setImportMsg(null)
+    try {
+      const { validRows, skipped, totalRows } = await parseImport(file)
+      if (validRows.length === 0) {
+        setImportMsg({ kind: 'warn', text: `Parsed ${totalRows} row(s) from ${file.name} — 0 had a valid id column to match. No updates applied.` })
+        return
+      }
+      const ok = window.confirm(`Apply ${validRows.length} task updates from ${file.name}?\nAllowed fields: title, assigned_to, start_date, due_date.\n${skipped} row(s) skipped (missing id).`)
+      if (!ok) { setImportMsg({ kind: 'info', text: 'Import cancelled.' }); return }
+      const { updated, failed, errors } = await applyTaskImport(validRows)
+      setImportMsg({
+        kind: failed ? 'warn' : 'ok',
+        text: `${updated} task(s) updated, ${failed} failed${failed ? ' — ' + errors.slice(0,3).map(e=>`${e.id.slice(0,8)}: ${e.message}`).join('; ') : ''}.`,
+      })
+      if (updated > 0 && onUpdate) onUpdate()
+    } catch (e) {
+      setImportMsg({ kind: 'err', text: 'Import failed: ' + e.message })
+    } finally { setImporting(false) }
+  }
 
   // Filter + sort (applies to Cards, List, Gantt; Dashboard uses all projects)
   const filtered = projects.filter(p => !statusFilter || p.status === statusFilter)
@@ -340,9 +375,27 @@ export default function ProjectGallery({ projects, visibleTasks, setActiveProjec
             {statusFilter && ` · ${statusFilter}`}
           </p>
         </div>
-        <button onClick={() => setShowAddProject(true)}
-          style={{ background: 'var(--indigo)', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 16px', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'Nunito, sans-serif' }}>+ New Project</button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button onClick={handleExport} title="Download all projects and tasks as an .xlsx file"
+            style={{ background: '#fff', color: '#42526e', border: '1px solid #dfe1e6', borderRadius: 6, padding: '7px 12px', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'Nunito, sans-serif' }}>📤 Export</button>
+          <button onClick={() => fileInputRef.current?.click()} disabled={importing}
+            title="Upload an edited export to bulk-update task titles, assignees, start and due dates"
+            style={{ background: '#fff', color: '#42526e', border: '1px solid #dfe1e6', borderRadius: 6, padding: '7px 12px', fontWeight: 700, fontSize: 12, cursor: importing ? 'wait' : 'pointer', fontFamily: 'Nunito, sans-serif', opacity: importing ? 0.6 : 1 }}>
+            {importing ? 'Importing…' : '📥 Import'}
+          </button>
+          <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleImportChange} style={{ display: 'none' }} />
+          <button onClick={() => setShowAddProject(true)}
+            style={{ background: 'var(--indigo)', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 16px', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'Nunito, sans-serif' }}>+ New Project</button>
+        </div>
       </div>
+      {importMsg && (
+        <div style={{ marginBottom: 14, padding: '8px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+          background: importMsg.kind === 'ok' ? '#e3fcef' : importMsg.kind === 'err' ? '#ffebe6' : '#fff3e0',
+          color: importMsg.kind === 'ok' ? '#00875a' : importMsg.kind === 'err' ? '#de350b' : '#b85c00' }}>
+          {importMsg.text}
+          <button onClick={() => setImportMsg(null)} style={{ marginLeft: 10, background: 'none', border: 'none', cursor: 'pointer', fontSize: 14 }}>×</button>
+        </div>
+      )}
 
       {/* Controls: view tabs + sort + filter */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
