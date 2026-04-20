@@ -13,6 +13,7 @@ import AddProjectModal from '../components/AddProjectModal'
 import MyWorkView from '../components/MyWorkView'
 import MyProjectsView from '../components/MyProjectsView'
 import InboxView from '../components/InboxView'
+import ApprovalsView from '../components/ApprovalsView'
 import ProjectGallery from '../components/ProjectGallery'
 import ProjectSection from '../components/ProjectSection'
 
@@ -102,6 +103,7 @@ export default function Home() {
   // used as the sidebar badge next to My Work.
   const myOpenTasksCount = visibleTasks.filter(t => !t.is_group && t.status !== 'done' && t.assigned_to?.toLowerCase() === userName.toLowerCase()).length
   const unreadCount   = notifications.filter(n => !n.read).length
+  const approvalsCount = tasks.filter(t => t.task_type === 'approval' && !t.decision).length
 
   if (authLoading) return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #3D157D 0%, #1a0a3a 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Nunito, sans-serif', color: '#fff', fontSize: 16, fontWeight: 600 }}>
@@ -123,7 +125,7 @@ export default function Home() {
       <div style={{ display: 'flex', height: 'calc(100vh - 52px)' }}>
         <AppSidebar view={view} setView={setView} projects={projects}
           activeProject={activeProject} setActiveProject={setActiveProject}
-          myFlowCount={myOpenTasksCount} unreadCount={unreadCount} />
+          myFlowCount={myOpenTasksCount} unreadCount={unreadCount} approvalsCount={approvalsCount} />
 
         <main style={{ flex: 1, overflowY: 'auto', padding: 20, marginRight: selectedTask ? taskPanelW : 0 }}>
           {loading ? (
@@ -137,6 +139,8 @@ export default function Home() {
           ) : view === 'inbox' ? (
             <InboxView notifications={notifications} tasks={tasks} unreadCount={unreadCount}
               markRead={markRead} markAllRead={markAllRead} setSelectedTask={setSelectedTask} />
+          ) : view === 'approvals' ? (
+            <ApprovalsView tasks={tasks} projects={projects} setSelectedTask={setSelectedTask} />
           ) : activeProjectData ? (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>

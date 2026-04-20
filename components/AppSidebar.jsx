@@ -17,7 +17,7 @@ function NavBtn({ view, setView, activeKey, label, count }) {
   )
 }
 
-export default function AppSidebar({ view, setView, projects, activeProject, setActiveProject, myFlowCount, unreadCount }) {
+export default function AppSidebar({ view, setView, projects, activeProject, setActiveProject, myFlowCount, unreadCount, approvalsCount }) {
   const [width, setWidth] = useState(DEFAULT_W)
   const dragging = useRef(false)
 
@@ -61,6 +61,7 @@ export default function AppSidebar({ view, setView, projects, activeProject, set
         <NavBtn view={view} setView={setView} activeKey="mywork"     label="👤 My Work"       count={myFlowCount} />
         <NavBtn view={view} setView={setView} activeKey="myprojects" label="📌 My Projects"   count={0} />
         <NavBtn view={view} setView={setView} activeKey="board"      label="📋 All Projects"  count={0} />
+        <NavBtn view={view} setView={setView} activeKey="approvals"  label="✅ Approvals"     count={approvalsCount} />
         <NavBtn view={view} setView={setView} activeKey="inbox"      label="🔔 Notifications" count={unreadCount} />
       </div>
       <p style={{ fontSize: 10, fontWeight: 700, color: '#a0aec0', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '0 12px', marginBottom: 6 }}>Projects</p>
