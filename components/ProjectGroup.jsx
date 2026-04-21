@@ -4,42 +4,78 @@ import { GROUP_TINTS } from '../lib/team'
 import { PROJ_COL_WIDTHS as W_DEFAULT, TASK_COL_MAX } from '../lib/constants'
 import ProjectTableRow from './ProjectTableRow'
 
-export default function ProjectGroup({ group, allTasks, projectColor, onUpdate, onPatch, onDelete, onAddSubtask, onSelect, onAddTask, projectId, groupIndex, selectedIds, onToggleSelect, widths }) {
+// Renders one task_groups row as a collapsible section:
+//   • header shows the group name and live task count
+//   • body lists every task whose group_id matches (parent_id IS NULL, so
+//     sub-tasks nested under a parent task aren't duplicated here)
+//   • + Add task button inserts a new task with group_id = this group's id
+//   • × Delete calls onDeleteGroup — member tasks survive (FK ON DELETE SET NULL)
+//     and drop into the project's ungrouped bucket.
+export default function ProjectGroup({ group, allTasks, projectColor, onUpdate, onPatch, onDelete, onDeleteGroup, onAddSubtask, onSelect, onAddTask, projectId, groupIndex, selectedIds, onToggleSelect, widths }) {
   const W = widths || W_DEFAULT
   const [collapsed, setCollapsed] = useState(false)
   const [addingTask, setAddingTask] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState('')
-  const children = allTasks.filter(t => t.parent_id === group.id)
+  // Members of this group — exclude subtasks (rendered under their parent task).
+  const children = allTasks.filter(t => t.group_id === group.id && !t.parent_id)
   const tint = GROUP_TINTS[groupIndex % GROUP_TINTS.length]
 
   const addTask = async () => {
     if (!newTaskTitle.trim()) return
-    await supabase.from('tasks').insert([{ title: newTaskTitle, project_id: projectId, parent_id: group.id, status: 'not_started', priority: 'medium', progress: 0, source: 'manual' }])
+    await supabase.from('tasks').insert([{
+      title: newTaskTitle.trim(),
+      project_id: projectId,
+      group_id: group.id,
+      status: 'not_started',
+      priority: 'medium',
+      progress: 0,
+      source: 'manual',
+    }])
     setNewTaskTitle(''); setAddingTask(false); onUpdate()
+  }
+
+  const handleDelete = () => {
+    const ok = window.confirm(
+      `Delete group "${group.name}"?\n\n${children.length} task${children.length === 1 ? '' : 's'} will remain but become ungrouped.`
+    )
+    if (!ok) return
+    if (onDeleteGroup) onDeleteGroup(group.id)
   }
 
   return (
     <div style={{ marginBottom: 0 }}>
-      {/* Group header */}
-      <div style={{ display: 'flex', alignItems: 'center', background: tint.bg, borderLeft: `4px solid ${tint.border}`, borderBottom: '1px solid #dfe1e6', borderTop: '2px solid #e5e7eb' }}>
-        <div style={{ width: W.select, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <span onClick={() => setCollapsed(c => !c)} style={{ cursor: 'pointer', fontSize: 10, color: tint.text, fontWeight: 800 }}>{collapsed ? '▶' : '▼'}</span>
+      {/* Group header — click anywhere to collapse/expand */}
+      <div style={{ display: 'flex', alignItems: 'center', background: tint.bg, borderLeft: `4px solid ${tint.border}`, borderBottom: '1px solid #dfe1e6', borderTop: '2px solid #e5e7eb', cursor: 'pointer' }}
+        onClick={() => setCollapsed(c => !c)}>
+        <div style={{ width: W.select, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <span style={{ fontSize: 10, color: tint.text, fontWeight: 800 }}>{collapsed ? '▶' : '▼'}</span>
         </div>
-        <div style={{ flex: 1, maxWidth: TASK_COL_MAX, padding: '8px 8px 8px 4px', fontWeight: 800, fontSize: 13, color: tint.text }}>{group.title}</div>
-        <div style={{ padding: '8px 12px', fontSize: 11, color: tint.text, fontWeight: 700, opacity: 0.7 }}>{children.length} task{children.length !== 1 ? 's' : ''}</div>
-        {/* Spacer cols — match ProjectTableRow column widths */}
-        <div style={{ width: W.owner }} /><div style={{ width: W.status }} /><div style={{ width: W.timeline }} /><div style={{ width: W.effort }} /><div style={{ width: W.priority }} /><div style={{ width: W.progress }} />
-        {/* Delete group */}
-        <span onClick={() => onDelete(group.id)} title="Delete group"
-          style={{ padding: '0 12px', color: '#c1c7d0', cursor: 'pointer', fontSize: 16, flexShrink: 0 }}
-          onMouseEnter={e => e.currentTarget.style.color='#de350b'} onMouseLeave={e => e.currentTarget.style.color='#c1c7d0'}>×</span>
+        <div style={{ flex: 1, maxWidth: TASK_COL_MAX, padding: '8px 0', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontWeight: 800, fontSize: 13, color: tint.text }}>{group.name}</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: tint.text, background: '#fff', borderRadius: 10, padding: '1px 8px' }}>
+            {children.length} task{children.length === 1 ? '' : 's'}
+          </span>
+        </div>
+        {/* Spacer cols — widths match ProjectTableRow so header + rows stay aligned */}
+        <div style={{ width: W.owner,    flexShrink: 0 }} />
+        <div style={{ width: W.status,   flexShrink: 0 }} />
+        <div style={{ width: W.timeline, flexShrink: 0 }} />
+        <div style={{ width: W.effort,   flexShrink: 0 }} />
+        <div style={{ width: W.priority, flexShrink: 0 }} />
+        <div style={{ width: W.progress, flexShrink: 0, display: 'flex', justifyContent: 'flex-end', paddingRight: 10 }}>
+          <span onClick={e => { e.stopPropagation(); handleDelete() }} title="Delete group"
+            style={{ color: '#c1c7d0', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}
+            onMouseEnter={e => e.currentTarget.style.color = '#de350b'}
+            onMouseLeave={e => e.currentTarget.style.color = '#c1c7d0'}>×</span>
+        </div>
       </div>
-      {/* Child tasks */}
+      {/* Child tasks — rendered at depth=1 so they indent under the header */}
       {!collapsed && children.map(task => (
         <ProjectTableRow key={task.id} task={task} projectColor={tint.border}
           onUpdate={onUpdate} onPatch={onPatch} onDelete={onDelete} onSelect={onSelect} depth={1}
           selected={!!selectedIds?.has(task.id)} onToggleSelect={onToggleSelect} widths={W} />
       ))}
+      {/* Inline + Add task inside this group */}
       {!collapsed && (
         addingTask ? (
           <div style={{ display: 'flex', alignItems: 'center', borderLeft: `4px solid ${tint.border}`, borderBottom: '1px solid #f0f1f3', padding: '4px 8px 4px 32px', gap: 8, background: '#fff' }}>

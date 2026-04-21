@@ -12,7 +12,7 @@ const WIDTHS_STORAGE_KEY = 'doddl-pm-project-col-widths'
 const MIN_W = { select: 28, owner: 60, status: 70, timeline: 110, effort: 40, priority: 60, progress: 80 }
 const MAX_W = { select: 28, owner: 200, status: 200, timeline: 340, effort: 100, priority: 160, progress: 300 }
 
-export default function ProjectSection({ project, tasks, allTasks, onUpdate, onPatch, onDelete, onAddTask, onAddSubtask, onSelect, colorIndex, projects, user }) {
+export default function ProjectSection({ project, tasks, allTasks, taskGroups, onUpdate, onPatch, onDelete, onDeleteGroup, onAddTask, onAddSubtask, onSelect, colorIndex, projects, user }) {
   const [projectTab, setProjectTab] = useState('table')
   const [addingGroup, setAddingGroup] = useState(false)
   const [groupName, setGroupName] = useState('')
@@ -71,15 +71,21 @@ export default function ProjectSection({ project, tasks, allTasks, onUpdate, onP
     })
   }
   const clearSel = () => setSelectedIds(new Set())
+  // Groups come from the task_groups table (populated by seeds / migrations and
+  // by saveGroup/groupSelected below). Filtered + sorted here so child components
+  // get a ready-to-render list.
+  const groups = (taskGroups || []).filter(g => g.project_id === project.id)
+    .sort((a, b) => (a.position || 0) - (b.position || 0))
+
   const groupSelected = async () => {
-    const title = selGroupName.trim() || `Group of ${selectedIds.size}`
-    // Create the group-row first so we can parent the selected tasks under it
-    const { data: newGroup, error } = await supabase.from('tasks').insert([{
-      title, project_id: project.id, is_group: true, status: 'not_started', priority: 'medium', progress: 0,
+    const name = selGroupName.trim() || `Group of ${selectedIds.size}`
+    const maxPos = groups.reduce((m, g) => Math.max(m, g.position || 0), 0)
+    const { data: newGroup, error } = await supabase.from('task_groups').insert([{
+      name, project_id: project.id, position: maxPos + 1,
     }]).select().single()
     if (error || !newGroup) { console.error('group create failed', error); return }
     const ids = Array.from(selectedIds)
-    await supabase.from('tasks').update({ parent_id: newGroup.id }).in('id', ids)
+    await supabase.from('tasks').update({ group_id: newGroup.id }).in('id', ids)
     setSelGroupName(''); setGroupingSel(false); clearSel(); onUpdate()
   }
   const realTasks = tasks.filter(t => !t.is_group)
@@ -93,13 +99,17 @@ export default function ProjectSection({ project, tasks, allTasks, onUpdate, onP
     ? Math.round(realTasks.reduce((sum, t) => sum + (Number(t.progress) || 0), 0) / totalTasks)
     : 0
 
-  // Separate groups from regular tasks
-  const groups = tasks.filter(t => t.is_group && !t.parent_id)
-  const ungroupedTasks = tasks.filter(t => !t.is_group && !t.parent_id)
+  // Tasks with no group_id land in the ungrouped bucket (rendered after all
+  // groups). Legacy `is_group` / `parent_id` tasks are ignored — that mechanism
+  // is superseded by task_groups.
+  const ungroupedTasks = tasks.filter(t => !t.is_group && !t.parent_id && !t.group_id)
 
   const saveGroup = async () => {
     if (!groupName.trim()) return
-    await supabase.from('tasks').insert([{ title: groupName, project_id: project.id, is_group: true, status: 'not_started', priority: 'medium', progress: 0 }])
+    const maxPos = groups.reduce((m, g) => Math.max(m, g.position || 0), 0)
+    await supabase.from('task_groups').insert([{
+      name: groupName.trim(), project_id: project.id, position: maxPos + 1,
+    }])
     setGroupName(''); setAddingGroup(false); onUpdate()
   }
 
@@ -214,7 +224,8 @@ export default function ProjectSection({ project, tasks, allTasks, onUpdate, onP
             {/* Groups with their tasks */}
             {groups.map((group, gi) => (
               <ProjectGroup key={group.id} group={group} allTasks={allTasks} projectColor={color}
-                groupIndex={gi} onUpdate={onUpdate} onPatch={onPatch} onDelete={onDelete} onAddSubtask={onAddSubtask}
+                groupIndex={gi} onUpdate={onUpdate} onPatch={onPatch} onDelete={onDelete} onDeleteGroup={onDeleteGroup}
+                onAddSubtask={onAddSubtask}
                 onSelect={onSelect} onAddTask={onAddTask} projectId={project.id}
                 selectedIds={selectedIds} onToggleSelect={onToggleSelect} widths={W} />
             ))}

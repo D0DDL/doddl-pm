@@ -24,6 +24,7 @@ export default function Home() {
   const [view, setView]                         = useState('board')
   const [tasks, setTasks]                       = useState([])
   const [projects, setProjects]                 = useState([])
+  const [taskGroups, setTaskGroups]             = useState([])
   const [notifications, setNotifications]       = useState([])
   const [loading, setLoading]                   = useState(true)
   const [activeProject, setActiveProject]       = useState(null)
@@ -59,11 +60,12 @@ export default function Home() {
   const userName = getDisplayName(user?.username) || user?.name?.split(' ')[0] || ''
 
   const load = useCallback(async () => {
-    const [{ data: t }, { data: p }] = await Promise.all([
+    const [{ data: t }, { data: p }, { data: g }] = await Promise.all([
       supabase.from('tasks').select('*').order('created_at', { ascending: true }),
       supabase.from('projects').select('*').order('created_at', { ascending: false }),
+      supabase.from('task_groups').select('*').order('position', { ascending: true }),
     ])
-    setTasks(t || []); setProjects(p || [])
+    setTasks(t || []); setProjects(p || []); setTaskGroups(g || [])
   }, [])
   useEffect(() => {
     if (!user) return
@@ -95,6 +97,9 @@ export default function Home() {
   const markRead    = async id => { await supabase.from('notifications').update({ read: true }).eq('id', id); loadNotifications() }
   const markAllRead = async () => { await supabase.from('notifications').update({ read: true }).eq('user_name', userName).eq('read', false); loadNotifications() }
   const deleteTask  = async id => { await supabase.from('tasks').delete().eq('id', id); load() }
+  // Delete a task_group row. tasks.group_id has ON DELETE SET NULL, so member
+  // tasks survive and fall into the project's "ungrouped" bucket.
+  const deleteGroup = async id => { await supabase.from('task_groups').delete().eq('id', id); load() }
   const handleAddTask    = projectId => { setAddTaskProjectId(projectId); setAddTaskParentId(null); setShowAddTask(true) }
   const handleAddSubtask = parentId  => {
     const parent = tasks.find(t => t.id === parentId)
@@ -157,7 +162,8 @@ export default function Home() {
               </div>
               <ProjectSection key={activeProjectData.id} project={activeProjectData} colorIndex={activeProjectIdx}
                 tasks={(search ? filteredTasks : visibleTasks).filter(t => t.project_id === activeProjectData.id)}
-                allTasks={visibleTasks} onUpdate={load} onPatch={patchTask} onDelete={deleteTask}
+                allTasks={visibleTasks} taskGroups={taskGroups} onUpdate={load} onPatch={patchTask}
+                onDelete={deleteTask} onDeleteGroup={deleteGroup}
                 onAddTask={handleAddTask} onAddSubtask={handleAddSubtask} onSelect={setSelectedTask} />
             </>
           ) : (
