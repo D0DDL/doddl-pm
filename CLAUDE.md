@@ -224,7 +224,15 @@ AWAITING APPROVAL: [anything needing Jon sign-off]
 3. **Auto-push** — after each commit on `staging`, push to `origin/staging`
    immediately. Do not wait for instruction. Jon reviews in the staging URL.
 
-4. **Only stop and ask when:**
+4. **Auto-update PM tool task status** — after completing any build unit that
+   maps to a task in the PM Tool database, update the corresponding task to
+   `status: 'done', progress: 100` via the agent API (`POST /api/agent/tasks`
+   with `AGENT_SERVICE_KEY`) or the service role client. Match by task title
+   and `project_id`. If a task was only partially completed, set `in_progress`
+   with a realistic `progress` value. This keeps the PM tool a live reflection
+   of delivery state — do not wait for instruction.
+
+5. **Only stop and ask when:**
    - A decision is required that Jon has not already made
    - A migration would touch production Supabase (`ikcjciscttsvpxoijnqe`)
    - An action would touch the `main` branch
