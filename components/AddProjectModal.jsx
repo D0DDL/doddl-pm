@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { PROJECT_COLORS } from '../lib/team'
+import { PROJECT_COLORS, TEAM } from '../lib/team'
 import { PRIORITIES } from '../lib/constants'
+import { PROJECT_STATUSES } from './ProjectSection'
 
 export default function AddProjectModal({ onClose, onSaved, colorIndex }) {
   const color = PROJECT_COLORS[colorIndex % PROJECT_COLORS.length]
@@ -10,7 +11,13 @@ export default function AddProjectModal({ onClose, onSaved, colorIndex }) {
   const save = async () => {
     if (!form.name.trim()) return
     setSaving(true)
-    await supabase.from('projects').insert([form])
+    const payload = {
+      ...form,
+      owner: form.owner || null,
+      due_date: form.due_date || null,
+      description: form.description || null,
+    }
+    await supabase.from('projects').insert([payload])
     setSaving(false); onSaved(); onClose()
   }
   return (
@@ -30,11 +37,18 @@ export default function AddProjectModal({ onClose, onSaved, colorIndex }) {
               style={{ padding: '8px 10px', border: '1px solid #dfe1e6', borderRadius: 6, fontSize: 13, fontFamily: 'Nunito, sans-serif' }}>
               {PRIORITIES.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
             </select>
-            <input type="text" placeholder="Owner" value={form.owner} onChange={e => setForm({ ...form, owner: e.target.value })}
-              style={{ padding: '8px 10px', border: '1px solid #dfe1e6', borderRadius: 6, fontSize: 13, fontFamily: 'Nunito, sans-serif' }} />
+            <select value={form.owner} onChange={e => setForm({ ...form, owner: e.target.value })}
+              style={{ padding: '8px 10px', border: '1px solid #dfe1e6', borderRadius: 6, fontSize: 13, fontFamily: 'Nunito, sans-serif' }}>
+              <option value="">Owner…</option>
+              {TEAM.map(m => <option key={m.email} value={m.name}>{m.name}</option>)}
+            </select>
             <input type="date" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })}
               style={{ padding: '8px 10px', border: '1px solid #dfe1e6', borderRadius: 6, fontSize: 13, fontFamily: 'Nunito, sans-serif' }} />
-            <div>
+            <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}
+              style={{ padding: '8px 10px', border: '1px solid #dfe1e6', borderRadius: 6, fontSize: 13, fontFamily: 'Nunito, sans-serif' }}>
+              {PROJECT_STATUSES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+            </select>
+            <div style={{ gridColumn: '1 / -1' }}>
               <label style={{ fontSize: 11, fontWeight: 700, color: '#6b778c', display: 'block', marginBottom: 4 }}>Colour</label>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {PROJECT_COLORS.map(c => (

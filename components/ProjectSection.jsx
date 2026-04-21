@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { getProjectColor } from '../lib/team'
+import { getProjectColor, TEAM } from '../lib/team'
 import { PROJ_COL_WIDTHS as W_DEFAULT, TASK_COL_MAX } from '../lib/constants'
 import ProjectGroup from './ProjectGroup'
 import ProjectTableRow from './ProjectTableRow'
@@ -11,6 +11,15 @@ import ProjectGanttChart from './ProjectGanttChart'
 const WIDTHS_STORAGE_KEY = 'doddl-pm-project-col-widths'
 const MIN_W = { select: 28, owner: 60, status: 70, timeline: 110, effort: 40, priority: 60, progress: 80 }
 const MAX_W = { select: 28, owner: 200, status: 200, timeline: 340, effort: 100, priority: 160, progress: 300 }
+
+// Project-level statuses (DB check constraint: active/on_hold/completed/archived).
+// UI surfaces the three the user works with day-to-day; archived is managed elsewhere.
+export const PROJECT_STATUSES = [
+  { key: 'active',    label: 'Active' },
+  { key: 'on_hold',   label: 'On Hold' },
+  { key: 'completed', label: 'Complete' },
+]
+const projectStatusLabel = (k) => PROJECT_STATUSES.find(s => s.key === k)?.label || (k ? k.replace('_', ' ') : '')
 
 export default function ProjectSection({ project, tasks, allTasks, taskGroups, onUpdate, onPatch, onDelete, onDeleteGroup, onAddTask, onAddSubtask, onSelect, colorIndex, projects, user }) {
   const [projectTab, setProjectTab] = useState('table')
@@ -62,6 +71,63 @@ export default function ProjectSection({ project, tasks, allTasks, taskGroups, o
     document.body.style.userSelect = 'none'
   }
   const color = getProjectColor(project, colorIndex)
+
+  // Header edit mode — pencil icon in the header reveals inputs for
+  // name/owner/due/status/description and a Save/Cancel pair. Save writes
+  // directly to `projects` via the live UI path (Hard Rule 2) and calls
+  // onUpdate() so parent state reloads.
+  const [editingHeader, setEditingHeader] = useState(false)
+  const [headerHover, setHeaderHover]     = useState(false)
+  const [savingHeader, setSavingHeader]   = useState(false)
+  const [editForm, setEditForm]           = useState({
+    name: project.name || '',
+    owner: project.owner || '',
+    due_date: project.due_date ? project.due_date.slice(0, 10) : '',
+    status: project.status || 'active',
+    description: project.description || '',
+  })
+  // Re-seed the edit form whenever a fresh project prop arrives (e.g. after
+  // another save) or when we enter edit mode, so inputs show the latest values.
+  useEffect(() => {
+    if (!editingHeader) {
+      setEditForm({
+        name: project.name || '',
+        owner: project.owner || '',
+        due_date: project.due_date ? project.due_date.slice(0, 10) : '',
+        status: project.status || 'active',
+        description: project.description || '',
+      })
+    }
+  }, [project.id, project.name, project.owner, project.due_date, project.status, project.description, editingHeader])
+
+  const startEdit  = () => setEditingHeader(true)
+  const cancelEdit = () => {
+    setEditForm({
+      name: project.name || '',
+      owner: project.owner || '',
+      due_date: project.due_date ? project.due_date.slice(0, 10) : '',
+      status: project.status || 'active',
+      description: project.description || '',
+    })
+    setEditingHeader(false)
+  }
+  const saveEdit = async () => {
+    if (!editForm.name.trim()) return
+    setSavingHeader(true)
+    const patch = {
+      name: editForm.name.trim(),
+      owner: editForm.owner || null,
+      due_date: editForm.due_date || null,
+      status: editForm.status || 'active',
+      description: editForm.description || null,
+      updated_at: new Date().toISOString(),
+    }
+    const { error } = await supabase.from('projects').update(patch).eq('id', project.id)
+    setSavingHeader(false)
+    if (error) { console.error('project update failed', error); alert('Could not save project: ' + error.message); return }
+    setEditingHeader(false)
+    onUpdate()
+  }
 
   const onToggleSelect = (id) => {
     setSelectedIds(prev => {
@@ -123,36 +189,112 @@ export default function ProjectSection({ project, tasks, allTasks, taskGroups, o
 
   return (
     <div style={{ marginBottom: 40, background: '#fff', borderRadius: 12, border: '1px solid #dfe1e6', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-      {/* Project header — solid doddl brand colour */}
-      <div style={{ padding: '14px 20px', background: color, display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <span style={{ fontWeight: 800, fontSize: 16, color: '#fff' }}>{project.name}</span>
-            {project.owner && (
-              <span style={{ display: 'inline-flex', alignItems: 'center', background: 'rgba(255,255,255,0.25)', color: '#fff', fontWeight: 700, fontSize: 11, padding: '3px 10px', borderRadius: 11 }}>
-                {project.owner}
-              </span>
-            )}
-            {project.due_date && <span style={{ fontSize: 11, background: 'rgba(255,255,255,0.2)', borderRadius: 10, padding: '2px 10px', color: '#fff', fontWeight: 600 }}>Due {new Date(project.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
+      {/* Project header — solid doddl brand colour. Hover reveals a pencil to
+          switch into an inline edit mode; Save persists to Supabase, Cancel
+          reverts to the last saved values. */}
+      <div
+        onMouseEnter={() => setHeaderHover(true)}
+        onMouseLeave={() => setHeaderHover(false)}
+        style={{ position: 'relative', padding: '14px 20px', background: color, display: 'flex', alignItems: editingHeader ? 'flex-start' : 'center', gap: 12 }}
+      >
+        {editingHeader ? (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <input
+              autoFocus
+              value={editForm.name}
+              onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+              placeholder="Project name"
+              style={{ padding: '7px 10px', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 6, background: 'rgba(255,255,255,0.95)', color: '#172b4d', fontWeight: 800, fontSize: 16, fontFamily: 'Nunito, sans-serif', outline: 'none' }}
+            />
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <select
+                value={editForm.owner}
+                onChange={e => setEditForm(f => ({ ...f, owner: e.target.value }))}
+                style={{ padding: '6px 8px', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 6, background: 'rgba(255,255,255,0.95)', color: '#172b4d', fontWeight: 700, fontSize: 12, fontFamily: 'Nunito, sans-serif', outline: 'none' }}
+              >
+                <option value="">Owner…</option>
+                {TEAM.map(m => <option key={m.email} value={m.name}>{m.name}</option>)}
+              </select>
+              <input
+                type="date"
+                value={editForm.due_date}
+                onChange={e => setEditForm(f => ({ ...f, due_date: e.target.value }))}
+                style={{ padding: '6px 8px', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 6, background: 'rgba(255,255,255,0.95)', color: '#172b4d', fontWeight: 600, fontSize: 12, fontFamily: 'Nunito, sans-serif', outline: 'none' }}
+              />
+              <select
+                value={editForm.status}
+                onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}
+                style={{ padding: '6px 8px', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 6, background: 'rgba(255,255,255,0.95)', color: '#172b4d', fontWeight: 700, fontSize: 12, fontFamily: 'Nunito, sans-serif', outline: 'none' }}
+              >
+                {PROJECT_STATUSES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+              </select>
+            </div>
+            <textarea
+              value={editForm.description}
+              onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
+              placeholder="Description"
+              rows={2}
+              style={{ padding: '7px 10px', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 6, background: 'rgba(255,255,255,0.95)', color: '#172b4d', fontSize: 13, fontFamily: 'Nunito, sans-serif', resize: 'vertical', outline: 'none' }}
+            />
           </div>
-          {project.description && <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 3 }}>{project.description}</p>}
-        </div>
+        ) : (
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 800, fontSize: 16, color: '#fff' }}>{project.name}</span>
+              {project.owner && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', background: 'rgba(255,255,255,0.25)', color: '#fff', fontWeight: 700, fontSize: 11, padding: '3px 10px', borderRadius: 11 }}>
+                  {project.owner}
+                </span>
+              )}
+              {project.status && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', background: 'rgba(255,255,255,0.2)', color: '#fff', fontWeight: 700, fontSize: 11, padding: '3px 10px', borderRadius: 11, textTransform: 'capitalize' }}>
+                  {projectStatusLabel(project.status)}
+                </span>
+              )}
+              {project.due_date && <span style={{ fontSize: 11, background: 'rgba(255,255,255,0.2)', borderRadius: 10, padding: '2px 10px', color: '#fff', fontWeight: 600 }}>Due {new Date(project.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
+            </div>
+            {project.description && <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 3 }}>{project.description}</p>}
+          </div>
+        )}
+
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          <div style={{ width: 100, height: 5, background: 'rgba(255,255,255,0.25)', borderRadius: 3, overflow: 'hidden' }}>
-            <div style={{ width: `${pct}%`, height: '100%', background: '#fff', borderRadius: 3 }} />
-          </div>
-          <span style={{ fontSize: 12, fontWeight: 800, color: '#fff' }}>{pct}%</span>
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)' }}>{doneTasks}/{totalTasks}</span>
-          <button onClick={() => {
-            if (window.confirm(`Delete project "${project.name}" and all its tasks? This cannot be undone.`)) {
-              supabase.from('tasks').delete().eq('project_id', project.id)
-                .then(() => supabase.from('projects').delete().eq('id', project.id))
-                .then(() => onUpdate())
-            }
-          }} title="Delete project"
-            style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', fontSize: 12, fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}
-            onMouseEnter={e => e.currentTarget.style.background='rgba(222,53,11,0.6)'}
-            onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.15)'}>🗑 Delete</button>
+          {editingHeader ? (
+            <>
+              <button onClick={saveEdit} disabled={savingHeader || !editForm.name.trim()} title="Save changes"
+                style={{ background: '#fff', color, border: 'none', borderRadius: 4, padding: '5px 14px', cursor: savingHeader ? 'wait' : 'pointer', fontSize: 12, fontFamily: 'Nunito, sans-serif', fontWeight: 800, opacity: (savingHeader || !editForm.name.trim()) ? 0.7 : 1 }}>
+                {savingHeader ? 'Saving…' : 'Save'}
+              </button>
+              <button onClick={cancelEdit} disabled={savingHeader} title="Cancel"
+                style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.4)', color: '#fff', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>
+                Cancel
+              </button>
+            </>
+          ) : (
+            <>
+              <div style={{ width: 100, height: 5, background: 'rgba(255,255,255,0.25)', borderRadius: 3, overflow: 'hidden' }}>
+                <div style={{ width: `${pct}%`, height: '100%', background: '#fff', borderRadius: 3 }} />
+              </div>
+              <span style={{ fontSize: 12, fontWeight: 800, color: '#fff' }}>{pct}%</span>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)' }}>{doneTasks}/{totalTasks}</span>
+              <button onClick={startEdit} title="Edit project"
+                aria-label="Edit project"
+                style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', fontSize: 13, fontFamily: 'Nunito, sans-serif', fontWeight: 700, opacity: headerHover ? 1 : 0, transition: 'opacity 120ms ease' }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}>
+                ✎ Edit
+              </button>
+              <button onClick={() => {
+                if (window.confirm(`Delete project "${project.name}" and all its tasks? This cannot be undone.`)) {
+                  supabase.from('tasks').delete().eq('project_id', project.id)
+                    .then(() => supabase.from('projects').delete().eq('id', project.id))
+                    .then(() => onUpdate())
+                }
+              }} title="Delete project"
+                style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', fontSize: 12, fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}
+                onMouseEnter={e => e.currentTarget.style.background='rgba(222,53,11,0.6)'}
+                onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.15)'}>🗑 Delete</button>
+            </>
+          )}
         </div>
       </div>
 
