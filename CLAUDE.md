@@ -95,7 +95,6 @@ Never hardcode. Never log. Never commit .env.local.
 - CSS/styling changes
 
 ### PROPOSE and wait for Jon approval before:
-- Any SQL migration against production Supabase (staging migrations may be applied directly per Hard Rule 3)
 - Any change to authentication logic
 - Any change to pages/api/tasks.js
 - Adding new environment variables
@@ -103,10 +102,10 @@ Never hardcode. Never log. Never commit .env.local.
 
 ### NEVER do autonomously:
 - Touch main branch
-- Touch production Supabase (ikcjciscttsvpxoijnqe)
+- Write arbitrary row data (INSERT/UPDATE/DELETE) against production Supabase (ikcjciscttsvpxoijnqe) — migrations only, per Hard Rule 3
 - Deploy to production Vercel URL
 - Change Azure app registration
-- Delete any table, column, or row
+- Delete any table, column, or row (destructive DDL)
 
 ---
 
@@ -198,8 +197,10 @@ AWAITING APPROVAL: [anything needing Jon sign-off]
 ## Hard Rules
 
 1. staging branch only — never main
-2. Staging Supabase only — never ikcjciscttsvpxoijnqe
-3. SQL migrations — Claude Code may apply directly to staging Supabase (iknwprxycshrickpswjz). Production Supabase (ikcjciscttsvpxoijnqe) migrations remain manual, Jon-only.
+2. Row-level data writes (INSERT/UPDATE/DELETE on table rows, seed inserts, data fixes) go to staging Supabase only — never ikcjciscttsvpxoijnqe. Production data stays clean.
+3. SQL migrations — Claude Code may apply migrations to either Supabase project (staging `iknwprxycshrickpswjz` or production `ikcjciscttsvpxoijnqe`) via the Supabase Management API using `SUPABASE_ACCESS_TOKEN` (PAT). Jon no longer applies migrations by hand. Two preconditions when targeting production:
+   - The migration SQL file must be committed to git (staging or main) BEFORE the Management API call. No "try it against prod first" — the working-copy-only path is staging-only.
+   - The file must live under `lib/migrations/` and be idempotent (re-apply-safe).
 4. MSAL auth never modified without explicit instruction
 5. pages/api/tasks.js never modified (Power Automate depends on it)
 6. No npm package installed without stating name, version, reason first
@@ -234,12 +235,17 @@ AWAITING APPROVAL: [anything needing Jon sign-off]
 
 5. **Only stop and ask when:**
    - A decision is required that Jon has not already made
-   - A migration would touch production Supabase (`ikcjciscttsvpxoijnqe`)
    - An action would touch the `main` branch
+   - An uncommitted migration would be applied to production Supabase
+     (`ikcjciscttsvpxoijnqe`) — commit first, then apply
+   - A production Supabase action would be anything other than an idempotent
+     migration (e.g. row-level data writes, destructive DDL outside migrations)
    - An error persists after two resolution attempts
 
    Everything else: build it, test it, commit it, push it.
 
 Hard Rules 1–7 above still apply and override these rules wherever they
-conflict. In particular: never push to `main`, never touch production
-Supabase, never install npm packages without approval.
+conflict. In particular: never push to `main`, never write arbitrary row
+data to production Supabase, never install npm packages without approval.
+Production migrations are permitted per Hard Rule 3 (committed + via the
+Management API).
