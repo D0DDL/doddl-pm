@@ -209,14 +209,20 @@ AWAITING APPROVAL: [anything needing Jon sign-off]
 ## Hard Rules
 
 1. staging branch only — never main
-2. Row-level data writes (INSERT/UPDATE/DELETE on table rows, seed inserts, data fixes) go to staging Supabase only — never ikcjciscttsvpxoijnqe. Production data stays clean.
-3. SQL migrations — Claude Code may apply migrations to either Supabase project (staging `iknwprxycshrickpswjz` or production `ikcjciscttsvpxoijnqe`) via the Supabase Management API using `SUPABASE_ACCESS_TOKEN` (PAT). Jon no longer applies migrations by hand. Two preconditions when targeting production:
+2. Row-level data writes (INSERT / UPDATE / DELETE on `projects`, `tasks`, `task_groups`, `comments`, `notifications`) must go through the agent API (`POST /api/agent/tasks`, `POST /api/agent/artefacts`) or the live UI. Never via direct SQL against either Supabase, for any reason. "Fix this row quickly in staging" is not an exception. If the DB needs to change shape it's a migration (Rule 3); if the data needs to change value it's an API / UI action.
+3. SQL migrations — Claude Code may apply migrations to either Supabase project (staging `iknwprxycshrickpswjz` or production `ikcjciscttsvpxoijnqe`) via the Supabase Management API using `SUPABASE_ACCESS_TOKEN` (PAT). Jon no longer applies migrations by hand. Preconditions when targeting production:
    - The migration SQL file must be committed to git (staging or main) BEFORE the Management API call. No "try it against prod first" — the working-copy-only path is staging-only.
    - The file must live under `lib/migrations/` and be idempotent (re-apply-safe).
+   - Apply via `scripts/safe-apply-migration.js`, which enforces Rules 8–11 below (check ledger, snapshot, apply, register).
 4. MSAL auth never modified without explicit instruction
 5. pages/api/tasks.js never modified (Power Automate depends on it)
 6. No npm package installed without stating name, version, reason first
 7. No credentials ever in code or git history
+8. **Check `schema_migrations` before every migration.** If the migration's id is already in the ledger, skip — do not re-apply. Adopted 2026-04-21 after production seed data was overwritten by a re-apply.
+9. **Never `DELETE` or `TRUNCATE` from `projects`, `tasks`, or `task_groups`.** Not in a migration, not in an ad-hoc script, not with service-role keys. These tables are live data. If rows need to be removed, archive by setting a status column or soft-delete; talk to Jon first. Past migrations that did this (`doddl_journey_migration.sql`, the production wipe-and-seed on 2026-04-21) are historical; no future SQL does it.
+10. **Seed files are one-time only.** `doddl_ai_os_seed.sql`, `doddl_business_projects_seed.sql`, `doddl_journey_migration.sql` are all registered in `schema_migrations` as already applied. Never re-run them against either database. If new seed data is needed, write a new migration with a fresh id under `lib/migrations/`.
+11. **Every migration must call `backup_before_migration('<id>')` before any DDL or row writes.** The function lives in both databases and snapshots every `projects` + `tasks` row into `migration_backups` as JSONB. `scripts/safe-apply-migration.js` does this automatically; hand-rolled SQL must include it explicitly as the first statement.
+12. **Code deployments never touch the database.** Pushing to `origin/staging` or `origin/main` triggers Vercel builds only — no migration runs on deploy. DB changes are explicit migration files applied via `scripts/safe-apply-migration.js`. If a PR changes code that assumes a new schema, the migration must have already been applied via the normal path before the PR merges.
 
 ---
 
