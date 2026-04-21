@@ -1,0 +1,81 @@
+import { useState, useEffect, useRef } from 'react'
+import { getProjectColor } from '../lib/team'
+
+const MIN_W = 160, MAX_W = 420, DEFAULT_W = 210, STORAGE_KEY = 'doddl-pm-sidebar-width'
+
+function NavBtn({ view, setView, activeKey, label, count }) {
+  return (
+    <button onClick={() => setView(activeKey)} style={{
+      display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left',
+      padding: '7px 12px', borderRadius: 6, border: 'none', cursor: 'pointer',
+      fontFamily: 'Nunito, sans-serif', fontWeight: 600, fontSize: 13, marginBottom: 2,
+      background: view === activeKey ? '#e9f2ff' : 'transparent', color: view === activeKey ? '#0052cc' : '#42526e',
+    }}>
+      {label}
+      {count > 0 && <span style={{ background: '#de350b', color: '#fff', borderRadius: 10, fontSize: 10, fontWeight: 700, padding: '1px 6px' }}>{count}</span>}
+    </button>
+  )
+}
+
+export default function AppSidebar({ view, setView, projects, activeProject, setActiveProject, myFlowCount, unreadCount, approvalsCount }) {
+  const [width, setWidth] = useState(DEFAULT_W)
+  const dragging = useRef(false)
+
+  // Restore persisted width
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const raw = window.localStorage.getItem(STORAGE_KEY)
+    const n = Number(raw)
+    if (Number.isFinite(n) && n >= MIN_W && n <= MAX_W) setWidth(n)
+  }, [])
+
+  // Drag-to-resize on the right edge
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!dragging.current) return
+      const w = Math.min(MAX_W, Math.max(MIN_W, e.clientX))
+      setWidth(w)
+    }
+    const onUp = () => {
+      if (!dragging.current) return
+      dragging.current = false
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      if (typeof window !== 'undefined') window.localStorage.setItem(STORAGE_KEY, String(width))
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
+  }, [width])
+
+  const startDrag = (e) => {
+    e.preventDefault()
+    dragging.current = true
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+  }
+
+  return (
+    <aside style={{ width, background: '#fff', borderRight: '1px solid #dfe1e6', padding: '16px 8px', overflowY: 'auto', flexShrink: 0, position: 'relative' }}>
+      <div style={{ marginBottom: 20 }}>
+        <NavBtn view={view} setView={setView} activeKey="mywork"     label="👤 My Work"       count={myFlowCount} />
+        <NavBtn view={view} setView={setView} activeKey="myprojects" label="📌 My Projects"   count={0} />
+        <NavBtn view={view} setView={setView} activeKey="board"      label="📋 All Projects"  count={0} />
+        <NavBtn view={view} setView={setView} activeKey="approvals"  label="✅ Approvals"     count={approvalsCount} />
+        <NavBtn view={view} setView={setView} activeKey="inbox"      label="🔔 Notifications" count={unreadCount} />
+      </div>
+      <p style={{ fontSize: 10, fontWeight: 700, color: '#a0aec0', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '0 12px', marginBottom: 6 }}>Projects</p>
+      <button onClick={() => setActiveProject(null)} style={{ width: '100%', textAlign: 'left', padding: '6px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 600, fontSize: 12, marginBottom: 2, background: !activeProject ? '#e9f2ff' : 'transparent', color: !activeProject ? '#0052cc' : '#42526e' }}>All projects</button>
+      {projects.map((p, i) => (
+        <button key={p.id} onClick={() => setActiveProject(p.id)} style={{ width: '100%', textAlign: 'left', padding: '6px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 600, fontSize: 12, marginBottom: 2, background: activeProject === p.id ? '#e9f2ff' : 'transparent', color: activeProject === p.id ? '#0052cc' : '#42526e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: getProjectColor(p, i), flexShrink: 0 }} />{p.name}
+        </button>
+      ))}
+      {/* Drag handle (UI #7) */}
+      <div onMouseDown={startDrag} title="Drag to resize"
+        style={{ position: 'absolute', top: 0, right: -3, bottom: 0, width: 6, cursor: 'col-resize', zIndex: 50 }}
+        onMouseEnter={e => e.currentTarget.style.background = 'rgba(61,21,125,0.15)'}
+        onMouseLeave={e => e.currentTarget.style.background = 'transparent'} />
+    </aside>
+  )
+}
