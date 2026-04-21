@@ -8,7 +8,8 @@ export default function ProjectDashboard({ project, tasks, color }) {
   const blocked = tasks.filter(t => t.status === 'blocked' || t.status === 'at_risk').length
   const notStarted = tasks.filter(t => t.status === 'not_started').length
   const overdue = tasks.filter(t => t.due_date && new Date(t.due_date) < new Date() && t.status !== 'done').length
-  const pct = total ? Math.round(done / total * 100) : 0
+  // Progress = mean of per-task progress, not done-count, so the bar reflects partial work.
+  const pct = total ? Math.round(tasks.reduce((s, t) => s + (Number(t.progress) || 0), 0) / total) : 0
   const byAssignee = TEAM.map(m => ({ name: m.name, count: tasks.filter(t => t.assigned_to === m.name).length })).filter(m => m.count > 0)
 
   const Stat = ({ label, value, color: c, sub }) => (

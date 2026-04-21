@@ -78,6 +78,12 @@ export default function Home() {
   }, [userName])
   useEffect(() => { if (userName) loadNotifications() }, [userName, loadNotifications])
 
+  // Close the task detail sidebar whenever the user navigates. Without this the
+  // panel stays pinned across view/project switches and leaks stale task state
+  // into the next screen (e.g. an AI OS task still visible over My Work).
+  // Browser Back lands here too because setActiveProject/setView drive the UI.
+  useEffect(() => { setSelectedTask(null) }, [view, activeProject])
+
   // Optimistic single-task patch — used by row-level and sidebar edits so the
   // project-header progress bar (and any other derived count) updates in the
   // same React tick, before the DB round-trip completes. load() still runs

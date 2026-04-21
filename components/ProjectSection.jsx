@@ -85,7 +85,13 @@ export default function ProjectSection({ project, tasks, allTasks, onUpdate, onP
   const realTasks = tasks.filter(t => !t.is_group)
   const totalTasks = realTasks.length
   const doneTasks = realTasks.filter(t => t.status === 'done').length
-  const pct = totalTasks ? Math.round(doneTasks / totalTasks * 100) : 0
+  // Project-level progress = mean of per-task progress, so the bar moves on
+  // every progress change (not just status=done transitions). patchTask in
+  // pages/index.js updates task.progress optimistically, so this rerenders
+  // in the same React tick as the slider change.
+  const pct = totalTasks
+    ? Math.round(realTasks.reduce((sum, t) => sum + (Number(t.progress) || 0), 0) / totalTasks)
+    : 0
 
   // Separate groups from regular tasks
   const groups = tasks.filter(t => t.is_group && !t.parent_id)
@@ -177,10 +183,16 @@ export default function ProjectSection({ project, tasks, allTasks, onUpdate, onP
               </div>
             )}
 
-            {/* Column headers — each sized col has a draggable right-edge handle (UI #5) */}
-            <div style={{ display: 'flex', alignItems: 'center', background: '#f8f9fc', borderBottom: '2px solid #dfe1e6', paddingLeft: 32 }}>
-              <div style={{ width: W.select }} />
-              <div style={{ flex: 1, maxWidth: TASK_COL_MAX, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Task</div>
+            {/* Column headers — sits above the rows with identical flex structure so every
+                header lines up over its column. Key alignment constraints:
+                  • borderLeft matches the row's 4px projectColor stripe (transparent here)
+                  • paddingLeft: 0 on the outer (was 32, which shifted everything right)
+                  • Task header uses padding-left 0 to align with row's title text (which
+                    starts at indent=0 for top-level rows)
+                  • per-column horizontal padding matches ProjectTableRow's cells */}
+            <div style={{ display: 'flex', alignItems: 'center', background: '#f8f9fc', borderBottom: '2px solid #dfe1e6', borderLeft: '4px solid transparent' }}>
+              <div style={{ width: W.select, flexShrink: 0 }} />
+              <div style={{ flex: 1, maxWidth: TASK_COL_MAX, padding: '7px 8px 7px 0', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Task</div>
               {[
                 { col: 'owner',    label: 'Owner' },
                 { col: 'status',   label: 'Status' },
@@ -189,7 +201,7 @@ export default function ProjectSection({ project, tasks, allTasks, onUpdate, onP
                 { col: 'priority', label: 'Priority' },
                 { col: 'progress', label: 'Progress' },
               ].map(({ col, label }) => (
-                <div key={col} style={{ width: W[col], padding: '7px 6px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', position: 'relative' }}>
+                <div key={col} style={{ width: W[col], padding: '7px 6px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', position: 'relative', flexShrink: 0 }}>
                   {label}
                   <div onMouseDown={startDragCol(col)} title="Drag to resize"
                     style={{ position: 'absolute', top: 0, right: -3, bottom: 0, width: 6, cursor: 'col-resize' }}
