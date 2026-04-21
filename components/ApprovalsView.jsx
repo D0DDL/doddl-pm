@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
 import { ARTEFACT_TYPES } from '../lib/artefactTypes'
 
 const DECISION_STYLES = {
@@ -315,13 +314,17 @@ export default function ApprovalsView({ tasks, projects, setSelectedTask }) {
 
   const loadAudit = useCallback(async () => {
     setLoadingAudit(true)
-    const { data } = await supabase
-      .from('agent_audit_log')
-      .select('agent_id, created_at, status_code, path')
-      .order('created_at', { ascending: false })
-      .limit(1000)
-    setAuditRows(data || [])
-    setLoadingAudit(false)
+    // anon cannot read agent_audit_log (see migration 04); hop through /api/audit-log
+    // which uses the service_role key server-side.
+    try {
+      const resp = await fetch('/api/audit-log?limit=1000')
+      const data = resp.ok ? await resp.json() : []
+      setAuditRows(Array.isArray(data) ? data : [])
+    } catch {
+      setAuditRows([])
+    } finally {
+      setLoadingAudit(false)
+    }
   }, [])
   useEffect(() => { if (tab === 'agents') loadAudit() }, [tab, loadAudit])
 
