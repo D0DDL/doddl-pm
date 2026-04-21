@@ -94,6 +94,18 @@ Never hardcode. Never log. Never commit .env.local.
 - New SQL migration files in lib/migrations/ (propose only, do not apply)
 - CSS/styling changes
 
+### Vercel API access (added 2026-04-21)
+- `VERCEL_TOKEN` in `.env.local` authenticates Claude against the Vercel API for
+  the `doddl-pm` project.
+- Claude may read, create, update, and delete environment variables on both the
+  `preview` (staging) and `production` Vercel environments programmatically.
+- Claude may trigger redeploys and read deployment status.
+- Claude must never log or commit the `VERCEL_TOKEN` or any value it fetches
+  (anon keys, service role keys, AGENT_SERVICE_KEY, etc.). Values flow from
+  Supabase Management API → Vercel API in-process; neither endpoint gets logged
+  to stdout with the secret visible.
+- Azure app registration changes remain out of scope (Hard Rule 4 analogue).
+
 ### PROPOSE and wait for Jon approval before:
 - Any change to authentication logic
 - Any change to pages/api/tasks.js
