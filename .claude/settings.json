@@ -11,7 +11,9 @@
       "Bash(mv *)",
       "Bash(echo *)",
       "Bash(curl *)",
-      "Bash(rm *)"
+      "Bash(rm *)",
+      "Write(*)",
+      "Edit(*)"
     ]
   }
 }
