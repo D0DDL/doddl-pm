@@ -8,7 +8,10 @@
       "Bash(cat *)",
       "Bash(mkdir *)",
       "Bash(cp *)",
-      "Bash(mv *)"
+      "Bash(mv *)",
+      "Bash(echo *)",
+      "Bash(curl *)",
+      "Bash(rm *)"
     ]
   }
 }

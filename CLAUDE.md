@@ -204,3 +204,34 @@ AWAITING APPROVAL: [anything needing Jon sign-off]
 5. pages/api/tasks.js never modified (Power Automate depends on it)
 6. No npm package installed without stating name, version, reason first
 7. No credentials ever in code or git history
+
+---
+
+## Operating Rules (added 2026-04-21)
+
+### Autonomous commit & push
+
+1. **Auto-approved commands** — the following Bash commands run without a
+   permission prompt (enforced via `.claude/settings.json`):
+   `npm run dev`, `npm run build`, `npm run start`, `echo`, `git status`,
+   `git add`, `git commit`, `git push origin staging`, `git log`, `git diff`,
+   `git fetch`, `node`, `curl`, `rm`, `mkdir`, `cp`, `mv`, `ls`, `cat`.
+
+2. **Auto-commit** — after completing any unit of work that passes
+   `npm run build`, commit to `staging` with a clear message. Do not wait
+   for instruction.
+
+3. **Auto-push** — after each commit on `staging`, push to `origin/staging`
+   immediately. Do not wait for instruction. Jon reviews in the staging URL.
+
+4. **Only stop and ask when:**
+   - A decision is required that Jon has not already made
+   - A migration would touch production Supabase (`ikcjciscttsvpxoijnqe`)
+   - An action would touch the `main` branch
+   - An error persists after two resolution attempts
+
+   Everything else: build it, test it, commit it, push it.
+
+Hard Rules 1–7 above still apply and override these rules wherever they
+conflict. In particular: never push to `main`, never touch production
+Supabase, never install npm packages without approval.
