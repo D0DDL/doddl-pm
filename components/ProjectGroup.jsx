@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { GROUP_TINTS } from '../lib/team'
-import { PROJ_COL_WIDTHS as W_DEFAULT } from '../lib/constants'
+import { PROJ_COL_WIDTHS as W_DEFAULT, TASK_COL_MAX } from '../lib/constants'
 import ProjectTableRow from './ProjectTableRow'
 
 export default function ProjectGroup({ group, allTasks, projectColor, onUpdate, onPatch, onDelete, onAddSubtask, onSelect, onAddTask, projectId, groupIndex, selectedIds, onToggleSelect, widths }) {
@@ -25,7 +25,7 @@ export default function ProjectGroup({ group, allTasks, projectColor, onUpdate, 
         <div style={{ width: W.select, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <span onClick={() => setCollapsed(c => !c)} style={{ cursor: 'pointer', fontSize: 10, color: tint.text, fontWeight: 800 }}>{collapsed ? '▶' : '▼'}</span>
         </div>
-        <div style={{ flex: 1, padding: '8px 8px 8px 4px', fontWeight: 800, fontSize: 13, color: tint.text }}>{group.title}</div>
+        <div style={{ flex: 1, maxWidth: TASK_COL_MAX, padding: '8px 8px 8px 4px', fontWeight: 800, fontSize: 13, color: tint.text }}>{group.title}</div>
         <div style={{ padding: '8px 12px', fontSize: 11, color: tint.text, fontWeight: 700, opacity: 0.7 }}>{children.length} task{children.length !== 1 ? 's' : ''}</div>
         {/* Spacer cols — match ProjectTableRow column widths */}
         <div style={{ width: W.owner }} /><div style={{ width: W.status }} /><div style={{ width: W.timeline }} /><div style={{ width: W.effort }} /><div style={{ width: W.priority }} /><div style={{ width: W.progress }} />

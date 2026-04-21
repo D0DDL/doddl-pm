@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { getProjectColor } from '../lib/team'
-import { PROJ_COL_WIDTHS as W_DEFAULT } from '../lib/constants'
+import { PROJ_COL_WIDTHS as W_DEFAULT, TASK_COL_MAX } from '../lib/constants'
 import ProjectGroup from './ProjectGroup'
 import ProjectTableRow from './ProjectTableRow'
 import ProjectDashboard from './ProjectDashboard'
@@ -180,7 +180,7 @@ export default function ProjectSection({ project, tasks, allTasks, onUpdate, onP
             {/* Column headers — each sized col has a draggable right-edge handle (UI #5) */}
             <div style={{ display: 'flex', alignItems: 'center', background: '#f8f9fc', borderBottom: '2px solid #dfe1e6', paddingLeft: 32 }}>
               <div style={{ width: W.select }} />
-              <div style={{ flex: 1, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Task</div>
+              <div style={{ flex: 1, maxWidth: TASK_COL_MAX, padding: '7px 8px', fontSize: 11, fontWeight: 700, color: '#6b778c', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Task</div>
               {[
                 { col: 'owner',    label: 'Owner' },
                 { col: 'status',   label: 'Status' },

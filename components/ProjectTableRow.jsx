@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { PROJ_COL_WIDTHS as W_DEFAULT } from '../lib/constants'
+import { PROJ_COL_WIDTHS as W_DEFAULT, TASK_COL_MAX } from '../lib/constants'
 import StatusBadge from './StatusBadge'
 import AssigneeSelect from './AssigneeSelect'
 import PriorityBadge from './PriorityBadge'
@@ -112,7 +112,7 @@ export default function ProjectTableRow({ task, projectColor, onUpdate, onPatch,
           style={{ cursor: 'pointer', width: 14, height: 14 }} />
       </div>
       {/* Task name — click opens detail; dbl-click OR pencil icon inline-edits */}
-      <div style={{ flex: 1, paddingLeft: indent, paddingRight: 8, display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+      <div style={{ flex: 1, maxWidth: TASK_COL_MAX, paddingLeft: indent, paddingRight: 8, display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
         {editingTitle ? (
           <input ref={titleInputRef} value={titleDraft}
             onChange={e => setTitleDraft(e.target.value)}
