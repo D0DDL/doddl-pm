@@ -45,8 +45,10 @@ export default function MyProjectsView({ projects, visibleTasks, userName, setAc
             const myTotal  = myTasks.length
             const myDone   = myTasks.filter(t => t.status === 'done').length
             const myOvd    = myTasks.filter(t => t.due_date && t.due_date < todayISO() && t.status !== 'done').length
-            const pct      = total ? Math.round(done / total * 100) : 0
-            const myPct    = myTotal ? Math.round(myDone / myTotal * 100) : 0
+            // pct = mean of per-task progress (partial work reflected), consistent with
+            // ProjectSection / ProjectGallery / ProjectDashboard.
+            const pct      = total   ? Math.round(pTasks.reduce((s, t) => s + (Number(t.progress) || 0), 0) / total)    : 0
+            const myPct    = myTotal ? Math.round(myTasks.reduce((s, t) => s + (Number(t.progress) || 0), 0) / myTotal) : 0
             const color    = getProjectColor(project, i >= 0 ? i : 0)
             const prioMap  = { critical: '#de350b', high: '#ff8b00', medium: '#0052cc', low: '#6b778c' }
             const prioColor = prioMap[project.priority] || '#6b778c'

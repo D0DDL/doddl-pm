@@ -15,7 +15,8 @@ function statsFor(project, visibleTasks) {
   const done    = realP.filter(t => t.status === 'done').length
   const inProg  = realP.filter(t => ['in_progress','on_track'].includes(t.status)).length
   const overdue = realP.filter(t => t.due_date && t.due_date < todayISO() && t.status !== 'done').length
-  const pct     = total ? Math.round(done / total * 100) : 0
+  // pct = mean of per-task progress so the bar reflects partial work in real time
+  const pct     = total ? Math.round(realP.reduce((s, t) => s + (Number(t.progress) || 0), 0) / total) : 0
   return { pTasks, realP, total, done, inProg, overdue, pct }
 }
 
@@ -244,7 +245,8 @@ function DashboardView({ projects, visibleTasks }) {
       const tot = pTasks.length
       const d = pTasks.filter(t => t.status === 'done').length
       const ov = pTasks.filter(t => t.due_date && t.due_date < today && t.status !== 'done').length
-      return { total: tot, done: d, overdue: ov, pct: tot ? Math.round(d/tot*100) : 0 }
+      const pct = tot ? Math.round(pTasks.reduce((sum, t) => sum + (Number(t.progress) || 0), 0) / tot) : 0
+      return { total: tot, done: d, overdue: ov, pct }
     })()
     return { project: p, ...s }
   })

@@ -47,6 +47,15 @@ export default function ProjectTableRow({ task, projectColor, onUpdate, onPatch,
       setTitleDraft(task.title || '')
     }
   }, [task.id])
+
+  // Re-sync the date cells when props update for the SAME task (e.g. load()
+  // refresh after a DB backfill). Without this the timeline keeps stale
+  // '' values and renders red "Start*" even after the row's start_date lands.
+  useEffect(() => { setLocalStart(task.start_date || '') }, [task.start_date])
+  useEffect(() => { setLocalEnd(task.due_date   || '') }, [task.due_date])
+  // Keep progress in sync too, so the project-level avg bar reflects external updates.
+  useEffect(() => { setLocalProgress(task.progress ?? 0) }, [task.progress])
+
   useEffect(() => { if (editingTitle) titleInputRef.current?.focus() }, [editingTitle])
 
   const startEditTitle = (e) => {
@@ -141,16 +150,16 @@ export default function ProjectTableRow({ task, projectColor, onUpdate, onPatch,
           style={{ color: '#c1c7d0', cursor: 'pointer', fontSize: 14, flexShrink: 0 }}
           onMouseEnter={e => e.currentTarget.style.color='#de350b'} onMouseLeave={e => e.currentTarget.style.color='#c1c7d0'}>×</span>
       </div>
-      {/* Owner */}
-      <div style={{ width: W.owner, padding: '4px 8px', display: 'flex', alignItems: 'center' }}>
+      {/* Owner — horizontal padding 6px to match header */}
+      <div style={{ width: W.owner, padding: '4px 6px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
         <AssigneeSelect value={localAssignee} onChange={v => { setLocalAssignee(v); save('assigned_to', v) }} avatarOnly />
       </div>
       {/* Status */}
-      <div style={{ width: W.status, padding: '4px 6px' }}>
+      <div style={{ width: W.status, padding: '4px 6px', flexShrink: 0 }}>
         <StatusBadge value={localStatus} onChange={handleStatus} />
       </div>
-      {/* Timeline — combined date range picker + bar */}
-      <div style={{ width: W.timeline, padding: '4px 8px' }}>
+      {/* Timeline — combined date range picker + bar. 6px padding to match header */}
+      <div style={{ width: W.timeline, padding: '4px 6px', flexShrink: 0 }}>
         <TimelineCell
           startDate={localStart} dueDate={localEnd} color={projectColor}
           onSave={async (start, end) => {
@@ -160,17 +169,17 @@ export default function ProjectTableRow({ task, projectColor, onUpdate, onPatch,
           }} />
       </div>
       {/* Effort — auto from dates */}
-      <div style={{ width: W.effort, padding: '4px 6px', textAlign: 'center' }}>
+      <div style={{ width: W.effort, padding: '4px 6px', textAlign: 'center', flexShrink: 0 }}>
         {effort
           ? <span style={{ fontSize: 11, fontWeight: 700, color: '#0052cc', background: '#e9f2ff', borderRadius: 10, padding: '2px 7px' }}>{effort}d</span>
           : <span style={{ fontSize: 11, color: '#c1c7d0' }}>—</span>}
       </div>
       {/* Priority */}
-      <div style={{ width: W.priority, padding: '4px 6px' }}>
+      <div style={{ width: W.priority, padding: '4px 6px', flexShrink: 0 }}>
         <PriorityBadge value={localPriority} onChange={v => { setLocalPriority(v); save('priority', v) }} />
       </div>
       {/* Progress */}
-      <div style={{ width: W.progress, padding: '4px 6px' }}>
+      <div style={{ width: W.progress, padding: '4px 6px', flexShrink: 0 }}>
         <ProgressBar value={localProgress} onChange={handleProgress} />
       </div>
     </div>
