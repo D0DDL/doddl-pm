@@ -10,10 +10,12 @@
   :root {
     --indigo: #3D157D;
     --aqua:   #30BEAA;
+    --sen:    #FEF9F2;
     --ink:    #172b4d;
     --muted:  #6b778c;
     --paper:  #fafaff;
     --border: #ece7f6;
+    --border-sen: #f0e6d4;
   }
   *, *::before, *::after { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
@@ -54,11 +56,28 @@
     line-height: 1.55;
     margin: 0 0 28px;
   }
+  .section-title {
+    font-size: clamp(20px, 2.4vw, 24px);
+    font-weight: 800;
+    color: var(--indigo);
+    margin: 0 0 6px;
+  }
+  .section-note {
+    font-size: 14px;
+    color: var(--muted);
+    margin: 0 0 18px;
+    max-width: 640px;
+    line-height: 1.5;
+  }
+  .divider {
+    border: 0;
+    border-top: 1px solid var(--border);
+    margin: 40px 0 28px;
+  }
   .cards {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 18px;
-    margin-top: 12px;
   }
   .card {
     display: block;
@@ -76,12 +95,24 @@
     border-color: var(--aqua);
     box-shadow: 0 12px 28px rgba(61, 21, 125, 0.12);
   }
+  .card.sen {
+    background: var(--sen);
+    border-color: var(--border-sen);
+  }
+  .card.sen:hover {
+    border-color: var(--aqua);
+    box-shadow: 0 12px 28px rgba(196, 125, 32, 0.14);
+  }
   .card .badge {
     display: inline-flex; align-items: center; gap: 6px;
     font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;
     padding: 5px 10px; border-radius: 999px;
     background: rgba(48, 190, 170, 0.14);
     color: #137d6e;
+  }
+  .card.sen .badge {
+    background: rgba(196, 125, 32, 0.12);
+    color: #8a5410;
   }
   .card h2 {
     font-size: 22px;
@@ -126,10 +157,12 @@
   <main>
     <h1>Developmental Journey — Storyboard Review</h1>
     <p class="lede">
-      Click a link below to review the storyboard. Desktop version is best
-      viewed at 1280px+. Mobile version is best viewed at 390px (use browser
+      Click a link below to review the storyboards. Desktop versions are best
+      viewed at 1280px+. Mobile versions are best viewed at 390px (use browser
       device emulation or your phone).
     </p>
+
+    <h2 class="section-title">The Developmental Journey</h2>
     <div class="cards">
       <a class="card" href="/prototypes/journey/desktop.html">
         <span class="badge">Desktop</span>
@@ -142,6 +175,25 @@
         <h2>Storyboard — Mobile</h2>
         <p>Phone layout for mobile review. Best at 390px — use device emulation or open on your phone.</p>
         <span class="cta">Open mobile storyboard</span>
+      </a>
+    </div>
+
+    <hr class="divider" />
+
+    <h2 class="section-title">The SEN Journey</h2>
+    <p class="section-note">For families of children with additional needs. Ability-led, not age-led. No comparisons.</p>
+    <div class="cards">
+      <a class="card sen" href="/prototypes/journey/sen-desktop.html">
+        <span class="badge">Desktop</span>
+        <h2>SEN Storyboard — Desktop</h2>
+        <p>Full-width SEN layout for desktop review. Best at 1280px and above.</p>
+        <span class="cta">Open SEN desktop storyboard</span>
+      </a>
+      <a class="card sen" href="/prototypes/journey/sen-mobile.html">
+        <span class="badge">Mobile</span>
+        <h2>SEN Storyboard — Mobile</h2>
+        <p>Phone SEN layout for mobile review. Best at 390px — use device emulation or open on your phone.</p>
+        <span class="cta">Open SEN mobile storyboard</span>
       </a>
     </div>
   </main>

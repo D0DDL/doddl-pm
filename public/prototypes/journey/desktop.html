@@ -55,6 +55,7 @@
   .nav-links { display: flex; gap: 28px; font-size: 13px; font-weight: 700; color: var(--muted); }
   .nav-links a { text-decoration: none; color: inherit; cursor: pointer; transition: color .15s; }
   .nav-links a:hover { color: var(--indigo); }
+  .nav-links a.active { color: var(--indigo); border-bottom: 2px solid var(--aqua); padding-bottom: 2px; }
   .nav-cta {
     background: var(--indigo); color: #fff; font-size: 13px; font-weight: 800;
     padding: 10px 24px; border-radius: 50px; cursor: pointer; border: none;
@@ -327,7 +328,7 @@
 <nav>
   <div class="nav-logo">doddl<span class="dot">.</span></div>
   <div class="nav-links">
-    <a>Shop</a><a>The Journey</a><a>About</a><a>Reviews</a>
+    <a>Shop</a><a class="active" href="./desktop.html">The Journey</a><a href="./sen-desktop.html">SEN Journey</a><a>About</a><a>Reviews</a>
   </div>
   <button class="nav-cta">Shop now</button>
 </nav>

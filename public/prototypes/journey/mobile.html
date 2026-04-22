@@ -60,6 +60,21 @@
     padding: 8px 16px; border-radius: 50px; cursor: pointer; border: none;
     font-family: 'Nunito', sans-serif;
   }
+  .journey-switch {
+    display: flex; gap: 6px; padding: 8px 18px;
+    background: var(--white); border-bottom: 1px solid var(--border);
+    position: sticky; top: 96px; z-index: 89;
+  }
+  .journey-switch a {
+    flex: 1; text-align: center; text-decoration: none;
+    font-size: 12px; font-weight: 700; color: var(--muted);
+    padding: 7px 10px; border-radius: 50px;
+    border: 1px solid var(--border); background: #fafafa;
+  }
+  .journey-switch a.active {
+    color: var(--indigo); border-color: var(--aqua); background: #fff;
+    box-shadow: inset 0 -2px 0 var(--aqua);
+  }
 
   /* ── HERO ── */
   .hero {
@@ -342,6 +357,11 @@
   <div class="nav-logo">doddl<span class="dot">.</span></div>
   <button class="nav-cta" onclick="t('&#128722; Shop page')">Shop</button>
 </nav>
+
+<div class="journey-switch">
+  <a class="active" href="./mobile.html">The Journey</a>
+  <a href="./sen-mobile.html">SEN Journey</a>
+</div>
 
 <!-- HERO -->
 <section class="hero">
