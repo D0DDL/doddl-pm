@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   const { id, project_id } = req.query
 
   if (req.method === 'GET') {
-    let query = supabase.from('task_groups').select('*').order('position', { ascending: true })
+    let query = supabase.from('task_groups').select('*').is('archived_at', null).order('position', { ascending: true })
     if (project_id) query = query.eq('project_id', project_id)
     const { data, error } = await query
     if (error) return res.status(500).json({ error: error.message })

@@ -63,7 +63,7 @@ export default function Home() {
     const [{ data: t }, { data: p }, { data: g }] = await Promise.all([
       supabase.from('tasks').select('*').order('created_at', { ascending: true }),
       supabase.from('projects').select('*').order('created_at', { ascending: false }),
-      supabase.from('task_groups').select('*').order('position', { ascending: true }),
+      supabase.from('task_groups').select('*').is('archived_at', null).order('position', { ascending: true }),
     ])
     setTasks(t || []); setProjects(p || []); setTaskGroups(g || [])
   }, [])
