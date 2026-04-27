@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>doddl. — Homepage · Storyboard v1</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --indigo:       #3D157D;
+    --indigo-dark:  #26215C;
+    --indigo-light: #947FB6;
+    --aqua:         #30BEAA;
+    --aqua-light:   #9ECFC6;
+    --orange-light: #FACC91;
+    --grey:         #EAEAEA;
+    --grey-mid:     #888;
+    --white:        #FFFFFF;
+    --text:         #1a1630;
+    --font:         'Nunito', sans-serif;
+    --r-sm:         8px;
+    --r-md:         12px;
+    --r-lg:         16px;
+  }
+
+  body { font-family: var(--font); color: var(--text); background: #f7f6fb; line-height: 1.5; }
+
+  /* ── ANNOTATION BANNER ─────────────────────────────────── */
+  .storyboard-banner {
+    background: var(--indigo-dark);
+    color: var(--white);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 7px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .storyboard-banner .logo {
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    text-transform: none;
+    text-decoration: none;
+    color: var(--white);
+  }
+  .storyboard-banner .logo span { color: var(--aqua); }
+  .storyboard-banner .badge {
+    background: rgba(48,190,170,0.2);
+    color: var(--aqua-light);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 10px;
+  }
+
+  /* ── SITE NAV (storyboard representation) ──────────────── */
+  .site-nav {
+    background: var(--white);
+    border-bottom: 1px solid var(--grey);
+    padding: 14px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+  }
+  .site-nav .logo {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--indigo);
+    text-decoration: none;
+    letter-spacing: -0.02em;
+  }
+  .site-nav .logo span { color: var(--aqua); }
+  .nav-links {
+    display: flex;
+    gap: 28px;
+    list-style: none;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .nav-links a { text-decoration: none; color: var(--indigo); opacity: 0.7; }
+  .nav-links a:hover { opacity: 1; }
+  .nav-cta {
+    background: var(--aqua);
+    color: var(--white);
+    border: none;
+    border-radius: var(--r-sm);
+    padding: 9px 20px;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: var(--font);
+  }
+
+  /* ── HERO ─────────────────────────────────────────────── */
+  .hero {
+    background: var(--indigo);
+    padding: 72px 72px 64px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    align-items: center;
+    min-height: 480px;
+  }
+  .hero-copy {}
+  .hero-eyebrow {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--aqua-light);
+    margin-bottom: 16px;
+  }
+  .hero-headline {
+    font-size: 42px;
+    font-weight: 800;
+    color: var(--white);
+    line-height: 1.15;
+    margin-bottom: 20px;
+    letter-spacing: -0.02em;
+  }
+  .hero-headline em {
+    font-style: normal;
+    color: var(--aqua);
+  }
+  .hero-body {
+    font-size: 16px;
+    color: rgba(255,255,255,0.75);
+    line-height: 1.7;
+    margin-bottom: 32px;
+    max-width: 420px;
+  }
+  .hero-ctas {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 28px;
+  }
+  .btn-primary {
+    background: var(--aqua);
+    color: var(--white);
+    border: none;
+    border-radius: var(--r-sm);
+    padding: 14px 28px;
+    font-size: 15px;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: var(--font);
+    text-decoration: none;
+    display: inline-block;
+  }
+  .btn-outline {
+    background: transparent;
+    color: var(--white);
+    border: 2px solid rgba(255,255,255,0.4);
+    border-radius: var(--r-sm);
+    padding: 12px 28px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: var(--font);
+    text-decoration: none;
+    display: inline-block;
+  }
+  .hero-trust-pills {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .trust-pill {
+    background: rgba(255,255,255,0.10);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.85);
+  }
+  .hero-image {
+    background: rgba(255,255,255,0.08);
+    border: 2px dashed rgba(255,255,255,0.15);
+    border-radius: 20px;
+    height: 380px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .hero-image .img-placeholder-label {
+    font-size: 13px;
+    color: rgba(255,255,255,0.35);
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.5;
+  }
+  .hero-image .img-emoji { font-size: 36px; }
+
+  /* ── TRUST BAR ──────────────────────────────────────────── */
+  .trust-bar {
+    background: var(--white);
+    border-bottom: 1px solid var(--grey);
+    padding: 20px 72px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+  }
+  .trust-metric {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 24px;
+    border-right: 1px solid var(--grey);
+  }
+  .trust-metric:first-child { padding-left: 0; }
+  .trust-metric:last-child { border-right: none; }
+  .trust-icon { font-size: 24px; }
+  .trust-text {}
+  .trust-number {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--indigo);
+    line-height: 1;
+    margin-bottom: 2px;
+  }
+  .trust-label {
+    font-size: 11px;
+    color: var(--grey-mid);
+    font-weight: 600;
+  }
+
+  /* ── SECTION WRAPPER ────────────────────────────────────── */
+  .section { max-width: 1200px; margin: 0 auto; padding: 64px 48px; }
+  .section-tag {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--aqua);
+    margin-bottom: 12px;
+    display: block;
+  }
+  .section-heading {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--indigo);
+    margin-bottom: 12px;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+  }
+  .section-subhead {
+    font-size: 16px;
+    color: var(--grey-mid);
+    max-width: 560px;
+    line-height: 1.7;
+    margin-bottom: 40px;
+  }
+
+  /* annotation boxes */
+  .annotation {
+    background: #fffbea;
+    border: 1.5px dashed #f0c040;
+    border-radius: var(--r-sm);
+    padding: 10px 14px;
+    font-size: 11px;
+    color: #7a6000;
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+  .annotation::before { content: "📝 "; }
+
+  /* ── JOURNEY TABS ─────────────────────────────────────── */
+  .tabs-section { background: var(--white); border-top: 1px solid var(--grey); }
+  .tabs-wrap { max-width: 1200px; margin: 0 auto; padding: 0 48px; }
+
+  .tabs-intro {
+    padding: 56px 48px 0;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .tab-strip {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--grey);
+    margin-bottom: 0;
+    overflow-x: auto;
+  }
+  .tab {
+    padding: 18px 28px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--grey-mid);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: color 0.2s;
+    user-select: none;
+  }
+  .tab:hover { color: var(--indigo); }
+  .tab.active {
+    color: var(--indigo);
+    border-bottom-color: var(--aqua);
+  }
+  .tab-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--grey);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .tab.active .tab-avatar { background: var(--indigo); }
+  .tab-label {}
+  .tab-label-title { font-size: 13px; font-weight: 800; display: block; line-height: 1.2; }
+  .tab-label-age { font-size: 11px; font-weight: 600; opacity: 0.7; display: block; }
+
+  .content { padding: 0 48px; max-width: 1200px; margin: 0 auto; }
+  .panel { display: none; padding: 40px 0; }
+  .panel.active { display: block; }
+
+  .panel-header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 32px;
+    align-items: start;
+    margin-bottom: 32px;
+  }
+  .panel-stage-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(48,190,170,0.12);
+    color: var(--aqua);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .panel-headline {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--indigo);
+    margin-bottom: 8px;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+  }
+  .panel-subhead {
+    font-size: 15px;
+    color: var(--grey-mid);
+    line-height: 1.7;
+    max-width: 520px;
+  }
+
+  .milestone-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 32px;
+  }
+  .milestone {
+    background: rgba(61,21,125,0.05);
+    border-radius: var(--r-md);
+    padding: 14px 16px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--indigo);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    line-height: 1.35;
+  }
+  .milestone::before { content: "✓"; color: var(--aqua); font-weight: 800; flex-shrink: 0; }
+
+  .shop-cta-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 32px;
+    padding: 20px 24px;
+    background: var(--grey);
+    border-radius: var(--r-lg);
+  }
+  .shop-cta-row .shop-btn {
+    background: var(--indigo);
+    color: var(--white);
+    border: none;
+    border-radius: var(--r-sm);
+    padding: 11px 22px;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: var(--font);
+    text-decoration: none;
+  }
+  .shop-cta-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--indigo);
+  }
+  .spacer { flex: 1; }
+
+  .product-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  .product-card {
+    background: var(--white);
+    border: 1.5px solid var(--grey);
+    border-radius: var(--r-md);
+    padding: 14px;
+    font-size: 12px;
+    transition: box-shadow 0.2s;
+  }
+  .product-card:hover { box-shadow: 0 4px 16px rgba(61,21,125,0.12); }
+  .product-card.featured {
+    border-color: var(--aqua);
+    background: rgba(48,190,170,0.05);
+  }
+  .product-img {
+    height: 80px;
+    background: var(--grey);
+    border-radius: var(--r-sm);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+  }
+  .product-name { font-weight: 800; color: var(--indigo); margin-bottom: 2px; line-height: 1.3; }
+  .product-sub { color: var(--grey-mid); font-size: 11px; margin-bottom: 6px; }
+  .product-price { font-weight: 800; color: var(--indigo); font-size: 13px; }
+  .product-badge {
+    font-size: 10px;
+    font-weight: 800;
+    background: var(--aqua);
+    color: var(--white);
+    border-radius: 4px;
+    padding: 2px 6px;
+    display: inline-block;
+    margin-bottom: 6px;
+  }
+
+  .expert-callout {
+    background: rgba(61,21,125,0.04);
+    border-left: 4px solid var(--indigo-light);
+    border-radius: 0 var(--r-md) var(--r-md) 0;
+    padding: 20px 24px;
+    margin-bottom: 28px;
+  }
+  .expert-quote { font-size: 14px; font-style: italic; color: var(--text); line-height: 1.7; margin-bottom: 10px; }
+  .expert-attr { font-size: 12px; font-weight: 700; color: var(--grey-mid); }
+  .expert-logos { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+  .expert-logo-pill {
+    background: var(--grey);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--grey-mid);
+  }
+
+  .next-stage {
+    background: linear-gradient(135deg, rgba(61,21,125,0.06) 0%, rgba(48,190,170,0.06) 100%);
+    border: 1.5px solid rgba(61,21,125,0.12);
+    border-radius: var(--r-lg);
+    padding: 24px 28px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .next-stage-icon { font-size: 32px; flex-shrink: 0; }
+  .next-stage-copy {}
+  .next-stage-label { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--aqua); margin-bottom: 4px; }
+  .next-stage-title { font-size: 16px; font-weight: 800; color: var(--indigo); margin-bottom: 4px; }
+  .next-stage-desc { font-size: 13px; color: var(--grey-mid); line-height: 1.5; }
+  .next-stage-btn {
+    margin-left: auto;
+    background: var(--indigo);
+    color: var(--white);
+    border: none;
+    border-radius: var(--r-sm);
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: var(--font);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* email capture (Stage 0 only) */
+  .email-capture {
+    background: linear-gradient(135deg, rgba(61,21,125,0.07) 0%, rgba(48,190,170,0.07) 100%);
+    border: 1.5px dashed rgba(61,21,125,0.2);
+    border-radius: var(--r-lg);
+    padding: 32px 36px;
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  .email-capture .ec-icon { font-size: 40px; margin-bottom: 12px; }
+  .email-capture .ec-heading { font-size: 20px; font-weight: 800; color: var(--indigo); margin-bottom: 8px; }
+  .email-capture .ec-body { font-size: 14px; color: var(--grey-mid); margin-bottom: 20px; line-height: 1.6; max-width: 400px; margin-left: auto; margin-right: auto; }
+  .email-row { display: flex; gap: 8px; max-width: 400px; margin: 0 auto; }
+  .email-input {
+    flex: 1;
+    border: 1.5px solid var(--grey);
+    border-radius: var(--r-sm);
+    padding: 11px 14px;
+    font-size: 14px;
+    font-family: var(--font);
+    color: var(--text);
+  }
+  .email-btn {
+    background: var(--aqua);
+    color: var(--white);
+    border: none;
+    border-radius: var(--r-sm);
+    padding: 11px 20px;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: var(--font);
+    white-space: nowrap;
+  }
+
+  .stage0-trusted {
+    margin-top: 28px;
+    padding: 20px 0;
+    border-top: 1px solid var(--grey);
+  }
+  .trusted-label { font-size: 11px; font-weight: 700; color: var(--grey-mid); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
+  .trusted-logos { display: flex; gap: 12px; flex-wrap: wrap; }
+  .trusted-logo {
+    background: var(--grey);
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--grey-mid);
+  }
+
+  .coming-up-card {
+    background: var(--grey);
+    border-radius: var(--r-lg);
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .coming-up-img {
+    width: 80px;
+    height: 80px;
+    background: var(--indigo-light);
+    border-radius: var(--r-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    flex-shrink: 0;
+  }
+  .coming-up-copy {}
+  .coming-up-tag { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--aqua); margin-bottom: 4px; }
+  .coming-up-title { font-size: 16px; font-weight: 800; color: var(--indigo); margin-bottom: 4px; }
+  .coming-up-body { font-size: 13px; color: var(--grey-mid); line-height: 1.5; }
+  .coming-up-btn {
+    margin-left: auto;
+    background: transparent;
+    color: var(--indigo);
+    border: 1.5px solid var(--indigo);
+    border-radius: var(--r-sm);
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: var(--font);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* ── EXPERT SECTION ─────────────────────────────────────── */
+  .experts-section { background: var(--white); border-top: 1px solid var(--grey); padding: 64px 0; }
+  .experts-inner { max-width: 1200px; margin: 0 auto; padding: 0 48px; }
+  .expert-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 40px; }
+  .expert-card {
+    border: 1.5px solid var(--grey);
+    border-radius: var(--r-lg);
+    padding: 28px;
+  }
+  .expert-card-quote { font-size: 15px; font-style: italic; color: var(--text); line-height: 1.7; margin-bottom: 16px; }
+  .expert-card-quote::before { content: "\201C"; color: var(--aqua); font-size: 24px; font-style: normal; }
+  .expert-card-name { font-weight: 800; color: var(--indigo); font-size: 13px; margin-bottom: 2px; }
+  .expert-card-role { font-size: 12px; color: var(--grey-mid); }
+  .expert-logo-strip {
+    border-top: 1px solid var(--grey);
+    padding-top: 32px;
+    display: flex;
+    align-items: center;
+    gap: 0;
+  }
+  .els-label { font-size: 12px; font-weight: 700; color: var(--grey-mid); white-space: nowrap; margin-right: 28px; }
+  .els-logos { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+  .els-logo {
+    background: var(--grey);
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--grey-mid);
+  }
+
+  /* ── REVIEWS + UGC ──────────────────────────────────────── */
+  .reviews-section { padding: 64px 0; background: #f7f6fb; }
+  .reviews-inner { max-width: 1200px; margin: 0 auto; padding: 0 48px; }
+  .reviews-header { display: flex; align-items: flex-end; gap: 24px; margin-bottom: 32px; }
+  .reviews-score { }
+  .reviews-stars { font-size: 28px; letter-spacing: 2px; line-height: 1; margin-bottom: 4px; }
+  .reviews-rating { font-size: 36px; font-weight: 800; color: var(--indigo); line-height: 1; }
+  .reviews-count { font-size: 13px; color: var(--grey-mid); font-weight: 600; }
+  .review-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 40px; }
+  .review-card {
+    background: var(--white);
+    border: 1.5px solid var(--grey);
+    border-radius: var(--r-md);
+    padding: 20px;
+  }
+  .review-stars { font-size: 14px; letter-spacing: 1px; margin-bottom: 8px; }
+  .review-text { font-size: 13px; color: var(--text); line-height: 1.6; margin-bottom: 12px; font-style: italic; }
+  .review-author { font-size: 12px; font-weight: 700; color: var(--grey-mid); }
+  .review-stage-tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 800;
+    background: rgba(61,21,125,0.08);
+    color: var(--indigo);
+    border-radius: 4px;
+    padding: 2px 7px;
+    margin-top: 6px;
+  }
+
+  .ugc-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 40px; }
+  .ugc-cell {
+    aspect-ratio: 1;
+    background: var(--grey);
+    border-radius: var(--r-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    position: relative;
+    overflow: hidden;
+  }
+  .ugc-cell::after {
+    content: "UGC photo";
+    position: absolute;
+    bottom: 6px;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--grey-mid);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .bundle-cta {
+    background: var(--indigo);
+    border-radius: var(--r-lg);
+    padding: 40px 48px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+  }
+  .bundle-cta-copy {}
+  .bundle-cta-tag { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--aqua-light); margin-bottom: 8px; }
+  .bundle-cta-headline { font-size: 26px; font-weight: 800; color: var(--white); margin-bottom: 8px; letter-spacing: -0.01em; }
+  .bundle-cta-body { font-size: 14px; color: rgba(255,255,255,0.7); line-height: 1.6; max-width: 480px; }
+  .bundle-cta-price {
+    font-size: 42px;
+    font-weight: 800;
+    color: var(--white);
+    margin-left: auto;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .bundle-cta-price span { font-size: 14px; font-weight: 600; display: block; color: rgba(255,255,255,0.6); margin-top: 4px; }
+  .bundle-cta-btn {
+    background: var(--aqua);
+    color: var(--white);
+    border: none;
+    border-radius: var(--r-sm);
+    padding: 14px 28px;
+    font-size: 15px;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: var(--font);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* ── FOOTER ─────────────────────────────────────────────── */
+  .footer-strip {
+    background: var(--indigo-dark);
+    padding: 16px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    color: rgba(255,255,255,0.45);
+    font-weight: 600;
+  }
+  .footer-strip .logo { font-size: 15px; font-weight: 800; color: rgba(255,255,255,0.8); letter-spacing: -0.02em; text-decoration: none; }
+  .footer-strip .logo span { color: var(--aqua); }
+</style>
+</head>
+<body>
+
+<!-- ── STORYBOARD ANNOTATION BANNER ─────────────────────── -->
+<div class="storyboard-banner">
+  <a href="/prototypes/journey/" target="_top" class="logo">doddl<span>.</span></a>
+  <div style="display:flex; align-items:center; gap:12px;">
+    <span>Homepage · Storyboard v1 · Desktop</span>
+    <span class="badge">STAGING</span>
+  </div>
+  <span>CRO / Prototype exploration</span>
+</div>
+
+<!-- ── SITE NAV (storyboard representation) ──────────────── -->
+<nav class="site-nav">
+  <a class="logo" href="/prototypes/journey/" target="_top">doddl<span>.</span></a>
+  <ul class="nav-links">
+    <li><a href="#">Shop by Stage</a></li>
+    <li><a href="#">Bundles &amp; Kits</a></li>
+    <li><a href="#">Bundle Box</a></li>
+    <li><a href="#">SEN Journey</a></li>
+    <li><a href="#">Tips &amp; Advice</a></li>
+  </ul>
+  <button class="nav-cta">Shop now</button>
+</nav>
+
+<!-- ── 1. HERO ─────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="hero-copy">
+    <p class="hero-eyebrow">Developmental dining tools</p>
+    <h1 class="hero-headline">The right tool.<br><em>At every stage.</em></h1>
+    <p class="hero-body">Cutlery designed to grow with your child — from first tastes at 6 months to confident independence at 5 years. Trusted by 25,000+ parents and recommended by paediatric OTs.</p>
+    <div class="hero-ctas">
+      <a href="#journey-tabs" class="btn-primary">Explore the stages</a>
+      <a href="#" class="btn-outline">Shop bundles</a>
+    </div>
+    <div class="hero-trust-pills">
+      <span class="trust-pill">⭐ 25,000+ reviews</span>
+      <span class="trust-pill">🏥 OT recommended</span>
+      <span class="trust-pill">🏫 500+ nurseries</span>
+      <span class="trust-pill">🏆 Award winning</span>
+    </div>
+  </div>
+  <div class="hero-image">
+    <span class="img-emoji">👶🍴</span>
+    <span class="img-placeholder-label">Hero lifestyle image<br>Baby using doddl cutlery<br>Warm, joyful, aspirational</span>
+  </div>
+</section>
+
+<!-- ── 2. TRUST BAR ────────────────────────────────────────── -->
+<div class="trust-bar">
+  <div class="trust-metric">
+    <span class="trust-icon">⭐</span>
+    <div class="trust-text">
+      <div class="trust-number">25,000+</div>
+      <div class="trust-label">5-star reviews</div>
+    </div>
+  </div>
+  <div class="trust-metric">
+    <span class="trust-icon">🌱</span>
+    <div class="trust-text">
+      <div class="trust-number">5 stages</div>
+      <div class="trust-label">0 months – 5 years</div>
+    </div>
+  </div>
+  <div class="trust-metric">
+    <span class="trust-icon">🏫</span>
+    <div class="trust-text">
+      <div class="trust-number">500+</div>
+      <div class="trust-label">Nursery partners</div>
+    </div>
+  </div>
+  <div class="trust-metric">
+    <span class="trust-icon">🏥</span>
+    <div class="trust-text">
+      <div class="trust-number">OT recommended</div>
+      <div class="trust-label">Paediatric occupational therapists</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 3. STAGE INTRO + JOURNEY TABS ─────────────────────── -->
+<div class="tabs-intro">
+  <span class="section-tag">The doddl journey</span>
+  <h2 class="section-heading">The right tool at the right stage.</h2>
+  <p class="section-subhead">Every child develops differently, but the stages of independent eating are universal. doddl makes a product matched precisely to each one — so your child always has the tool that helps them succeed, not struggle.</p>
+  <h3 style="font-size:18px; font-weight:800; color:var(--indigo); margin-bottom:4px;">Explore each stage</h3>
+  <p style="font-size:14px; color:var(--grey-mid); margin-bottom:0;">Click a stage below to see milestones, the right products, and what to look for next.</p>
+</div>
+
+<section class="tabs-section" id="journey-tabs">
+  <div class="tabs-wrap">
+    <div class="tab-strip">
+      <div class="tab active" onclick="showPanel(0)">
+        <div class="tab-avatar">🌱</div>
+        <div class="tab-label">
+          <span class="tab-label-title">Stage 0</span>
+          <span class="tab-label-age">0–6 months</span>
+        </div>
+      </div>
+      <div class="tab" onclick="showPanel(1)">
+        <div class="tab-avatar">🥄</div>
+        <div class="tab-label">
+          <span class="tab-label-title">Stage 1</span>
+          <span class="tab-label-age">6–12 months</span>
+        </div>
+      </div>
+      <div class="tab" onclick="showPanel(2)">
+        <div class="tab-avatar">🍴</div>
+        <div class="tab-label">
+          <span class="tab-label-title">Stage 2</span>
+          <span class="tab-label-age">12–18 months</span>
+        </div>
+      </div>
+      <div class="tab" onclick="showPanel(3)">
+        <div class="tab-avatar">🥄🍴🔪</div>
+        <div class="tab-label">
+          <span class="tab-label-title">Stage 3</span>
+          <span class="tab-label-age">18m – 3 years</span>
+        </div>
+      </div>
+      <div class="tab" onclick="showPanel(4)">
+        <div class="tab-avatar">🔪</div>
+        <div class="tab-label">
+          <span class="tab-label-title">Stage 4</span>
+          <span class="tab-label-age">3–5 years</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- STAGE 0 -->
+    <div class="panel active">
+      <div class="annotation">Stage 0 — Awareness &amp; funnel entry: No products yet. Goal is email capture so we can trigger a "Stage 1 is here" message when the child hits 5–6 months. This gives us the earliest possible CRM signal. CTA = reminder email sign-up. Debate: does this stage earn its place in the tab, or does this belong in the homepage hero / ads only?</div>
+      <div class="panel-header">
+        <div>
+          <div class="panel-stage-pill">Stage 0 · 0–6 months</div>
+          <h2 class="panel-headline">Your journey starts now</h2>
+          <p class="panel-subhead">Before the first spoon comes out, your baby is already developing the skills they'll need. We'll tell you exactly when they're ready — and what to buy.</p>
+        </div>
+      </div>
+      <div class="milestone-grid">
+        <div class="milestone">Head and neck control developing</div>
+        <div class="milestone">Watching you eat with interest</div>
+        <div class="milestone">Reaching and grasping objects</div>
+        <div class="milestone">Sitting upright with support beginning</div>
+      </div>
+      <div class="email-capture">
+        <div class="ec-icon">🌱</div>
+        <h3 class="ec-heading">Weaning starts at 6 months</h3>
+        <p class="ec-body">We'll remind you at the right moment with a personalised guide to your child's first stage.</p>
+        <div class="email-row">
+          <input class="email-input" type="email" placeholder="Your email address" />
+          <button class="email-btn">Send me a reminder →</button>
+        </div>
+      </div>
+      <div class="stage0-trusted">
+        <div class="trusted-label">Trusted by</div>
+        <div class="trusted-logos">
+          <span class="trusted-logo">NCT</span>
+          <span class="trusted-logo">OT UK</span>
+          <span class="trusted-logo">Mumsnet</span>
+        </div>
+      </div>
+      <div class="expert-callout" style="margin-top:24px;">
+        <p class="expert-quote">"Understanding the developmental stages before weaning begins makes the whole journey more confident and less stressful."</p>
+        <div class="expert-attr">— Paediatric OT, doddl partner</div>
+        <div class="expert-logos">
+          <span class="expert-logo-pill">NCT</span>
+          <span class="expert-logo-pill">OT UK</span>
+          <span class="expert-logo-pill">Mumsnet</span>
+        </div>
+      </div>
+      <div class="coming-up-card">
+        <div class="coming-up-img">🥄</div>
+        <div class="coming-up-copy">
+          <div class="coming-up-tag">Coming up</div>
+          <div class="coming-up-title">Stage 1 — First Foods (6–12 months)</div>
+          <div class="coming-up-body">Your baby will be ready for their first spoon sooner than you think. Here's a preview of what Stage 1 looks like.</div>
+        </div>
+        <button class="coming-up-btn" onclick="showPanel(1)">Preview Stage 1 →</button>
+      </div>
+    </div>
+
+    <!-- STAGE 1 -->
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-stage-pill">Stage 1 · 6–12 months</div>
+          <h2 class="panel-headline">First foods, first wins</h2>
+          <p class="panel-subhead">The spoon goes in — and usually everywhere else. doddl is designed for tiny hands that are just figuring this out.</p>
+        </div>
+      </div>
+      <div class="milestone-grid">
+        <div class="milestone">Sitting in a high chair with support</div>
+        <div class="milestone">Reaching and grasping objects reliably</div>
+        <div class="milestone">Bringing hand to mouth confidently</div>
+        <div class="milestone">Showing real interest in what you eat</div>
+      </div>
+      <div class="shop-cta-row">
+        <span class="shop-cta-label">Products for this stage</span>
+        <span class="spacer"></span>
+        <a href="#" class="shop-btn">Shop Stage 1 →</a>
+      </div>
+      <div class="product-grid">
+        <div class="product-card">
+          <div class="product-img">🥄</div>
+          <div class="product-name">Baby Spoon &amp; Fork</div>
+          <div class="product-sub">Dusky Rose · 6m+</div>
+          <div class="product-price">£14.99+</div>
+        </div>
+        <div class="product-card">
+          <div class="product-img">🥄</div>
+          <div class="product-name">Baby Spoon &amp; Fork</div>
+          <div class="product-sub">Fresh Green · 6m+</div>
+          <div class="product-price">£14.99+</div>
+        </div>
+        <div class="product-card">
+          <div class="product-img">🥣</div>
+          <div class="product-name">Suction Bowl</div>
+          <div class="product-sub">Dusky Rose · 6m+</div>
+          <div class="product-price">£12.99+</div>
+        </div>
+        <div class="product-card">
+          <div class="product-img">🥣</div>
+          <div class="product-name">Suction Bowl</div>
+          <div class="product-sub">Fresh Green · 6m+</div>
+          <div class="product-price">£12.99+</div>
+        </div>
+        <div class="product-card featured">
+          <div class="product-badge">Best value</div>
+          <div class="product-img">✨</div>
+          <div class="product-name">Stage 1 Starter Bundle</div>
+          <div class="product-sub">Spoon, Fork + Bowl</div>
+          <div class="product-price">£24.99+</div>
+        </div>
+      </div>
+      <div class="expert-callout">
+        <p class="expert-quote">"doddl's ergonomic design means babies succeed from the very first try. That early confidence matters enormously for development."</p>
+        <div class="expert-attr">— Katie Rawlings, Paediatric OT</div>
+        <div class="expert-logos">
+          <span class="expert-logo-pill">OT UK</span>
+          <span class="expert-logo-pill">25,000+ reviews</span>
+          <span class="expert-logo-pill">Nursery partner</span>
+        </div>
+      </div>
+      <div class="next-stage">
+        <span class="next-stage-icon">🍴</span>
+        <div class="next-stage-copy">
+          <div class="next-stage-label">Ready for Stage 2?</div>
+          <div class="next-stage-title">Signs to look for</div>
+          <div class="next-stage-desc">When your child starts grabbing the spoon and trying to steer it themselves, they're ready for Stage 2 — Building Control (12–18m).</div>
+        </div>
+        <button class="next-stage-btn" onclick="showPanel(2)">Preview Stage 2 →</button>
+      </div>
+    </div>
+
+    <!-- STAGE 2 -->
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-stage-pill">Stage 2 · 12–18 months</div>
+          <h2 class="panel-headline">Grip it, own it</h2>
+          <p class="panel-subhead">The pincer grip arrives and suddenly your toddler wants to do everything themselves. The right tools make that possible — and a lot less messy.</p>
+        </div>
+      </div>
+      <div class="milestone-grid">
+        <div class="milestone">Pincer grip developing fast</div>
+        <div class="milestone">Deliberately scooping food</div>
+        <div class="milestone">Self-feeding for most of the meal</div>
+        <div class="milestone">Frustrated if you try to help!</div>
+      </div>
+      <div class="shop-cta-row">
+        <span class="shop-cta-label">Products for this stage</span>
+        <span class="spacer"></span>
+        <a href="#" class="shop-btn">Shop Stage 2 →</a>
+      </div>
+      <div class="product-grid">
+        <div class="product-card">
+          <div class="product-img">🍴</div>
+          <div class="product-name">2-Piece Set</div>
+          <div class="product-sub">Dusky Rose · 12m+</div>
+          <div class="product-price">£16.99+</div>
+        </div>
+        <div class="product-card">
+          <div class="product-img">🍴</div>
+          <div class="product-name">2-Piece Set</div>
+          <div class="product-sub">Fresh Green · 12m+</div>
+          <div class="product-price">£16.99+</div>
+        </div>
+        <div class="product-card">
+          <div class="product-img">🍽️</div>
+          <div class="product-name">Divided Plate</div>
+          <div class="product-sub">Fresh Green · 12m+</div>
+          <div class="product-price">£14.99+</div>
+        </div>
+        <div class="product-card">
+          <div class="product-img">🥣</div>
+          <div class="product-name">Bowl + Suction</div>
+          <div class="product-sub">Dusky Rose · 12m+</div>
+          <div class="product-price">£12.99+</div>
+        </div>
+        <div class="product-card featured">
+          <div class="product-badge">Best value</div>
+          <div class="product-img">⭐</div>
+          <div class="product-name">Stage 2 Bundle</div>
+          <div class="product-sub">Set + Plate + Bowl</div>
+          <div class="product-price">£27.99+</div>
+        </div>
+      </div>
+      <div class="expert-callout">
+        <p class="expert-quote">"The 12–18 month period is critical for fine motor development. Tools matched to grip development make a measurable difference."</p>
+        <div class="expert-attr">— Dr. Sarah Mills, Child Development Specialist</div>
+        <div class="expert-logos">
+          <span class="expert-logo-pill">OT UK</span>
+          <span class="expert-logo-pill">BACP Partner</span>
+          <span class="expert-logo-pill">Award 2024</span>
+        </div>
+      </div>
+      <div class="next-stage">
+        <span class="next-stage-icon">🥄🍴🔪</span>
+        <div class="next-stage-copy">
+          <div class="next-stage-label">Ready for Stage 3?</div>
+          <div class="next-stage-title">Look for these signs</div>
+          <div class="next-stage-desc">When your toddler is self-feeding most meals and wants to eat alongside the family, Stage 3 is calling.</div>
+        </div>
+        <button class="next-stage-btn" onclick="showPanel(3)">Preview Stage 3 →</button>
+      </div>
+    </div>
+
+    <!-- STAGE 3 -->
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-stage-pill">Stage 3 · 18 months – 3 years</div>
+          <h2 class="panel-headline">Self-feeding mastery</h2>
+          <p class="panel-subhead">Not baby tools anymore. Real cutlery that lasts the whole toddler stage — durable, dishwasher safe, and nursery ready.</p>
+        </div>
+      </div>
+      <div class="milestone-grid">
+        <div class="milestone">Self-feeding confidently at most meals</div>
+        <div class="milestone">Using utensils correctly most of the time</div>
+        <div class="milestone">Eating alongside the rest of the family</div>
+        <div class="milestone">Ready for nursery mealtimes independently</div>
+      </div>
+      <div class="shop-cta-row">
+        <span class="shop-cta-label">Products for this stage</span>
+        <span class="spacer"></span>
+        <a href="#" class="shop-btn">Shop Stage 3 →</a>
+      </div>
+      <div class="product-grid">
+        <div class="product-card">
+          <div class="product-img">🥄🍴🔪</div>
+          <div class="product-name">3-Piece Set</div>
+          <div class="product-sub">Dusky Rose · 18m+</div>
+          <div class="product-price">£18.99+</div>
+        </div>
+        <div class="product-card">
+          <div class="product-img">🥄🍴🔪</div>
+          <div class="product-name">3-Piece Set</div>
+          <div class="product-sub">Indigo · 18m+</div>
+          <div class="product-price">£18.99+</div>
+        </div>
+        <div class="product-card">
+          <div class="product-img">🍽️</div>
+          <div class="product-name">Plate</div>
+          <div class="product-sub">No suction · 18m+</div>
+          <div class="product-price">£12.99+</div>
+        </div>
+        <div class="product-card">
+          <div class="product-img">🧳</div>
+          <div class="product-name">3-Piece Travel Case</div>
+          <div class="product-sub">Nursery · outings</div>
+          <div class="product-price">£9.99+</div>
+        </div>
+        <div class="product-card featured">
+          <div class="product-badge">Best value</div>
+          <div class="product-img">⭐</div>
+          <div class="product-name">Stage 3 Bundle</div>
+          <div class="product-sub">Set + Plate + Case</div>
+          <div class="product-price">£25.99+</div>
+        </div>
+      </div>
+      <div class="expert-callout">
+        <p class="expert-quote">"We switched all our nursery mealtimes to doddl two years ago. The difference in self-feeding independence is remarkable."</p>
+        <div class="expert-attr">— Nursery Manager, London</div>
+        <div class="expert-logos">
+          <span class="expert-logo-pill">500+ nurseries</span>
+          <span class="expert-logo-pill">OT recommended</span>
+          <span class="expert-logo-pill">Award 2024</span>
+        </div>
+      </div>
+      <div class="next-stage">
+        <span class="next-stage-icon">🔪</span>
+        <div class="next-stage-copy">
+          <div class="next-stage-label">Ready for Stage 4?</div>
+          <div class="next-stage-title">The signs to look for</div>
+          <div class="next-stage-desc">When your child starts wanting to cut food themselves or watches you use a knife with real intent, Stage 4 is next.</div>
+        </div>
+        <button class="next-stage-btn" onclick="showPanel(4)">Preview Stage 4 →</button>
+      </div>
+    </div>
+
+    <!-- STAGE 4 -->
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-stage-pill">Stage 4 · 3–5 years</div>
+          <h2 class="panel-headline">Unleash the little chef</h2>
+          <p class="panel-subhead">The final stage. Real cutlery, real cutting, real independence. The doddl knife is the only safe knife designed for small hands.</p>
+        </div>
+      </div>
+      <div class="milestone-grid">
+        <div class="milestone">Ready to learn how to cut food safely</div>
+        <div class="milestone">Copying adult eating patterns at the table</div>
+        <div class="milestone">Fine motor control fully established</div>
+        <div class="milestone">Interested in helping prepare food</div>
+      </div>
+      <div class="shop-cta-row">
+        <span class="shop-cta-label">Products for this stage</span>
+        <span class="spacer"></span>
+        <a href="#" class="shop-btn">Shop Stage 4 →</a>
+      </div>
+      <div class="product-grid">
+        <div class="product-card">
+          <div class="product-img">🔪</div>
+          <div class="product-name">doddl Knife</div>
+          <div class="product-sub">Fresh Green · 3yr+</div>
+          <div class="product-price">£12.99+</div>
+        </div>
+        <div class="product-card">
+          <div class="product-img">🔪</div>
+          <div class="product-name">doddl Knife</div>
+          <div class="product-sub">Dusky Rose · 3yr+</div>
+          <div class="product-price">£12.99+</div>
+        </div>
+        <div class="product-card">
+          <div class="product-img">👨‍🍳</div>
+          <div class="product-name">Chef's Kit</div>
+          <div class="product-sub">Full cooking set</div>
+          <div class="product-price">£29.99+</div>
+        </div>
+        <div class="product-card">
+          <div class="product-img">🥄🍴🔪</div>
+          <div class="product-name">Complete Set</div>
+          <div class="product-sub">All 3 pieces</div>
+          <div class="product-price">£24.99+</div>
+        </div>
+        <div class="product-card featured">
+          <div class="product-badge">Best gift</div>
+          <div class="product-img">🏆</div>
+          <div class="product-name">Stage 4 Full Set</div>
+          <div class="product-sub">Ultimate bundle</div>
+          <div class="product-price">£34.99+</div>
+        </div>
+      </div>
+      <div class="expert-callout">
+        <p class="expert-quote">"Teaching children to cut food safely develops confidence and independence that goes far beyond the dinner table."</p>
+        <div class="expert-attr">— Primary School Chef, doddl partner</div>
+        <div class="expert-logos">
+          <span class="expert-logo-pill">OT Approved</span>
+          <span class="expert-logo-pill">Safety Certified</span>
+          <span class="expert-logo-pill">King's Award 2023</span>
+        </div>
+      </div>
+      <div class="next-stage" style="background: rgba(48,190,170,0.08); border-color: rgba(48,190,170,0.2);">
+        <span class="next-stage-icon">🎉</span>
+        <div class="next-stage-copy">
+          <div class="next-stage-label">Journey complete</div>
+          <div class="next-stage-title">A new one begins</div>
+          <div class="next-stage-desc">Got a younger sibling on the way, or know someone who's just starting? Share the doddl journey — or start again from Stage 0.</div>
+        </div>
+        <button class="next-stage-btn" style="background:var(--aqua);" onclick="showPanel(0)">Share the journey →</button>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</section>
+
+<!-- ── 4. EXPERT SECTION ───────────────────────────────────── -->
+<section class="experts-section">
+  <div class="experts-inner">
+    <span class="section-tag">Why parents and professionals trust doddl</span>
+    <h2 class="section-heading">Built with experts.<br>Tested by real families.</h2>
+    <div class="expert-cards">
+      <div class="expert-card">
+        <p class="expert-card-quote">"doddl's ergonomic design means babies succeed from the very first try. That early win builds a confidence that carries through every developmental stage."</p>
+        <div class="expert-card-name">Katie Rawlings</div>
+        <div class="expert-card-role">Paediatric Occupational Therapist, doddl partner</div>
+      </div>
+      <div class="expert-card">
+        <p class="expert-card-quote">"The 12–18 month period is critical for fine motor development. Having tools matched precisely to where a child is developmentally makes a measurable difference."</p>
+        <div class="expert-card-name">Dr. Sarah Mills</div>
+        <div class="expert-card-role">Child Development Specialist, BACP Partner</div>
+      </div>
+      <div class="expert-card">
+        <p class="expert-card-quote">"We switched all our nursery mealtimes to doddl two years ago. The difference in self-feeding independence — and how much calmer mealtimes are — is remarkable."</p>
+        <div class="expert-card-name">Nursery Manager, London</div>
+        <div class="expert-card-role">One of 500+ nursery partners across the UK</div>
+      </div>
+    </div>
+    <div class="expert-logo-strip">
+      <span class="els-label">Trusted &amp; recommended by</span>
+      <div class="els-logos">
+        <span class="els-logo">OT UK</span>
+        <span class="els-logo">NCT</span>
+        <span class="els-logo">Mumsnet</span>
+        <span class="els-logo">BACP</span>
+        <span class="els-logo">500+ Nurseries</span>
+        <span class="els-logo">🏆 Award 2024</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── 5. REVIEWS + UGC ───────────────────────────────────── -->
+<section class="reviews-section">
+  <div class="reviews-inner">
+    <div class="reviews-header">
+      <div class="reviews-score">
+        <div class="reviews-stars">⭐⭐⭐⭐⭐</div>
+        <div class="reviews-rating">4.9</div>
+        <div class="reviews-count">Based on 25,000+ reviews</div>
+      </div>
+      <div style="font-size:13px; color:var(--grey-mid); padding-bottom:6px;">
+        Verified reviews across Trustpilot, Amazon &amp; doddl.com
+      </div>
+    </div>
+    <div class="review-cards">
+      <div class="review-card">
+        <div class="review-stars">⭐⭐⭐⭐⭐</div>
+        <p class="review-text">"My daughter (8 months) got the hang of the spoon in her second meal. I was gobsmacked. The shape just works."</p>
+        <div class="review-author">Emma T., verified buyer</div>
+        <span class="review-stage-tag">Stage 1</span>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">⭐⭐⭐⭐⭐</div>
+        <p class="review-text">"Bought the Stage 3 bundle when my son moved to nursery. His key worker messaged to say he's self-feeding better than kids twice his age."</p>
+        <div class="review-author">James K., verified buyer</div>
+        <span class="review-stage-tag">Stage 3</span>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">⭐⭐⭐⭐⭐</div>
+        <p class="review-text">"My OT recommended doddl for my daughter who has hypermobility. Genuinely life changing for mealtimes. We bought the full set."</p>
+        <div class="review-author">Sarah M., verified buyer</div>
+        <span class="review-stage-tag">SEN Journey</span>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">⭐⭐⭐⭐⭐</div>
+        <p class="review-text">"The doddl knife is the only knife I trust my 3-year-old with. He can actually cut his food. Every other brand is either useless or terrifying."</p>
+        <div class="review-author">Rachel B., verified buyer</div>
+        <span class="review-stage-tag">Stage 4</span>
+      </div>
+    </div>
+
+    <div class="annotation" style="margin-bottom:12px;">6-cell UGC grid — placeholder below. Live: pull @doddl tagged Instagram posts via embed or Nosto/Yotpo UGC widget. Each cell links to the tagged post.</div>
+    <div class="ugc-grid">
+      <div class="ugc-cell">📸</div>
+      <div class="ugc-cell">📸</div>
+      <div class="ugc-cell">📸</div>
+      <div class="ugc-cell">📸</div>
+      <div class="ugc-cell">📸</div>
+      <div class="ugc-cell">📸</div>
+    </div>
+
+    <div class="bundle-cta">
+      <div class="bundle-cta-copy">
+        <div class="bundle-cta-tag">Start the journey today</div>
+        <h3 class="bundle-cta-headline">The doddl Bundle Box.<br>Everything they need, every stage.</h3>
+        <p class="bundle-cta-body">All 5 stages in one box. Our best-value way to start — and the only product that grows with your child from first tastes to confident independence.</p>
+      </div>
+      <div class="bundle-cta-price">
+        £89.99
+        <span>Bundle Box · All 5 stages</span>
+      </div>
+      <button class="bundle-cta-btn">Shop the Bundle Box →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ──────────────────────────────────────────────── -->
+<div class="footer-strip">
+  <a href="/prototypes/journey/" target="_top" class="logo">doddl<span>.</span></a>
+  <span>Homepage Storyboard v1 · Staging · © doddl 2026</span>
+  <span>Prototype — not for public distribution</span>
+</div>
+
+<script>
+  function showPanel(n) {
+    document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i === n));
+    document.querySelectorAll('.panel').forEach((p,i) => p.classList.toggle('active', i === n));
+    // update tab avatars bg
+    document.querySelectorAll('.tab-avatar').forEach((a,i) => {
+      a.style.background = i === n ? 'var(--indigo)' : '';
+      a.style.color = i === n ? '#fff' : '';
+    });
+    // scroll to tabs section
+    document.getElementById('journey-tabs').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  // Hero CTA scroll
+  document.querySelector('a[href="#journey-tabs"]').addEventListener('click', e => {
+    e.preventDefault();
+    document.getElementById('journey-tabs').scrollIntoView({ behavior: 'smooth' });
+  });
+</script>
+</body>
+</html>
