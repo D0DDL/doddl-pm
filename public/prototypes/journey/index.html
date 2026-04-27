@@ -98,6 +98,11 @@
       color: #888;
       z-index: 1;
     }
+    .sub-box.sen-sub { background: #FDEAF3; border-color: #D4A0BF; }
+    .sub-box.sen-sub .title { color: #7A2850; }
+    .sub-box.bundle-sub { background: #FFF4E0; border-color: #FACC91; }
+    .sub-box.bundle-sub .title { color: #8A5A0A; }
+    .sub-box.bundle-sub .sub { color: #C47D20; opacity: 0.8; }
   </style>
 </head>
 <body>
@@ -124,9 +129,9 @@
         <!-- col 1 + col 2: solid line from sub-stack bottom (y=512) to gather (y=550) -->
         <line x1="90"  y1="512" x2="90"  y2="550" stroke="#D0CEC5" stroke-width="1"/>
         <line x1="294" y1="512" x2="294" y2="550" stroke="#D0CEC5" stroke-width="1"/>
-        <!-- col 3 (SEN) + col 4 (Bundle Box): dashed line from nav-box bottom (y=210) to gather (y=550) -->
-        <line x1="498" y1="210" x2="498" y2="550" stroke="#D0CEC5" stroke-width="1" stroke-dasharray="4 4"/>
-        <line x1="702" y1="210" x2="702" y2="550" stroke="#D0CEC5" stroke-width="1" stroke-dasharray="4 4"/>
+        <!-- col 3 (SEN) + col 4 (Bundle Box): solid line from sub-stack bottom (y=456) to gather (y=550) -->
+        <line x1="498" y1="456" x2="498" y2="550" stroke="#D0CEC5" stroke-width="1"/>
+        <line x1="702" y1="456" x2="702" y2="550" stroke="#D0CEC5" stroke-width="1"/>
         <!-- gather horizontal at y=550 covering cols 1-4: x=90 to x=702 -->
         <line x1="90" y1="550" x2="702" y2="550" stroke="#D0CEC5" stroke-width="1"/>
         <!-- arrow down to PDP. PDP centered under cols 1-4: midpoint of 90 and 702 = 396 -->
@@ -215,6 +220,34 @@
       <div class="box category" style="left: 256px; top: 710px; width: 280px;">
         <div class="title">Bag / Checkout</div>
         <div class="sub">Payment · order confirmation</div>
+      </div>
+
+      <!-- SEN sub-items (col 3) -->
+      <div class="box sub-box sen-sub" style="left: 408px; top: 230px; width: 180px;">
+        <div class="title">Just starting out</div>
+      </div>
+      <div class="box sub-box sen-sub" style="left: 408px; top: 286px; width: 180px;">
+        <div class="title">Finding their grip</div>
+      </div>
+      <div class="box sub-box sen-sub" style="left: 408px; top: 342px; width: 180px;">
+        <div class="title">Building confidence</div>
+      </div>
+      <div class="box sub-box sen-sub" style="left: 408px; top: 398px; width: 180px;">
+        <div class="title">Eating independently</div>
+      </div>
+
+      <!-- Bundle Box sub-items (col 4) -->
+      <div class="box sub-box bundle-sub" style="left: 612px; top: 230px; width: 180px;">
+        <div class="title">Stage 1</div><div class="sub">6–12m</div>
+      </div>
+      <div class="box sub-box bundle-sub" style="left: 612px; top: 286px; width: 180px;">
+        <div class="title">Stage 2</div><div class="sub">12–18m</div>
+      </div>
+      <div class="box sub-box bundle-sub" style="left: 612px; top: 342px; width: 180px;">
+        <div class="title">Stage 3</div><div class="sub">18m–3yr</div>
+      </div>
+      <div class="box sub-box bundle-sub" style="left: 612px; top: 398px; width: 180px;">
+        <div class="title">Stage 4</div><div class="sub">3–5yr</div>
       </div>
     </div>
   </div>
