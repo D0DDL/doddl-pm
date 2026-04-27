@@ -66,8 +66,12 @@
       justify-content: center;
       overflow: auto;
     }
+    .stage.top { align-items: flex-start; }
+    .stage iframe.desktop {
+      width: 100%; height: 100%; border: 0; background: #fff;
+    }
     .placeholder {
-      max-width: 520px;
+      max-width: 480px;
       margin: 40px 20px;
       padding: 48px 40px;
       text-align: center;
@@ -95,17 +99,6 @@
     }
     .placeholder h2 .dot { color: #30BEAA; }
     .placeholder p { color: #555; margin: 0; font-size: 14px; line-height: 1.5; }
-    .mobile-wrap {
-      width: 430px; max-width: 430px;
-      height: calc(100vh - 80px);
-      border: 8px solid #26215C;
-      border-radius: 20px;
-      background: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-    }
   </style>
 </head>
 <body>
@@ -123,31 +116,34 @@
       <div class="meta" id="meta">Desktop: 1440px</div>
     </div>
   </header>
-  <div class="stage" id="stage"></div>
+  <div class="stage top" id="stage">
+    <iframe class="desktop" src="../category/desktop.html"></iframe>
+  </div>
   <script>
     (function () {
+      var DESKTOP_SRC = '../category/desktop.html';
       var stage = document.getElementById('stage');
       var meta = document.getElementById('meta');
       var btnD = document.getElementById('btnDesktop');
       var btnM = document.getElementById('btnMobile');
-      var placeholderHTML =
-        '<div class="placeholder">' +
-          '<span class="badge">Shop by Category</span>' +
-          '<h2>Storyboard coming soon<span class="dot">.</span></h2>' +
-          '<p>Shop by Category — storyboard coming soon. Wireframes in progress; this view will mirror the Shop by Stage layout adapted to product-type discovery.</p>' +
-        '</div>';
       function setMode(mode) {
         if (mode === 'desktop') {
-          stage.innerHTML = placeholderHTML;
+          stage.classList.add('top');
+          stage.innerHTML = '<iframe class="desktop" src="' + DESKTOP_SRC + '"></iframe>';
           btnD.classList.add('active'); btnM.classList.remove('active');
           meta.textContent = 'Desktop: 1440px';
         } else {
-          stage.innerHTML = '<div class="mobile-wrap">' + placeholderHTML + '</div>';
+          stage.classList.remove('top');
+          stage.innerHTML =
+            '<div class="placeholder">' +
+              '<span class="badge">Shop by Category</span>' +
+              '<h2>Mobile version coming soon<span class="dot">.</span></h2>' +
+              '<p>The Shop by Category mobile journey is in design — the desktop storyboard is live and clickable.</p>' +
+            '</div>';
           btnD.classList.remove('active'); btnM.classList.add('active');
           meta.textContent = 'Mobile: 390px';
         }
       }
-      setMode('desktop');
       btnD.addEventListener('click', function () { setMode('desktop'); });
       btnM.addEventListener('click', function () { setMode('mobile'); });
     })();
