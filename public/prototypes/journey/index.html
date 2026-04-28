@@ -1,258 +1,388 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <base href="/prototypes/journey/">
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=1280">
-  <title>doddl · Prototype Navigation · Staging</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
-  <style>
-    * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; }
-    body {
-      font-family: 'Nunito', system-ui, sans-serif;
-      background: #FAFAF8;
-      color: #26215C;
-      min-height: 100vh;
-    }
-    .banner {
-      background: #26215C;
-      color: #fff;
-      text-align: center;
-      padding: 14px 20px;
-      font-weight: 800;
-      font-size: 14px;
-      letter-spacing: 0.02em;
-    }
-    .banner .accent { color: #30BEAA; }
-    .page {
-      padding: 40px 20px;
-      display: flex;
-      justify-content: center;
-    }
-    .diagram {
-      position: relative;
-      width: 1200px;
-      height: 780px;
-      flex-shrink: 0;
-    }
-    .diagram svg.connectors {
-      position: absolute;
-      inset: 0;
-      width: 1200px;
-      height: 780px;
-      pointer-events: none;
-      z-index: 0;
-    }
-    .box {
-      position: absolute;
-      border-radius: 12px;
-      border: 1.5px solid #D0CEC5;
-      background: #F0EFE8;
-      color: #555550;
-      padding: 12px 16px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-      text-decoration: none;
-      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-      z-index: 1;
-    }
-    .box .title {
-      font-weight: 800;
-      font-size: 14px;
-      line-height: 1.2;
-    }
-    .box .sub {
-      font-size: 11px;
-      opacity: 0.7;
-      margin-top: 4px;
-      line-height: 1.2;
-    }
-    .box.sub-box {
-      padding: 8px 12px;
-      background: #F4F2EC;
-      border-color: #D0CEC5;
-    }
-    .box.sub-box .title { font-size: 12px; }
-    .box.sub-box .sub { font-size: 10px; }
-    a.box { cursor: pointer; }
-    a.box:hover {
-      transform: scale(1.02);
-      box-shadow: 0 2px 10px rgba(0,0,0,0.10);
-    }
-    .box.homepage { background: #3D157D; border-color: #3D157D; color: #fff; }
-    .box.homepage .sub { opacity: 0.85; }
-    a.box.homepage:hover { border-color: #26215C; background: #321062; }
-    .box.stage    { background: #EDE8F8; border-color: #947FB6; color: #3D157D; }
-    .box.category { background: #E0F5F0; border-color: #9ECFC6; color: #0F6E56; }
-    .box.sen      { background: #FDEAF3; border-color: #D4A0BF; color: #7A2850; }
-    .box.bundle   { background: #FFF4E0; border-color: #FACC91; color: #8A5A0A; }
-    a.box.stage:hover    { border-color: #6B4994; }
-    a.box.category:hover { border-color: #6FA89F; }
-    a.box.sen:hover      { border-color: #B36A8C; }
-    a.box.bundle:hover   { border-color: #E0A45D; }
-    .content-only {
-      position: absolute;
-      width: 180px;
-      text-align: center;
-      font-size: 11px;
-      font-style: italic;
-      color: #888;
-      z-index: 1;
-    }
-    .sub-box.sen-sub { background: #FDEAF3; border-color: #D4A0BF; }
-    .sub-box.sen-sub .title { color: #7A2850; }
-    .sub-box.bundle-sub { background: #FFF4E0; border-color: #FACC91; }
-    .sub-box.bundle-sub .title { color: #8A5A0A; }
-    .sub-box.bundle-sub .sub { color: #C47D20; opacity: 0.8; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>doddl · Prototype Navigation · Staging</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --c-new-section:   #2CB67D;
+    --c-new-page:      #A8D8A8;
+    --c-evolve:        #E09A3A;
+    --c-keep:          #4A4580;
+    --c-orphan:        #D45D5D;
+    --c-homepage:      #3D157D;
+    --grey-bg:         #F4F3F8;
+    --grey-line:       #DDDBE8;
+    --text:            #1a1630;
+    --text-mid:        #666;
+    --white:           #fff;
+    --font:            'Nunito', sans-serif;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--grey-bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── TOP BAR ───────────────────────────────────── */
+  .topbar {
+    background: #1a1630;
+    padding: 10px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .topbar-logo { font-size: 16px; font-weight: 800; color: #fff; letter-spacing: -0.02em; }
+  .topbar-logo span { color: #30BEAA; }
+  .topbar-title { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.5); letter-spacing: 0.08em; text-transform: uppercase; }
+  .topbar-badge { font-size: 10px; font-weight: 800; background: rgba(48,190,170,0.2); color: #9ECFC6; border-radius: 4px; padding: 3px 8px; letter-spacing: 0.06em; }
+
+  /* ── KEY ───────────────────────────────────────── */
+  .key-bar {
+    background: var(--white);
+    border-bottom: 1px solid var(--grey-line);
+    padding: 10px 28px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .key-label { font-size: 11px; font-weight: 800; color: var(--text-mid); text-transform: uppercase; letter-spacing: 0.06em; }
+  .key-items { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+  .key-item { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: var(--text); }
+  .key-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+  .kd-new-section { background: var(--c-new-section); }
+  .kd-new-page    { background: var(--c-new-page); border: 1px solid #8aba8a; }
+  .kd-evolve      { background: var(--c-evolve); }
+  .kd-keep        { background: var(--c-keep); }
+  .kd-orphan      { background: var(--c-orphan); }
+
+  /* ── PAGE LAYOUT ───────────────────────────────── */
+  .page { padding: 32px 28px 64px; max-width: 1400px; margin: 0 auto; }
+
+  /* ── HOMEPAGE BOX ─────────────────────────────── */
+  .homepage-row { display: flex; justify-content: center; margin-bottom: 0; }
+  .homepage-box {
+    background: var(--c-homepage);
+    color: var(--white);
+    border-radius: 12px;
+    padding: 14px 28px;
+    text-align: center;
+    font-weight: 800;
+    font-size: 14px;
+    line-height: 1.3;
+    text-decoration: none;
+    display: block;
+    min-width: 240px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .homepage-box:hover { opacity: 0.88; }
+  .homepage-box .sub { font-size: 11px; font-weight: 600; opacity: 0.65; margin-top: 3px; }
+
+  /* connector from homepage down */
+  .connector-down {
+    display: flex;
+    justify-content: center;
+    height: 32px;
+  }
+  .connector-down::after {
+    content: '';
+    display: block;
+    width: 1.5px;
+    height: 100%;
+    background: var(--grey-line);
+  }
+
+  /* ── COLUMNS ───────────────────────────────── */
+  .columns { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0; position: relative; }
+
+  /* horizontal line across top of columns */
+  .columns::before {
+    content: '';
+    position: absolute;
+    top: 0; left: calc(100% / 12); right: calc(100% / 12);
+    height: 1.5px;
+    background: var(--grey-line);
+    z-index: 1;
+  }
+
+  .col { padding: 0 8px; display: flex; flex-direction: column; align-items: stretch; position: relative; }
+
+  /* vertical tick from top line down to header */
+  .col::before {
+    content: '';
+    display: block;
+    width: 1.5px;
+    height: 32px;
+    background: var(--grey-line);
+    margin: 0 auto 0;
+    flex-shrink: 0;
+  }
+
+  /* ── COLUMN HEADERS ────────────────────────────── */
+  .col-header {
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--white);
+    text-align: center;
+    line-height: 1.3;
+    cursor: default;
+  }
+  .col-header .sub { font-size: 11px; font-weight: 600; opacity: 0.72; margin-top: 3px; }
+  .col-header.h-keep    { background: var(--c-keep); }
+  .col-header.h-evolve  { background: var(--c-evolve); }
+  .col-header.h-new     { background: var(--c-new-section); }
+  .col-header.h-keep2   { background: #6a6490; }  /* slightly lighter for Research/Tips */
+
+  /* content-only label */
+  .content-only { font-size: 11px; font-style: italic; color: var(--text-mid); text-align: center; margin-bottom: 8px; }
+
+  /* ── CARDS ─────────────────────────────────────── */
+  .card {
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 7px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.35;
+    text-decoration: none;
+    color: var(--text);
+    display: block;
+    border: 1.5px solid transparent;
+    transition: box-shadow 0.15s, opacity 0.15s;
+    cursor: default;
+  }
+  a.card { cursor: pointer; }
+  a.card:hover { box-shadow: 0 3px 10px rgba(0,0,0,0.12); opacity: 0.9; }
+  .card .card-sub { font-size: 10px; font-weight: 600; color: var(--text-mid); margin-top: 2px; }
+
+  /* card status colours */
+  .card.c-keep    { background: #ECEAF4; border-color: #CAC7E0; }
+  .card.c-keep .card-sub { color: var(--c-keep); }
+  .card.c-evolve  { background: #FEF3E2; border-color: #E8C87A; }
+  .card.c-evolve .card-sub { color: #a06820; }
+  .card.c-new     { background: #E8F8F0; border-color: #A8D8A8; }
+  .card.c-new .card-sub { color: #2a8050; }
+  .card.c-orphan  { background: #FDEAEA; border-color: #E8AABA; }
+  .card.c-orphan .card-sub { color: #a03030; }
+
+  /* ── SHOW MORE / LESS ─────────────────────────── */
+  .show-toggle {
+    background: none;
+    border: 1.5px solid var(--grey-line);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--text-mid);
+    cursor: pointer;
+    font-family: var(--font);
+    margin-top: 2px;
+    width: 100%;
+    text-align: center;
+    transition: background 0.15s;
+  }
+  .show-toggle:hover { background: var(--white); color: var(--text); }
+  .overflow-cards { display: none; }
+  .overflow-cards.open { display: block; }
+
+  /* ── BOTTOM TIER ───────────────────────────────── */
+  .bottom-tier {
+    margin-top: 40px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .bottom-card {
+    background: #E8F4FF;
+    border: 1.5px solid #B0D0F0;
+    border-radius: 10px;
+    padding: 12px 18px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #1a3a6a;
+    line-height: 1.4;
+    min-width: 180px;
+  }
+  .bottom-card .sub { font-size: 10px; font-weight: 600; color: #4a70a0; margin-top: 3px; }
+
+  /* ── SECTION DIVIDER ───────────────────────────── */
+  .section-divider {
+    margin: 28px 0 0;
+    border: none;
+    border-top: 1.5px dashed var(--grey-line);
+  }
+  .section-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-mid);
+    margin: 8px 0 14px;
+    text-align: center;
+  }
+</style>
 </head>
 <body>
-  <div class="banner">doddl <span class="accent">·</span> Prototype Navigation <span class="accent">·</span> Staging</div>
-  <div class="page">
-    <div class="diagram">
-      <svg class="connectors" viewBox="0 0 1200 780" preserveAspectRatio="xMidYMin meet" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="#A8A6A0"/>
-          </marker>
-        </defs>
-        <!-- vertical from homepage box bottom (600,80) down to fan line (600,110) -->
-        <line x1="600" y1="80" x2="600" y2="110" stroke="#D0CEC5" stroke-width="1"/>
-        <!-- horizontal fanout at y=110 from col1 center (90) to col6 center (1110) -->
-        <line x1="90" y1="110" x2="1110" y2="110" stroke="#D0CEC5" stroke-width="1"/>
-        <!-- vertical stubs from fan line down to nav-box top (y=140) at each col center -->
-        <line x1="90"   y1="110" x2="90"   y2="140" stroke="#D0CEC5" stroke-width="1"/>
-        <line x1="294"  y1="110" x2="294"  y2="140" stroke="#D0CEC5" stroke-width="1"/>
-        <line x1="498"  y1="110" x2="498"  y2="140" stroke="#D0CEC5" stroke-width="1"/>
-        <line x1="702"  y1="110" x2="702"  y2="140" stroke="#D0CEC5" stroke-width="1"/>
-        <line x1="906"  y1="110" x2="906"  y2="140" stroke="#D0CEC5" stroke-width="1"/>
-        <line x1="1110" y1="110" x2="1110" y2="140" stroke="#D0CEC5" stroke-width="1"/>
-        <!-- col 1 + col 2: solid line from sub-stack bottom (y=512) to gather (y=550) -->
-        <line x1="90"  y1="512" x2="90"  y2="550" stroke="#D0CEC5" stroke-width="1"/>
-        <line x1="294" y1="512" x2="294" y2="550" stroke="#D0CEC5" stroke-width="1"/>
-        <!-- col 3 (SEN) + col 4 (Bundle Box): solid line from sub-stack bottom (y=456) to gather (y=550) -->
-        <line x1="498" y1="456" x2="498" y2="550" stroke="#D0CEC5" stroke-width="1"/>
-        <line x1="702" y1="456" x2="702" y2="550" stroke="#D0CEC5" stroke-width="1"/>
-        <!-- gather horizontal at y=550 covering cols 1-4: x=90 to x=702 -->
-        <line x1="90" y1="550" x2="702" y2="550" stroke="#D0CEC5" stroke-width="1"/>
-        <!-- arrow down to PDP. PDP centered under cols 1-4: midpoint of 90 and 702 = 396 -->
-        <line x1="396" y1="550" x2="396" y2="592" stroke="#A8A6A0" stroke-width="1" marker-end="url(#arrow)"/>
-        <!-- arrow from PDP bottom to Checkout top -->
-        <line x1="396" y1="668" x2="396" y2="710" stroke="#A8A6A0" stroke-width="1" marker-end="url(#arrow)"/>
-      </svg>
 
-      <!-- Homepage box (centered, top): width 280, left = (1200-280)/2 = 460 -->
-      <a class="box homepage" href="./homepage.html" style="left: 460px; top: 20px; width: 280px;">
-        <div class="title">Homepage / doddl.com entry point</div>
-        <div class="sub">Top of funnel · campaign + organic search</div>
-      </a>
+<!-- TOP BAR -->
+<div class="topbar">
+  <span class="topbar-logo">doddl<span>.</span></span>
+  <span class="topbar-title">Prototype Navigation · Staging</span>
+  <span class="topbar-badge">STAGING</span>
+</div>
 
-      <!-- 6 nav boxes. Cols at x=0,204,408,612,816,1020 (each 180w, 24 gutter) -->
-      <a class="box stage" href="./shop-by-stage.html" style="left: 0; top: 140px; width: 180px;">
-        <div class="title">Shop by Stage</div>
+<!-- KEY -->
+<div class="key-bar">
+  <span class="key-label">Key</span>
+  <div class="key-items">
+    <span class="key-item"><span class="key-dot kd-new-section"></span>New section</span>
+    <span class="key-item"><span class="key-dot kd-new-page"></span>New page needed</span>
+    <span class="key-item"><span class="key-dot kd-evolve"></span>Exists — evolve</span>
+    <span class="key-item"><span class="key-dot kd-keep"></span>Exists — keep</span>
+    <span class="key-item"><span class="key-dot kd-orphan"></span>Orphaned — decide</span>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- HOMEPAGE -->
+  <div class="homepage-row">
+    <a class="homepage-box" href="./homepage.html">
+      Homepage / doddl.com entry point
+      <div class="sub">Top of funnel · campaign + organic search</div>
+    </a>
+  </div>
+  <div class="connector-down"></div>
+
+  <!-- MAIN COLUMNS -->
+  <div class="columns">
+
+    <!-- SHOP BY STAGE -->
+    <div class="col">
+      <div class="col-header h-keep">
+        Shop by Stage
         <div class="sub">Age-based discovery</div>
-      </a>
-      <a class="box category" href="./shop-by-category.html" style="left: 204px; top: 140px; width: 180px;">
-        <div class="title">Shop by Category</div>
+      </div>
+      <a class="card c-keep" href="./desktop.html">Stage 0<div class="card-sub">0–6m · new collection</div></a>
+      <a class="card c-keep" href="./desktop.html">Stage 1<div class="card-sub">6–12m · new collection</div></a>
+      <a class="card c-keep" href="./desktop.html">Stage 2<div class="card-sub">12–18m · new collection</div></a>
+      <a class="card c-keep" href="./desktop.html">Stage 3<div class="card-sub">18m–3yr · new collection</div></a>
+      <a class="card c-keep" href="./desktop.html">Stage 4<div class="card-sub">3–5yr · new collection</div></a>
+    </div>
+
+    <!-- SHOP BY CATEGORY -->
+    <div class="col">
+      <div class="col-header h-evolve">
+        Shop by Category
         <div class="sub">Product type discovery</div>
-      </a>
-      <a class="box sen" href="./sen-journey.html" style="left: 408px; top: 140px; width: 180px;">
-        <div class="title">SEN Journey</div>
+      </div>
+      <a class="card c-evolve" href="./shop-by-stage.html">Baby cutlery<div class="card-sub">/discover-baby-cutlery</div></a>
+      <a class="card c-evolve" href="./shop-by-stage.html">Toddler cutlery<div class="card-sub">/discover-toddler-cutlery</div></a>
+      <a class="card c-evolve" href="./shop-by-stage.html">Plates &amp; bowls<div class="card-sub">/discover-plates-bowls</div></a>
+      <a class="card c-evolve" href="./shop-by-stage.html">Bundles &amp; kits<div class="card-sub">/collections/gifting</div></a>
+      <span class="card c-new">Bibs<div class="card-sub">New page needed</div></span>
+
+      <!-- overflow: shown after 5 -->
+      <div class="overflow-cards" id="oc-category">
+        <a class="card c-keep" href="./shop-by-stage.html">Shop all<div class="card-sub">/collections/shop-all</div></a>
+        <a class="card c-keep" href="./shop-by-stage.html">Bestsellers<div class="card-sub">/collections/bestsellers</div></a>
+        <a class="card c-keep" href="./shop-by-stage.html">Gifts<div class="card-sub">/collections/gifts</div></a>
+        <span class="card c-orphan">Baby cutlery (dupe)<div class="card-sub">/infant-cutlery-6-month</div></span>
+      </div>
+      <button class="show-toggle" onclick="toggle('oc-category', this)">+ Show 4 more</button>
+    </div>
+
+    <!-- SEN JOURNEY -->
+    <div class="col">
+      <div class="col-header h-new">
+        SEN Journey
         <div class="sub">Special needs pathway</div>
-      </a>
-      <a class="box bundle" href="./bundle-box.html" style="left: 612px; top: 140px; width: 180px;">
-        <div class="title">Bundle Box</div>
+      </div>
+      <a class="card c-new" href="./sen-desktop.html">Just starting out<div class="card-sub">New page</div></a>
+      <a class="card c-new" href="./sen-desktop.html">Finding their grip<div class="card-sub">New page</div></a>
+      <a class="card c-new" href="./sen-desktop.html">Building confidence<div class="card-sub">New page</div></a>
+      <a class="card c-new" href="./sen-desktop.html">Eating independently<div class="card-sub">New page</div></a>
+    </div>
+
+    <!-- BUNDLE BOX -->
+    <div class="col">
+      <div class="col-header h-evolve">
+        Bundle Box
         <div class="sub">Curated launch bundle</div>
-      </a>
-      <div class="box" style="left: 816px; top: 140px; width: 180px;">
-        <div class="title">Research &amp; Dev</div>
+      </div>
+      <a class="card c-new" href="./bundle-box.html">Bundle hub<div class="card-sub">/pages/complete-baby-to-toddler-mealtime-set</div></a>
+      <a class="card c-new" href="./bundle-box.html">Stage 1 bundle<div class="card-sub">6–12m · new</div></a>
+      <a class="card c-new" href="./bundle-box.html">Stage 2 bundle<div class="card-sub">12–18m · new</div></a>
+      <a class="card c-new" href="./bundle-box.html">Stage 3 bundle<div class="card-sub">18m–3yr · new</div></a>
+      <a class="card c-new" href="./bundle-box.html">Stage 4 bundle<div class="card-sub">3–5yr · new</div></a>
+    </div>
+
+    <!-- RESEARCH & DEV -->
+    <div class="col">
+      <div class="col-header h-keep2">
+        Research &amp; Dev
         <div class="sub">Methodology · evidence</div>
       </div>
-      <div class="box" style="left: 1020px; top: 140px; width: 180px;">
-        <div class="title">Tips &amp; Advice</div>
+      <span class="card c-new">Research hub<div class="card-sub">New page</div></span>
+      <a class="card c-evolve" href="#">What the experts think<div class="card-sub">/pages/what-the-experts-think</div></a>
+      <a class="card c-keep" href="#">Sustainability<div class="card-sub">/pages/sustainability</div></a>
+      <span class="card c-new">Commitment to future<div class="card-sub">/pages/our-commitment-to-future</div></span>
+    </div>
+
+    <!-- TIPS & ADVICE -->
+    <div class="col">
+      <div class="col-header h-keep2">
+        Tips &amp; Advice
         <div class="sub">Editorial · guides</div>
       </div>
+      <div class="content-only">(content only)</div>
+      <span class="card c-new">Blog hub<div class="card-sub">New page needed</div></span>
+      <span class="card c-new">Stage guides<div class="card-sub">New pages · 1 per stage</div></span>
+      <span class="card c-new">Expert articles<div class="card-sub">New page needed</div></span>
+      <span class="card c-new">Recipes &amp; mealtimes<div class="card-sub">New page needed</div></span>
+      <a class="card c-keep" href="#">Existing blog posts<div class="card-sub">Keep · /blogs/</div></a>
+    </div>
 
-      <!-- Sub-boxes col 1: Stage 0..4 (start y=230, step 56) -->
-      <div class="box sub-box" style="left: 0; top: 230px; width: 180px;">
-        <div class="title">Stage 0</div><div class="sub">0–6m</div>
-      </div>
-      <div class="box sub-box" style="left: 0; top: 286px; width: 180px;">
-        <div class="title">Stage 1</div><div class="sub">6–12m</div>
-      </div>
-      <div class="box sub-box" style="left: 0; top: 342px; width: 180px;">
-        <div class="title">Stage 2</div><div class="sub">12–18m</div>
-      </div>
-      <div class="box sub-box" style="left: 0; top: 398px; width: 180px;">
-        <div class="title">Stage 3</div><div class="sub">18m–3yr</div>
-      </div>
-      <div class="box sub-box" style="left: 0; top: 454px; width: 180px;">
-        <div class="title">Stage 4</div><div class="sub">3–5yr</div>
-      </div>
+  </div><!-- /columns -->
 
-      <!-- Sub-boxes col 2: Category. Last is Bundles & Kits in amber -->
-      <div class="box sub-box" style="left: 204px; top: 230px; width: 180px;">
-        <div class="title">Baby cutlery</div><div class="sub">Stage 0–1</div>
-      </div>
-      <div class="box sub-box" style="left: 204px; top: 286px; width: 180px;">
-        <div class="title">Toddler cutlery</div><div class="sub">Stage 2–4</div>
-      </div>
-      <div class="box sub-box" style="left: 204px; top: 342px; width: 180px;">
-        <div class="title">Plates &amp; Bowls</div><div class="sub">Mealtime essentials</div>
-      </div>
-      <div class="box sub-box" style="left: 204px; top: 398px; width: 180px;">
-        <div class="title">Bibs</div><div class="sub">Cleanup essentials</div>
-      </div>
-      <div class="box sub-box bundle" style="left: 204px; top: 454px; width: 180px;">
-        <div class="title">Bundles &amp; Kits</div><div class="sub">Curated sets</div>
-      </div>
-
-      <!-- (content only) labels under cols 5, 6 -->
-      <div class="content-only" style="left: 816px; top: 220px;">(content only)</div>
-      <div class="content-only" style="left: 1020px; top: 220px;">(content only)</div>
-
-      <!-- PDP box: centered at x=396, width 280 → left = 256 -->
-      <div class="box" style="left: 256px; top: 592px; width: 280px;">
-        <div class="title">Product detail page (PDP)</div>
-        <div class="sub">Add to bag · colour / variant selection</div>
-      </div>
-
-      <!-- Checkout box -->
-      <div class="box category" style="left: 256px; top: 710px; width: 280px;">
-        <div class="title">Bag / Checkout</div>
-        <div class="sub">Payment · order confirmation</div>
-      </div>
-
-      <!-- SEN sub-items (col 3) -->
-      <div class="box sub-box sen-sub" style="left: 408px; top: 230px; width: 180px;">
-        <div class="title">Just starting out</div>
-      </div>
-      <div class="box sub-box sen-sub" style="left: 408px; top: 286px; width: 180px;">
-        <div class="title">Finding their grip</div>
-      </div>
-      <div class="box sub-box sen-sub" style="left: 408px; top: 342px; width: 180px;">
-        <div class="title">Building confidence</div>
-      </div>
-      <div class="box sub-box sen-sub" style="left: 408px; top: 398px; width: 180px;">
-        <div class="title">Eating independently</div>
-      </div>
-
-      <!-- Bundle Box sub-items (col 4) -->
-      <div class="box sub-box bundle-sub" style="left: 612px; top: 230px; width: 180px;">
-        <div class="title">Stage 1</div><div class="sub">6–12m</div>
-      </div>
-      <div class="box sub-box bundle-sub" style="left: 612px; top: 286px; width: 180px;">
-        <div class="title">Stage 2</div><div class="sub">12–18m</div>
-      </div>
-      <div class="box sub-box bundle-sub" style="left: 612px; top: 342px; width: 180px;">
-        <div class="title">Stage 3</div><div class="sub">18m–3yr</div>
-      </div>
-      <div class="box sub-box bundle-sub" style="left: 612px; top: 398px; width: 180px;">
-        <div class="title">Stage 4</div><div class="sub">3–5yr</div>
-      </div>
+  <!-- BOTTOM TIER: PDP + CHECKOUT -->
+  <hr class="section-divider">
+  <div class="section-label">Transactional pages (shared across all journeys)</div>
+  <div class="bottom-tier">
+    <div class="bottom-card">
+      Product detail page (PDP)
+      <div class="sub">Add to bag · colour / variant selection</div>
+    </div>
+    <div class="bottom-card">
+      Bag / Checkout
+      <div class="sub">Payment · order confirmation</div>
     </div>
   </div>
+
+</div><!-- /page -->
+
+<script>
+  function toggle(id, btn) {
+    const el = document.getElementById(id);
+    const open = el.classList.toggle('open');
+    // count hidden cards
+    const n = el.querySelectorAll('.card').length;
+    btn.textContent = open ? `− Show less` : `+ Show ${n} more`;
+  }
+</script>
 </body>
 </html>
