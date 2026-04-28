@@ -90,6 +90,21 @@
   .txn{display:flex;justify-content:flex-end;gap:12px;margin-top:24px;flex-wrap:wrap;}
   .tc{background:#E8F4FF;border:1.5px solid #B0D0F0;border-radius:10px;padding:11px 16px;font-size:11px;font-weight:700;color:#1a3a6a;line-height:1.4;min-width:160px;}
   .tc .s{font-size:10px;font-weight:600;color:#4a70a0;margin-top:3px;}
+
+  /* FOOTER */
+  .footer-strip {
+    background: #1a1630;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+    font-weight: 600;
+    margin-top: 48px;
+  }
+  .footer-strip .fl { font-size: 15px; font-weight: 800; color: rgba(255,255,255,0.8); letter-spacing: -0.02em; text-decoration: none; }
+  .footer-strip .fl span { color: #30BEAA; }
 </style>
 </head>
 <body>
@@ -426,6 +441,12 @@ document.addEventListener('DOMContentLoaded', () => {
   if (tg) tg.style.display = 'none';
 });
 </script>
+
+<div class="footer-strip">
+  <a href="/prototypes/journey/" class="fl">doddl<span>.</span></a>
+  <span>Site Map · Prototype Navigation · Staging · © doddl 2026</span>
+  <span>Prototype — not for public distribution</span>
+</div>
 </body>
 </html>
 <!-- patch marker -->
