@@ -8,381 +8,429 @@
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --c-new-section:   #2CB67D;
-    --c-new-page:      #A8D8A8;
-    --c-evolve:        #E09A3A;
-    --c-keep:          #4A4580;
-    --c-orphan:        #D45D5D;
-    --c-homepage:      #3D157D;
-    --grey-bg:         #F4F3F8;
-    --grey-line:       #DDDBE8;
-    --text:            #1a1630;
-    --text-mid:        #666;
-    --white:           #fff;
-    --font:            'Nunito', sans-serif;
+    --c-ns:#2CB67D; --c-np:#A8D8A8; --c-ev:#E09A3A; --c-ke:#4A4580; --c-or:#D45D5D;
+    --c-hp:#3D157D; --gbg:#F4F3F8; --gl:#DDDBE8; --w:#fff; --t:#1a1630; --tm:#777; --f:'Nunito',sans-serif;
   }
+  body{font-family:var(--f);background:var(--gbg);color:var(--t);min-height:100vh;}
 
-  body {
-    font-family: var(--font);
-    background: var(--grey-bg);
-    color: var(--text);
-    min-height: 100vh;
-  }
+  /* TOP BAR */
+  .tb{background:#1a1630;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;}
+  .tb-logo{font-size:16px;font-weight:800;color:#fff;letter-spacing:-.02em;text-decoration:none;}
+  .tb-logo span{color:#30BEAA;}
+  .tb-ttl{font-size:11px;font-weight:700;color:rgba(255,255,255,.45);letter-spacing:.08em;text-transform:uppercase;}
+  .tb-badge{font-size:10px;font-weight:800;background:rgba(48,190,170,.2);color:#9ECFC6;border-radius:4px;padding:3px 8px;}
 
-  /* ── TOP BAR ───────────────────────────────────── */
-  .topbar {
-    background: #1a1630;
-    padding: 10px 28px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-  .topbar-logo { font-size: 16px; font-weight: 800; color: #fff; letter-spacing: -0.02em; }
-  .topbar-logo span { color: #30BEAA; }
-  .topbar-title { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.5); letter-spacing: 0.08em; text-transform: uppercase; }
-  .topbar-badge { font-size: 10px; font-weight: 800; background: rgba(48,190,170,0.2); color: #9ECFC6; border-radius: 4px; padding: 3px 8px; letter-spacing: 0.06em; }
+  /* KEY */
+  .key{background:var(--w);border-bottom:1px solid var(--gl);padding:9px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+  .kl{font-size:11px;font-weight:800;color:var(--tm);text-transform:uppercase;letter-spacing:.06em;}
+  .kis{display:flex;gap:14px;flex-wrap:wrap;align-items:center;}
+  .ki{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;}
+  .kd{width:11px;height:11px;border-radius:3px;flex-shrink:0;}
+  .kd-ns{background:var(--c-ns);} .kd-np{background:var(--c-np);border:1px solid #8aba8a;}
+  .kd-ev{background:var(--c-ev);} .kd-ke{background:var(--c-ke);} .kd-or{background:var(--c-or);}
 
-  /* ── KEY ───────────────────────────────────────── */
-  .key-bar {
-    background: var(--white);
-    border-bottom: 1px solid var(--grey-line);
-    padding: 10px 28px;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    flex-wrap: wrap;
-  }
-  .key-label { font-size: 11px; font-weight: 800; color: var(--text-mid); text-transform: uppercase; letter-spacing: 0.06em; }
-  .key-items { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
-  .key-item { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: var(--text); }
-  .key-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
-  .kd-new-section { background: var(--c-new-section); }
-  .kd-new-page    { background: var(--c-new-page); border: 1px solid #8aba8a; }
-  .kd-evolve      { background: var(--c-evolve); }
-  .kd-keep        { background: var(--c-keep); }
-  .kd-orphan      { background: var(--c-orphan); }
+  /* PAGE */
+  .pg{padding:28px 20px 80px;max-width:1500px;margin:0 auto;}
 
-  /* ── PAGE LAYOUT ───────────────────────────────── */
-  .page { padding: 32px 28px 64px; max-width: 1400px; margin: 0 auto; }
+  /* HOMEPAGE BOX */
+  .hpr{display:flex;justify-content:center;}
+  .hpb{background:var(--c-hp);color:#fff;border-radius:12px;padding:14px 32px;text-align:center;font-weight:800;font-size:14px;line-height:1.3;text-decoration:none;display:block;min-width:260px;transition:opacity .15s,box-shadow .15s;}
+  .hpb:hover{opacity:.88;box-shadow:0 4px 18px rgba(61,21,125,.35);}
+  .hpb .s{font-size:11px;font-weight:600;opacity:.65;margin-top:3px;}
+  .cv{display:flex;justify-content:center;height:28px;}
+  .cv::after{content:'';display:block;width:1.5px;height:100%;background:var(--gl);}
 
-  /* ── HOMEPAGE BOX ─────────────────────────────── */
-  .homepage-row { display: flex; justify-content: center; margin-bottom: 0; }
-  .homepage-box {
-    background: var(--c-homepage);
-    color: var(--white);
-    border-radius: 12px;
-    padding: 14px 28px;
-    text-align: center;
-    font-weight: 800;
-    font-size: 14px;
-    line-height: 1.3;
-    text-decoration: none;
-    display: block;
-    min-width: 240px;
-    cursor: pointer;
-    transition: opacity 0.15s;
-  }
-  .homepage-box:hover { opacity: 0.88; }
-  .homepage-box .sub { font-size: 11px; font-weight: 600; opacity: 0.65; margin-top: 3px; }
+  /* MAIN COLUMNS */
+  .cols{display:grid;grid-template-columns:repeat(6,1fr);gap:0;position:relative;}
+  .cols::before{content:'';position:absolute;top:0;left:calc(100%/12);right:calc(100%/12);height:1.5px;background:var(--gl);z-index:1;}
+  .col{padding:0 6px;display:flex;flex-direction:column;align-items:stretch;position:relative;}
+  .col::before{content:'';display:block;width:1.5px;height:28px;background:var(--gl);margin:0 auto;flex-shrink:0;}
 
-  /* connector from homepage down */
-  .connector-down {
-    display: flex;
-    justify-content: center;
-    height: 32px;
-  }
-  .connector-down::after {
-    content: '';
-    display: block;
-    width: 1.5px;
-    height: 100%;
-    background: var(--grey-line);
-  }
+  /* COL HEADERS */
+  .ch{border-radius:10px;padding:11px 12px;margin-bottom:8px;font-size:12px;font-weight:800;color:#fff;text-align:center;line-height:1.3;text-decoration:none;display:block;transition:opacity .15s;cursor:default;}
+  a.ch{cursor:pointer;} a.ch:hover{opacity:.85;}
+  .ch .s{font-size:10px;font-weight:600;opacity:.72;margin-top:2px;}
+  .h-ke{background:var(--c-ke);} .h-ev{background:var(--c-ev);} .h-ns{background:var(--c-ns);} .h-k2{background:#6a6490;}
 
-  /* ── COLUMNS ───────────────────────────────── */
-  .columns { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0; position: relative; }
+  /* CARDS */
+  .cd{border-radius:7px;padding:8px 10px;margin-bottom:5px;font-size:11px;font-weight:700;line-height:1.35;text-decoration:none;color:var(--t);display:block;border:1.5px solid transparent;transition:box-shadow .15s;}
+  a.cd:hover{box-shadow:0 3px 10px rgba(0,0,0,.12);}
+  .cd .s{font-size:10px;font-weight:600;color:var(--tm);margin-top:2px;}
+  .c-ke{background:#ECEAF4;border-color:#CAC7E0;} .c-ke .s{color:var(--c-ke);}
+  .c-ev{background:#FEF3E2;border-color:#E8C87A;} .c-ev .s{color:#a06820;}
+  .c-ns{background:#E8F8F0;border-color:#A8D8A8;} .c-ns .s{color:#2a8050;}
+  .c-or{background:#FDEAEA;border-color:#E8AABA;} .c-or .s{color:#a03030;}
+  .co{font-size:10px;font-style:italic;color:var(--tm);text-align:center;margin-bottom:6px;}
 
-  /* horizontal line across top of columns */
-  .columns::before {
-    content: '';
-    position: absolute;
-    top: 0; left: calc(100% / 12); right: calc(100% / 12);
-    height: 1.5px;
-    background: var(--grey-line);
-    z-index: 1;
-  }
+  /* SHOW/HIDE */
+  .ov{display:none;} .ov.open{display:block;}
+  .tog{background:none;border:1.5px solid var(--gl);border-radius:6px;padding:5px 8px;font-size:10px;font-weight:800;color:var(--tm);cursor:pointer;font-family:var(--f);margin-top:3px;width:100%;text-align:center;transition:background .15s;}
+  .tog:hover{background:var(--w);color:var(--t);}
 
-  .col { padding: 0 8px; display: flex; flex-direction: column; align-items: stretch; position: relative; }
+  /* SEPARATOR */
+  .sep{margin:36px 0 0;border:none;border-top:2px dashed var(--gl);}
+  .sepl{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--tm);text-align:center;margin:10px 0 18px;}
 
-  /* vertical tick from top line down to header */
-  .col::before {
-    content: '';
-    display: block;
-    width: 1.5px;
-    height: 32px;
-    background: var(--grey-line);
-    margin: 0 auto 0;
-    flex-shrink: 0;
-  }
+  /* BLOG GRID */
+  .bg{display:grid;grid-template-columns:repeat(5,1fr);gap:0;}
+  .bg2{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:0;margin-top:8px;}
+  .bc{padding:0 6px;}
+  .bh{border-radius:8px;padding:9px 10px;margin-bottom:8px;font-size:11px;font-weight:800;text-align:center;line-height:1.3;color:#fff;}
+  .bh .s{font-size:9px;font-weight:600;opacity:.75;margin-top:2px;}
+  .bh-r0{background:#E85D7A;} .bh-rt{background:#D44060;}
+  .bh-t0{background:#5B9BD5;} .bh-t1{background:#3A7EC0;} .bh-t2{background:#2A5FA0;}
+  .bh-tg{background:#5570A0;} .bh-pl{background:#9B6BC0;} .bh-nw{background:#6a6490;}
+  .bcd{border-radius:6px;padding:6px 9px;margin-bottom:4px;font-size:10px;font-weight:700;line-height:1.4;text-decoration:none;color:var(--t);display:block;background:var(--w);border:1px solid var(--gl);transition:box-shadow .15s;}
+  a.bcd:hover{box-shadow:0 2px 8px rgba(0,0,0,.1);}
 
-  /* ── COLUMN HEADERS ────────────────────────────── */
-  .col-header {
-    border-radius: 10px;
-    padding: 12px 14px;
-    margin-bottom: 10px;
-    font-size: 13px;
-    font-weight: 800;
-    color: var(--white);
-    text-align: center;
-    line-height: 1.3;
-    cursor: default;
-  }
-  .col-header .sub { font-size: 11px; font-weight: 600; opacity: 0.72; margin-top: 3px; }
-  .col-header.h-keep    { background: var(--c-keep); }
-  .col-header.h-evolve  { background: var(--c-evolve); }
-  .col-header.h-new     { background: var(--c-new-section); }
-  .col-header.h-keep2   { background: #6a6490; }  /* slightly lighter for Research/Tips */
+  /* 2-col blog sub-grid */
+  .bg2c{display:grid;grid-template-columns:1fr 1fr;gap:0 8px;}
 
-  /* content-only label */
-  .content-only { font-size: 11px; font-style: italic; color: var(--text-mid); text-align: center; margin-bottom: 8px; }
-
-  /* ── CARDS ─────────────────────────────────────── */
-  .card {
-    border-radius: 8px;
-    padding: 10px 12px;
-    margin-bottom: 7px;
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 1.35;
-    text-decoration: none;
-    color: var(--text);
-    display: block;
-    border: 1.5px solid transparent;
-    transition: box-shadow 0.15s, opacity 0.15s;
-    cursor: default;
-  }
-  a.card { cursor: pointer; }
-  a.card:hover { box-shadow: 0 3px 10px rgba(0,0,0,0.12); opacity: 0.9; }
-  .card .card-sub { font-size: 10px; font-weight: 600; color: var(--text-mid); margin-top: 2px; }
-
-  /* card status colours */
-  .card.c-keep    { background: #ECEAF4; border-color: #CAC7E0; }
-  .card.c-keep .card-sub { color: var(--c-keep); }
-  .card.c-evolve  { background: #FEF3E2; border-color: #E8C87A; }
-  .card.c-evolve .card-sub { color: #a06820; }
-  .card.c-new     { background: #E8F8F0; border-color: #A8D8A8; }
-  .card.c-new .card-sub { color: #2a8050; }
-  .card.c-orphan  { background: #FDEAEA; border-color: #E8AABA; }
-  .card.c-orphan .card-sub { color: #a03030; }
-
-  /* ── SHOW MORE / LESS ─────────────────────────── */
-  .show-toggle {
-    background: none;
-    border: 1.5px solid var(--grey-line);
-    border-radius: 6px;
-    padding: 6px 10px;
-    font-size: 11px;
-    font-weight: 800;
-    color: var(--text-mid);
-    cursor: pointer;
-    font-family: var(--font);
-    margin-top: 2px;
-    width: 100%;
-    text-align: center;
-    transition: background 0.15s;
-  }
-  .show-toggle:hover { background: var(--white); color: var(--text); }
-  .overflow-cards { display: none; }
-  .overflow-cards.open { display: block; }
-
-  /* ── BOTTOM TIER ───────────────────────────────── */
-  .bottom-tier {
-    margin-top: 40px;
-    display: flex;
-    justify-content: flex-end;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-  .bottom-card {
-    background: #E8F4FF;
-    border: 1.5px solid #B0D0F0;
-    border-radius: 10px;
-    padding: 12px 18px;
-    font-size: 12px;
-    font-weight: 700;
-    color: #1a3a6a;
-    line-height: 1.4;
-    min-width: 180px;
-  }
-  .bottom-card .sub { font-size: 10px; font-weight: 600; color: #4a70a0; margin-top: 3px; }
-
-  /* ── SECTION DIVIDER ───────────────────────────── */
-  .section-divider {
-    margin: 28px 0 0;
-    border: none;
-    border-top: 1.5px dashed var(--grey-line);
-  }
-  .section-label {
-    font-size: 10px;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--text-mid);
-    margin: 8px 0 14px;
-    text-align: center;
-  }
+  /* TRANSACTIONAL */
+  .txn{display:flex;justify-content:flex-end;gap:12px;margin-top:24px;flex-wrap:wrap;}
+  .tc{background:#E8F4FF;border:1.5px solid #B0D0F0;border-radius:10px;padding:11px 16px;font-size:11px;font-weight:700;color:#1a3a6a;line-height:1.4;min-width:160px;}
+  .tc .s{font-size:10px;font-weight:600;color:#4a70a0;margin-top:3px;}
 </style>
 </head>
 <body>
 
-<!-- TOP BAR -->
-<div class="topbar">
-  <span class="topbar-logo">doddl<span>.</span></span>
-  <span class="topbar-title">Prototype Navigation · Staging</span>
-  <span class="topbar-badge">STAGING</span>
+<div class="tb">
+  <a href="/prototypes/journey/" class="tb-logo">doddl<span>.</span></a>
+  <span class="tb-ttl">Complete Site Map · Prototype Navigation · Staging</span>
+  <span class="tb-badge">STAGING</span>
 </div>
 
-<!-- KEY -->
-<div class="key-bar">
-  <span class="key-label">Key</span>
-  <div class="key-items">
-    <span class="key-item"><span class="key-dot kd-new-section"></span>New section</span>
-    <span class="key-item"><span class="key-dot kd-new-page"></span>New page needed</span>
-    <span class="key-item"><span class="key-dot kd-evolve"></span>Exists — evolve</span>
-    <span class="key-item"><span class="key-dot kd-keep"></span>Exists — keep</span>
-    <span class="key-item"><span class="key-dot kd-orphan"></span>Orphaned — decide</span>
+<div class="key">
+  <span class="kl">Key</span>
+  <div class="kis">
+    <span class="ki"><span class="kd kd-ns"></span>New section</span>
+    <span class="ki"><span class="kd kd-np"></span>New page needed</span>
+    <span class="ki"><span class="kd kd-ev"></span>Exists — evolve</span>
+    <span class="ki"><span class="kd kd-ke"></span>Exists — keep</span>
+    <span class="ki"><span class="kd kd-or"></span>Orphaned — decide</span>
   </div>
 </div>
 
-<div class="page">
+<div class="pg">
 
   <!-- HOMEPAGE -->
-  <div class="homepage-row">
-    <a class="homepage-box" href="./homepage.html">
+  <div class="hpr">
+    <a class="hpb" href="./homepage.html">
       Homepage / doddl.com entry point
-      <div class="sub">Top of funnel · campaign + organic search</div>
+      <div class="s">Top of funnel · campaign + organic search</div>
     </a>
   </div>
-  <div class="connector-down"></div>
+  <div class="cv"></div>
 
-  <!-- MAIN COLUMNS -->
-  <div class="columns">
+  <!-- MAIN 6 COLUMNS -->
+  <div class="cols">
 
     <!-- SHOP BY STAGE -->
     <div class="col">
-      <div class="col-header h-keep">
-        Shop by Stage
-        <div class="sub">Age-based discovery</div>
-      </div>
-      <a class="card c-keep" href="./desktop.html">Stage 0<div class="card-sub">0–6m · new collection</div></a>
-      <a class="card c-keep" href="./desktop.html">Stage 1<div class="card-sub">6–12m · new collection</div></a>
-      <a class="card c-keep" href="./desktop.html">Stage 2<div class="card-sub">12–18m · new collection</div></a>
-      <a class="card c-keep" href="./desktop.html">Stage 3<div class="card-sub">18m–3yr · new collection</div></a>
-      <a class="card c-keep" href="./desktop.html">Stage 4<div class="card-sub">3–5yr · new collection</div></a>
+      <a class="ch h-ke" href="./desktop.html">Shop by Stage<div class="s">Age-based discovery</div></a>
+      <a class="cd c-ke" href="./desktop.html">Stage 0<div class="s">0–6m · new collection</div></a>
+      <a class="cd c-ke" href="./desktop.html">Stage 1<div class="s">6–12m · new collection</div></a>
+      <a class="cd c-ke" href="./desktop.html">Stage 2<div class="s">12–18m · new collection</div></a>
+      <a class="cd c-ke" href="./desktop.html">Stage 3<div class="s">18m–3yr · new collection</div></a>
+      <a class="cd c-ke" href="./desktop.html">Stage 4<div class="s">3–5yr · new collection</div></a>
     </div>
 
     <!-- SHOP BY CATEGORY -->
     <div class="col">
-      <div class="col-header h-evolve">
-        Shop by Category
-        <div class="sub">Product type discovery</div>
+      <a class="ch h-ev" href="./shop-by-stage.html">Shop by Category<div class="s">Product type discovery</div></a>
+      <a class="cd c-ev" href="./shop-by-stage.html">Baby cutlery<div class="s">/discover-baby-cutlery</div></a>
+      <a class="cd c-ev" href="./shop-by-stage.html">Toddler cutlery<div class="s">/discover-toddler-cutlery</div></a>
+      <a class="cd c-ev" href="./shop-by-stage.html">Plates &amp; bowls<div class="s">/discover-plates-bowls</div></a>
+      <a class="cd c-ev" href="./shop-by-stage.html">Bundles &amp; kits<div class="s">/collections/gifting</div></a>
+      <span class="cd c-ns">Bibs<div class="s">New page needed</div></span>
+      <div class="ov" id="oc1">
+        <a class="cd c-ke" href="https://doddl.com/collections/shop-all" target="_blank">Shop all<div class="s">/collections/shop-all</div></a>
+        <a class="cd c-ke" href="https://doddl.com/collections/bestsellers" target="_blank">Bestsellers<div class="s">/collections/bestsellers</div></a>
+        <a class="cd c-ke" href="https://doddl.com/collections/gifts" target="_blank">Gifts<div class="s">/collections/gifts</div></a>
+        <span class="cd c-or">Baby cutlery (dupe)<div class="s">/infant-cutlery-6-month</div></span>
       </div>
-      <a class="card c-evolve" href="./shop-by-stage.html">Baby cutlery<div class="card-sub">/discover-baby-cutlery</div></a>
-      <a class="card c-evolve" href="./shop-by-stage.html">Toddler cutlery<div class="card-sub">/discover-toddler-cutlery</div></a>
-      <a class="card c-evolve" href="./shop-by-stage.html">Plates &amp; bowls<div class="card-sub">/discover-plates-bowls</div></a>
-      <a class="card c-evolve" href="./shop-by-stage.html">Bundles &amp; kits<div class="card-sub">/collections/gifting</div></a>
-      <span class="card c-new">Bibs<div class="card-sub">New page needed</div></span>
-
-      <!-- overflow: shown after 5 -->
-      <div class="overflow-cards" id="oc-category">
-        <a class="card c-keep" href="./shop-by-stage.html">Shop all<div class="card-sub">/collections/shop-all</div></a>
-        <a class="card c-keep" href="./shop-by-stage.html">Bestsellers<div class="card-sub">/collections/bestsellers</div></a>
-        <a class="card c-keep" href="./shop-by-stage.html">Gifts<div class="card-sub">/collections/gifts</div></a>
-        <span class="card c-orphan">Baby cutlery (dupe)<div class="card-sub">/infant-cutlery-6-month</div></span>
-      </div>
-      <button class="show-toggle" onclick="toggle('oc-category', this)">+ Show 4 more</button>
+      <button class="tog" onclick="tog('oc1',this,4)">+ Show 4 more</button>
     </div>
 
     <!-- SEN JOURNEY -->
     <div class="col">
-      <div class="col-header h-new">
-        SEN Journey
-        <div class="sub">Special needs pathway</div>
-      </div>
-      <a class="card c-new" href="./sen-desktop.html">Just starting out<div class="card-sub">New page</div></a>
-      <a class="card c-new" href="./sen-desktop.html">Finding their grip<div class="card-sub">New page</div></a>
-      <a class="card c-new" href="./sen-desktop.html">Building confidence<div class="card-sub">New page</div></a>
-      <a class="card c-new" href="./sen-desktop.html">Eating independently<div class="card-sub">New page</div></a>
+      <a class="ch h-ns" href="./sen-desktop.html">SEN Journey<div class="s">Special needs pathway</div></a>
+      <a class="cd c-ns" href="./sen-desktop.html">Just starting out<div class="s">New page</div></a>
+      <a class="cd c-ns" href="./sen-desktop.html">Finding their grip<div class="s">New page</div></a>
+      <a class="cd c-ns" href="./sen-desktop.html">Building confidence<div class="s">New page</div></a>
+      <a class="cd c-ns" href="./sen-desktop.html">Eating independently<div class="s">New page</div></a>
     </div>
 
     <!-- BUNDLE BOX -->
     <div class="col">
-      <div class="col-header h-evolve">
-        Bundle Box
-        <div class="sub">Curated launch bundle</div>
-      </div>
-      <a class="card c-new" href="./bundle-box.html">Bundle hub<div class="card-sub">/pages/complete-baby-to-toddler-mealtime-set</div></a>
-      <a class="card c-new" href="./bundle-box.html">Stage 1 bundle<div class="card-sub">6–12m · new</div></a>
-      <a class="card c-new" href="./bundle-box.html">Stage 2 bundle<div class="card-sub">12–18m · new</div></a>
-      <a class="card c-new" href="./bundle-box.html">Stage 3 bundle<div class="card-sub">18m–3yr · new</div></a>
-      <a class="card c-new" href="./bundle-box.html">Stage 4 bundle<div class="card-sub">3–5yr · new</div></a>
+      <a class="ch h-ev" href="./bundle-box.html">Bundle Box<div class="s">Curated launch bundle</div></a>
+      <span class="cd c-ns">Bundle hub<div class="s">/pages/complete-baby-to-toddler-mealtime-set</div></span>
+      <span class="cd c-ns">Stage 1 bundle<div class="s">6–12m · new</div></span>
+      <span class="cd c-ns">Stage 2 bundle<div class="s">12–18m · new</div></span>
+      <span class="cd c-ns">Stage 3 bundle<div class="s">18m–3yr · new</div></span>
+      <span class="cd c-ns">Stage 4 bundle<div class="s">3–5yr · new</div></span>
     </div>
 
     <!-- RESEARCH & DEV -->
     <div class="col">
-      <div class="col-header h-keep2">
-        Research &amp; Dev
-        <div class="sub">Methodology · evidence</div>
-      </div>
-      <span class="card c-new">Research hub<div class="card-sub">New page</div></span>
-      <a class="card c-evolve" href="#">What the experts think<div class="card-sub">/pages/what-the-experts-think</div></a>
-      <a class="card c-keep" href="#">Sustainability<div class="card-sub">/pages/sustainability</div></a>
-      <span class="card c-new">Commitment to future<div class="card-sub">/pages/our-commitment-to-future</div></span>
+      <div class="ch h-k2">Research &amp; Dev<div class="s">Methodology · evidence</div></div>
+      <span class="cd c-ns">Research hub<div class="s">New page</div></span>
+      <a class="cd c-ev" href="https://doddl.com/pages/what-the-experts-think" target="_blank">What the experts think<div class="s">/pages/what-the-experts-think</div></a>
+      <a class="cd c-ke" href="https://doddl.com/pages/sustainability" target="_blank">Sustainability<div class="s">/pages/sustainability</div></a>
+      <span class="cd c-ns">Commitment to future<div class="s">/pages/our-commitment-to-future</div></span>
     </div>
 
     <!-- TIPS & ADVICE -->
     <div class="col">
-      <div class="col-header h-keep2">
-        Tips &amp; Advice
-        <div class="sub">Editorial · guides</div>
-      </div>
-      <div class="content-only">(content only)</div>
-      <span class="card c-new">Blog hub<div class="card-sub">New page needed</div></span>
-      <span class="card c-new">Stage guides<div class="card-sub">New pages · 1 per stage</div></span>
-      <span class="card c-new">Expert articles<div class="card-sub">New page needed</div></span>
-      <span class="card c-new">Recipes &amp; mealtimes<div class="card-sub">New page needed</div></span>
-      <a class="card c-keep" href="#">Existing blog posts<div class="card-sub">Keep · /blogs/</div></a>
+      <div class="ch h-k2">Tips &amp; Advice<div class="s">Editorial · guides</div></div>
+      <div class="co">(see full library below)</div>
+      <span class="cd c-ns">Blog hub<div class="s">New page needed</div></span>
+      <span class="cd c-ns">Stage guides ×5<div class="s">1 per stage · new pages</div></span>
+      <span class="cd c-ns">Expert articles hub<div class="s">New page needed</div></span>
+      <a class="cd c-ke" href="https://doddl.com/blogs/tips-and-advice" target="_blank">Tips &amp; advice blog<div class="s">/blogs/tips-and-advice</div></a>
+      <a class="cd c-ke" href="https://doddl.com/blogs/toddler-food-recipes" target="_blank">Recipes blog<div class="s">/blogs/toddler-food-recipes</div></a>
     </div>
 
-  </div><!-- /columns -->
+  </div><!-- /cols -->
 
-  <!-- BOTTOM TIER: PDP + CHECKOUT -->
-  <hr class="section-divider">
-  <div class="section-label">Transactional pages (shared across all journeys)</div>
-  <div class="bottom-tier">
-    <div class="bottom-card">
-      Product detail page (PDP)
-      <div class="sub">Add to bag · colour / variant selection</div>
-    </div>
-    <div class="bottom-card">
-      Bag / Checkout
-      <div class="sub">Payment · order confirmation</div>
-    </div>
+  <div class="txn">
+    <div class="tc">Product detail page (PDP)<div class="s">Add to bag · colour / variant selection</div></div>
+    <div class="tc">Bag / Checkout<div class="s">Payment · order confirmation</div></div>
   </div>
 
-</div><!-- /page -->
+  <!-- CONTENT LIBRARY -->
+  <hr class="sep">
+  <div class="sepl">Content library — all 180 blog &amp; recipe URLs mapped by stage</div>
+
+  <!-- ROW 1: RECIPES + TIPS STAGE 0/1/2 -->
+  <div class="bg">
+
+    <!-- WEANING RECIPES Stage 0-1 -->
+    <div class="bc">
+      <div class="bh bh-r0">Weaning Recipes — Stage 0–1<div class="s">/blogs/weaning-recipes-for-babies · 13 posts</div></div>
+      <a class="bcd" href="https://doddl.com/blogs/weaning-recipes-for-babies/blueberry-oaty-bars-recipe" target="_blank">Blueberry oaty bars</a>
+      <a class="bcd" href="https://doddl.com/blogs/weaning-recipes-for-babies/apple-pie-chia-pudding" target="_blank">Apple pie chia pudding</a>
+      <a class="bcd" href="https://doddl.com/blogs/weaning-recipes-for-babies/apple-pie-flax-muffins" target="_blank">Apple pie flax muffins</a>
+      <a class="bcd" href="https://doddl.com/blogs/weaning-recipes-for-babies/3-ingredient-oat-cookies" target="_blank">3-ingredient oat cookies</a>
+      <a class="bcd" href="https://doddl.com/blogs/weaning-recipes-for-babies/spiced-baked-oats" target="_blank">Spiced baked oats</a>
+      <div class="ov" id="oc-wr">
+        <a class="bcd" href="https://doddl.com/blogs/weaning-recipes-for-babies/tomato-and-spinach-pasta" target="_blank">Tomato &amp; spinach pasta</a>
+        <a class="bcd" href="https://doddl.com/blogs/weaning-recipes-for-babies/mango-and-coconut-yoghurt-bark" target="_blank">Mango coconut yoghurt bark</a>
+        <a class="bcd" href="https://doddl.com/blogs/weaning-recipes-for-babies/red-pepper-muffins" target="_blank">Red pepper muffins</a>
+        <a class="bcd" href="https://doddl.com/blogs/weaning-recipes-for-babies/porridge-fingers" target="_blank">Porridge fingers</a>
+        <a class="bcd" href="https://doddl.com/blogs/weaning-recipes-for-babies/cheese-and-broccoli-muffins" target="_blank">Cheese &amp; broccoli muffins</a>
+        <a class="bcd" href="https://doddl.com/blogs/weaning-recipes-for-babies/apple-oat-pancakes" target="_blank">Apple oat pancakes</a>
+        <a class="bcd" href="https://doddl.com/blogs/weaning-recipes-for-babies/creamy-pea-and-mint-pasta" target="_blank">Creamy pea &amp; mint pasta</a>
+        <a class="bcd" href="https://doddl.com/blogs/weaning-recipes-for-babies/one-pot-beef-orzo-delight" target="_blank">One pot beef orzo</a>
+      </div>
+      <button class="tog" onclick="tog('oc-wr',this,8)">+ Show 8 more</button>
+    </div>
+
+    <!-- TODDLER RECIPES -->
+    <div class="bc">
+      <div class="bh bh-rt">Toddler Recipes — Stage 1–4<div class="s">/blogs/toddler-food-recipes · 31 posts</div></div>
+      <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/healthy-eating-easy-midweek-family-recipes" target="_blank">Easy midweek family recipes</a>
+      <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/pancake-ideas-for-toddlers" target="_blank">Pancake ideas for toddlers</a>
+      <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/guest-recipe-loaded-veggie-mac-cheese" target="_blank">Loaded veggie mac &amp; cheese</a>
+      <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/avocado-breakfast-nest" target="_blank">Avocado breakfast nest</a>
+      <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/cocoa-oatmeal" target="_blank">Cocoa oatmeal</a>
+      <div class="ov" id="oc-tr">
+        <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/chicken-or-the-egg" target="_blank">Chicken or the egg</a>
+        <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/waffle-breakfast-sundae" target="_blank">Waffle breakfast sundae</a>
+        <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/raspberry-almond-sushi" target="_blank">Raspberry almond sushi</a>
+        <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/roaring-rotini-fun-pasta-recipe" target="_blank">Roaring rotini pasta</a>
+        <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/cheesy-kale-crisps" target="_blank">Cheesy kale crisps</a>
+        <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/easy-pea-and-carrot-paella-bonanza-with-prawns" target="_blank">Pea &amp; carrot paella with prawns</a>
+        <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/broccoli-cheese-and-rice-muffins-for-little-ones" target="_blank">Broccoli cheese &amp; rice muffins</a>
+        <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/sunday-evening-pasta-recipe" target="_blank">Sunday evening pasta</a>
+        <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/scary-spider-courgette-pizza-bites" target="_blank">Scary spider pizza bites</a>
+        <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/raspberry-and-coconut-mini-loaves" target="_blank">Raspberry coconut mini loaves</a>
+        <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/berry-christmas-recipe" target="_blank">Berry Christmas recipe</a>
+        <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/krispmas-puddings" target="_blank">Krispmas puddings</a>
+        <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/vegetable-paella" target="_blank">Vegetable paella</a>
+        <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/creamy-mushroom-pasta" target="_blank">Creamy mushroom pasta</a>
+        <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/2-ingredient-pizza-dough" target="_blank">2-ingredient pizza dough</a>
+        <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/hot-cross-bun-porridge" target="_blank">Hot cross bun porridge</a>
+        <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/summer-vegetable-pesto-pasta" target="_blank">Summer veg pesto pasta</a>
+        <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/pumpkin-spice-energy-balls" target="_blank">Pumpkin spice energy balls</a>
+        <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/french-toast-bites" target="_blank">French toast bites</a>
+        <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/mini-egg-frittatas" target="_blank">Mini egg frittatas</a>
+        <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/spinach-and-cheese-turnovers" target="_blank">Spinach &amp; cheese turnovers</a>
+        <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/banana-oat-cookies" target="_blank">Banana oat cookies</a>
+        <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/rainbow-rice-salad" target="_blank">Rainbow rice salad</a>
+        <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/sweet-potato-fishcakes" target="_blank">Sweet potato fishcakes</a>
+        <a class="bcd" href="https://doddl.com/blogs/toddler-food-recipes/hidden-veg-tomato-sauce" target="_blank">Hidden veg tomato sauce</a>
+      </div>
+      <button class="tog" onclick="tog('oc-tr',this,26)">+ Show 26 more</button>
+    </div>
+
+    <!-- TIPS Stage 0-1 Weaning -->
+    <div class="bc">
+      <div class="bh bh-t0">Tips — Stage 0–1<div class="s">Weaning · introducing solids · 16 posts</div></div>
+      <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/how-to-wean-a-baby" target="_blank">How to wean a baby</a>
+      <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/tips-on-introducing-solid-foods-to-your-baby" target="_blank">Introducing solid foods to baby</a>
+      <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/keeping-track-of-your-weaning-journey" target="_blank">Keeping track of your weaning journey</a>
+      <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/guest-blog-5-reasons-to-choose-baby-led-weaning" target="_blank">5 reasons to choose baby-led weaning</a>
+      <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/weaning-and-worried-about-your-baby-choking" target="_blank">Worried about baby choking?</a>
+      <div class="ov" id="oc-t0">
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/navigating-babys-food-journey-milk-to-solids" target="_blank">Baby's food journey: milk to solids</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/simple-weaning-journey-markers" target="_blank">Simple weaning journey markers</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/mealtime-milestones" target="_blank">Mealtime milestones</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/weaning-myths" target="_blank">Weaning myths</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/top-4-tips-to-encourage-spoon-feeding-during-weaning" target="_blank">Top 4 tips: encourage spoon feeding</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/the-next-stage-real-food-tastes-textures-and-flavours" target="_blank">Real food: tastes, textures &amp; flavours</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/cows-milk-protein-allergy" target="_blank">Cow's milk protein allergy</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/your-toddlers-appetite-guest-blog" target="_blank">Your toddler's appetite</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/some-tips-for-handling-food-and-toddlers" target="_blank">Tips for handling food &amp; toddlers</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/introducing-doddl-baby-cutlery" target="_blank">Introducing doddl baby cutlery</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/how-to-introduce-doddl-toddler-cutlery" target="_blank">How to introduce doddl cutlery</a>
+      </div>
+      <button class="tog" onclick="tog('oc-t0',this,11)">+ Show 11 more</button>
+    </div>
+
+    <!-- TIPS Stage 1-2 Motor -->
+    <div class="bc">
+      <div class="bh bh-t1">Tips — Stage 1–2<div class="s">Motor skills · cutlery · self-feeding · 13 posts</div></div>
+      <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/how-little-hands-develop-from-palmar-to-pincer" target="_blank">How little hands develop: palmar to pincer</a>
+      <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/fine-motor-skills-activities" target="_blank">Fine motor skills activities</a>
+      <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/five-fun-activities-motor-skill-development" target="_blank">5 fun motor skill activities</a>
+      <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/utensil-use-milestones" target="_blank">Utensil use milestones</a>
+      <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/why-doddl-cutlery-helps-encourage-self-feeding" target="_blank">Why doddl helps self-feeding</a>
+      <div class="ov" id="oc-t1">
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/how-to-teach-a-toddler-to-feed-themselves" target="_blank">How to teach a toddler to feed themselves</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/hints-and-tips-to-get-your-little-one-set-up-for-mealtime-success" target="_blank">Setting up for mealtime success</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/creating-the-right-environment-for-successful-mealtimes" target="_blank">Right mealtime environment</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/play-dough-and-doddl" target="_blank">Play dough &amp; doddl</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/activities-to-entertain-a-toddler" target="_blank">Activities to entertain a toddler</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/tooth-care-tips-toddlers" target="_blank">Tooth care tips for toddlers</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/toddlers-food-intake-my-toddler-isnt-eating-enough-what-should-i-do" target="_blank">My toddler isn't eating enough</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/encouraging-independent-eating-while-reducing-mess" target="_blank">Encouraging independence &amp; reducing mess</a>
+      </div>
+      <button class="tog" onclick="tog('oc-t1',this,8)">+ Show 8 more</button>
+    </div>
+
+    <!-- TIPS Stage 2-4 Fussy/Knife -->
+    <div class="bc">
+      <div class="bh bh-t2">Tips — Stage 2–4<div class="s">Fussy eating · knife · independence · 20 posts</div></div>
+      <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/fussy-picky-choosy-eater" target="_blank">Fussy, picky, choosy eater?</a>
+      <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/fussy-eating-how-do-i-get-my-fussy-eater-child-to-eat-new-foods" target="_blank">Getting fussy eaters to try new foods</a>
+      <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/everything-you-need-to-know-about-fussy-eating-in-children" target="_blank">Everything about fussy eating</a>
+      <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/how-to-teach-a-toddler-to-use-a-knife" target="_blank">How to teach a toddler to use a knife</a>
+      <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/how-to-introduce-the-doddl-toddler-knife" target="_blank">How to introduce the doddl knife</a>
+      <div class="ov" id="oc-t2">
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/why-the-doddl-toddler-knife-is-unlike-any-other" target="_blank">Why doddl knife is unlike any other</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/creative-ways-to-encourage-picky-toddlers-to-eat-nutritious-meals" target="_blank">Creative ways to encourage picky toddlers</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/navigating-food-challenges-with-your-toddler" target="_blank">Navigating food challenges</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/feeding-toddlers-common-mistakes" target="_blank">Feeding toddlers: common mistakes</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/top-5-tips-to-stop-your-toddler-throwing-food" target="_blank">Stop toddler throwing food</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/good-toddler-eating-habits" target="_blank">Good toddler eating habits</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/healthier-packed-lunches-your-kids-will-love" target="_blank">Healthier packed lunches</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/the-impact-of-sugar-understanding-the-effects-of-sugar-on-toddlers-and-how-to-manage-it" target="_blank">Impact of sugar on toddlers</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/toddler-nutrients" target="_blank">Toddler nutrients</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/tips-for-nutritious-eating-and-daily-routines" target="_blank">Nutritious eating &amp; daily routines</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/the-doddl-plate" target="_blank">The doddl plate</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/how-to-introduce-the-doddl-toddler-plate" target="_blank">How to introduce the doddl plate</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/encouraging-independent-eating-while-reducing-mess" target="_blank">Encouraging independent eating</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/top-4-tips-to-encourage-spoon-feeding-during-weaning" target="_blank">Top 4 spoon feeding tips</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/kid-friendly-picnic-ideas-making-outdoor-meals-memorable" target="_blank">Kid-friendly picnic ideas</a>
+      </div>
+      <button class="tog" onclick="tog('oc-t2',this,15)">+ Show 15 more</button>
+    </div>
+
+  </div><!-- /bg row 1 -->
+
+  <!-- ROW 2: GENERAL TIPS + PRODUCTS + NEWS -->
+  <div class="bg2" style="margin-top:8px;">
+
+    <!-- GENERAL TIPS (2-col wide) -->
+    <div class="bc">
+      <div class="bh bh-tg">Tips — General &amp; All Stages<div class="s">/blogs/tips-and-advice · family mealtimes · wellbeing · brand · awards</div></div>
+      <div class="bg2c">
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/the-importance-of-family-meal-times" target="_blank">Importance of family meal times</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/make-mealtimes-about-the-experience-not-just-the-food" target="_blank">Mealtimes: experience not just food</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/the-link-between-mealtimes-and-sleeping" target="_blank">Mealtimes &amp; sleeping</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/ways-to-keep-babies-and-toddlers-busy-in-the-kitchen" target="_blank">Keeping toddlers busy in kitchen</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/top-tips-for-enjoyable-christmas-mealtimes" target="_blank">Enjoyable Christmas mealtimes</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/getting-your-children-involved-in-food-preparation" target="_blank">Getting children involved in food prep</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/our-tips-for-cooking-with-kids" target="_blank">Tips for cooking with kids</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/planting-vegetables-with-children" target="_blank">Planting vegetables with children</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/travelling-with-toddlers" target="_blank">Travelling with toddlers</a>
+        <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/the-importance-of-eating-out-with-your-children" target="_blank">Eating out with children</a>
+        <div class="ov" id="oc-tg" style="display:contents;">
+          <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/eating-out-with-kids-on-holiday" target="_blank">Eating out with kids on holiday</a>
+          <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/from-toddler-tastes-to-family-feasts-growing-bonds-at-the-dinner-table" target="_blank">From toddler tastes to family feasts</a>
+          <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/mental-health" target="_blank">Mental health &amp; mealtimes</a>
+          <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/looking-after-your-mental-wellbeing" target="_blank">Looking after your mental wellbeing</a>
+          <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/mental-health-my-story" target="_blank">Mental health: my story</a>
+          <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/its-not-one-baby-its-three-identical-triplets" target="_blank">Feeding identical triplets</a>
+          <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/tips-to-avoid-the-dreaded-milestone-comparison" target="_blank">Avoiding milestone comparison</a>
+          <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/what-to-do-if-mealtimes-even-more-challenging" target="_blank">When mealtimes are extra challenging</a>
+          <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/doddl-family-mealtime-research" target="_blank">doddl family mealtime research</a>
+          <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/doddl-at-the-centre-for-early-childhood" target="_blank">doddl at Centre for Early Childhood</a>
+          <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/cat-doddl-inventor" target="_blank">Cat — doddl inventor story</a>
+          <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/designing-the-first-range-of-innovative-toddler-cutlery" target="_blank">Designing the first cutlery range</a>
+          <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/thank-you-weaning-week-gold" target="_blank">Thank you — Weaning Week Gold</a>
+          <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/baby-essentials-award-for-doddl" target="_blank">Baby Essentials Award</a>
+          <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/kings-award-for-enterprise" target="_blank">King's Award for Enterprise</a>
+          <a class="bcd" href="https://doddl.com/blogs/tips-and-advice/doddl-wins-baby-innovation-award" target="_blank">Baby Innovation Award</a>
+        </div>
+      </div>
+      <button class="tog" style="margin-top:6px;" onclick="togGrid('oc-tg',this,16)">+ Show 16 more</button>
+    </div>
+
+    <!-- PRODUCTS WE LOVE -->
+    <div class="bc">
+      <div class="bh bh-pl">Products We Love<div class="s">/blogs/products-we-love · 5 posts</div></div>
+      <a class="bcd" href="https://doddl.com/blogs/products-we-love/christmas-gifts-for-babies" target="_blank">Christmas gifts for babies</a>
+      <a class="bcd" href="https://doddl.com/blogs/products-we-love/christmas-gifts-for-toddlers" target="_blank">Christmas gifts for toddlers</a>
+      <a class="bcd" href="https://doddl.com/blogs/products-we-love/playtime-with-purpose-how-to-play-with-your-baby-by-etta-loves" target="_blank">Playtime with purpose — Etta Loves</a>
+      <a class="bcd" href="https://doddl.com/blogs/products-we-love/products-we-love-brush-baby-the-toothcare-brand-that-grows-with-your-child" target="_blank">Brush-Baby toothcare</a>
+      <a class="bcd" href="https://doddl.com/blogs/products-we-love/babys-first-christmas-gift-ideas-and-toddler-gifts" target="_blank">Baby's first Christmas gifts</a>
+    </div>
+
+    <!-- AWARDS & NEWS -->
+    <div class="bc">
+      <div class="bh bh-nw">Awards &amp; News<div class="s">/blogs/awards-and-doddl-news</div></div>
+      <a class="bcd" href="https://doddl.com/blogs/awards-and-doddl-news" target="_blank">Awards &amp; news hub →</a>
+      <span class="cd c-ns" style="font-size:10px;border-radius:6px;padding:7px 9px;margin-bottom:4px;display:block;">Consolidate award posts here<div class="s">New page — migrate from tips</div></span>
+    </div>
+
+    <!-- EMPTY -->
+    <div class="bc"></div>
+
+  </div><!-- /bg row 2 -->
+
+  <hr class="sep" style="margin-top:32px;">
+  <div class="sepl">Transactional pages — shared across all journeys</div>
+  <div class="txn">
+    <div class="tc">Product detail page (PDP)<div class="s">Add to bag · colour / variant selection</div></div>
+    <div class="tc">Bag / Checkout<div class="s">Payment · order confirmation</div></div>
+  </div>
+
+</div><!-- /pg -->
 
 <script>
-  function toggle(id, btn) {
-    const el = document.getElementById(id);
-    const open = el.classList.toggle('open');
-    // count hidden cards
-    const n = el.querySelectorAll('.card').length;
-    btn.textContent = open ? `− Show less` : `+ Show ${n} more`;
+function tog(id, btn, n) {
+  const el = document.getElementById(id);
+  const open = el.classList.toggle('open');
+  btn.textContent = open ? '− Show less' : '+ Show ' + n + ' more';
+}
+function togGrid(id, btn, n) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const hidden = el.style.display === 'none' || el.style.display === '';
+  if (hidden) {
+    el.style.display = 'contents';
+    btn.textContent = '− Show less';
+  } else {
+    el.style.display = 'none';
+    btn.textContent = '+ Show ' + n + ' more';
   }
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const tg = document.getElementById('oc-tg');
+  if (tg) tg.style.display = 'none';
+});
 </script>
 </body>
 </html>
