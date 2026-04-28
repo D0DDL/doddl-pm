@@ -128,6 +128,31 @@
   }
   .acc-body.open { display: block; }
   .acc-body .bcd { font-size: 10px; padding: 5px 8px; }
+
+  /* ── DODDL SITE FOOTER ─────────────────────────── */
+  .site-footer { background: #fff; border-top: 1px solid #eee; padding: 48px 40px 0; font-family: var(--f); }
+  .site-footer-top { display: grid; grid-template-columns: 280px 1fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 40px; }
+  .sf-brand .sf-logo { font-size: 28px; font-weight: 900; color: #3D157D; letter-spacing: -0.03em; margin-bottom: 20px; display: block; text-decoration: none; }
+  .sf-brand .sf-logo span { color: #30BEAA; }
+  .sf-email-head { font-size: 15px; font-weight: 800; color: #1a1630; margin-bottom: 6px; }
+  .sf-email-sub { font-size: 12px; color: #888; line-height: 1.5; margin-bottom: 14px; }
+  .sf-email-row { display: flex; border: 1.5px solid #ddd; border-radius: 6px; overflow: hidden; }
+  .sf-email-row input { flex: 1; border: none; padding: 9px 12px; font-size: 12px; font-family: var(--f); color: #333; outline: none; }
+  .sf-email-row button { background: #3D157D; color: #fff; border: none; padding: 9px 14px; font-size: 13px; cursor: pointer; font-weight: 800; }
+  .sf-col-head { font-size: 13px; font-weight: 800; color: #1a1630; margin-bottom: 14px; }
+  .sf-col ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .sf-col ul li a { font-size: 12px; color: #555; text-decoration: none; transition: color .15s; }
+  .sf-col ul li a:hover { color: #3D157D; }
+  .site-footer-mid { border-top: 1px solid #eee; padding: 20px 0; display: flex; align-items: center; justify-content: space-between; }
+  .sf-socials { display: flex; gap: 14px; }
+  .sf-socials a { font-size: 18px; text-decoration: none; }
+  .sf-lang { font-size: 12px; color: #555; display: flex; align-items: center; gap: 6px; }
+  .site-footer-bottom { border-top: 1px solid #eee; padding: 14px 0 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  .sf-copy { font-size: 11px; color: #999; }
+  .sf-copy a { color: #999; text-decoration: none; margin-right: 12px; }
+  .sf-copy a:hover { color: #3D157D; }
+  .sf-payments { display: flex; gap: 6px; flex-wrap: wrap; }
+  .sf-pay { background: #f4f4f4; border: 1px solid #ddd; border-radius: 4px; padding: 3px 7px; font-size: 10px; font-weight: 700; color: #555; }
 </style>
 </head>
 <body>
@@ -438,6 +463,98 @@ document.addEventListener('DOMContentLoaded', () => {
   if (tg) tg.style.display = 'none';
 });
 </script>
+
+
+<!-- ── DODDL SITE FOOTER ──────────────────────────────────────────── -->
+<footer class="site-footer">
+  <div class="site-footer-top">
+    <div class="sf-brand">
+      <a href="https://doddl.com" target="_blank" class="sf-logo">*doddl<span>.</span></a>
+      <div class="sf-email-head">Sign up for 10% off</div>
+      <div class="sf-email-sub">Join our mailing list to be the first to hear about all things doddl</div>
+      <div class="sf-email-row">
+        <input type="email" placeholder="E-mail" />
+        <button>›</button>
+      </div>
+    </div>
+    <div class="sf-col">
+      <div class="sf-col-head">Shop</div>
+      <ul>
+        <li><a href="https://doddl.com/collections/shop-all" target="_blank">Shop All</a></li>
+        <li><a href="https://doddl.com/collections/bestsellers" target="_blank">Bestsellers</a></li>
+        <li><a href="https://doddl.com/collections/weaning-sets" target="_blank">Weaning Sets</a></li>
+        <li><a href="https://doddl.com/collections/toddler-cutlery" target="_blank">Toddler Cutlery</a></li>
+        <li><a href="https://doddl.com/collections/baby-cutlery" target="_blank">Baby Cutlery</a></li>
+        <li><a href="https://doddl.com/collections/bowls-plates" target="_blank">Bowls &amp; Plates</a></li>
+        <li><a href="https://doddl.com/collections/starter-kits" target="_blank">Starter Kits</a></li>
+      </ul>
+    </div>
+    <div class="sf-col">
+      <div class="sf-col-head">Brand</div>
+      <ul>
+        <li><a href="https://doddl.com/pages/about-doddl" target="_blank">About doddl</a></li>
+        <li><a href="https://doddl.com/pages/what-the-experts-think" target="_blank">Experts Views</a></li>
+        <li><a href="https://doddl.com/pages/sustainability" target="_blank">Sustainability</a></li>
+        <li><a href="https://doddl.com/pages/our-commitment-to-the-future" target="_blank">Our Commitment</a></li>
+        <li><a href="https://doddl.com/pages/our-partnerships" target="_blank">Our Partnerships</a></li>
+        <li><a href="https://doddl.com/pages/trade" target="_blank">Trade</a></li>
+        <li><a href="https://doddl.com/pages/boots" target="_blank">Boots</a></li>
+        <li><a href="https://doddl.com/pages/international-retailers" target="_blank">International Retailers</a></li>
+      </ul>
+    </div>
+    <div class="sf-col">
+      <div class="sf-col-head">Discovery</div>
+      <ul>
+        <li><a href="https://doddl.com/blogs/tips-and-advice" target="_blank">Tips and Advice for Parents</a></li>
+        <li><a href="https://doddl.com/blogs/weaning-recipes-for-babies" target="_blank">Baby Weaning Recipes</a></li>
+        <li><a href="https://doddl.com/blogs/products-we-love" target="_blank">Products we love</a></li>
+        <li><a href="https://doddl.com/blogs/toddler-food-recipes" target="_blank">Toddler Recipe Collection</a></li>
+      </ul>
+    </div>
+    <div class="sf-col">
+      <div class="sf-col-head">Customer Care</div>
+      <ul>
+        <li><a href="https://doddl.com/account" target="_blank">My Account</a></li>
+        <li><a href="https://doddl.com/pages/faqs" target="_blank">FAQs</a></li>
+        <li><a href="https://doddl.com/pages/contact-us" target="_blank">Contact Us</a></li>
+        <li><a href="https://doddl.com/pages/delivery-returns" target="_blank">Delivery &amp; Returns</a></li>
+        <li><a href="https://doddl.com/policies/privacy-policy" target="_blank">Privacy Policy</a></li>
+        <li><a href="https://doddl.com/policies/terms-of-service" target="_blank">Terms of Service</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="site-footer-mid">
+    <div class="sf-socials">
+      <a href="https://facebook.com/doddl" target="_blank" title="Facebook">📘</a>
+      <a href="https://instagram.com/doddl" target="_blank" title="Instagram">📷</a>
+      <a href="https://tiktok.com/@doddl" target="_blank" title="TikTok">🎵</a>
+    </div>
+    <div class="sf-lang">🇬🇧 English</div>
+  </div>
+  <div class="site-footer-bottom">
+    <div class="sf-copy">
+      © 2026, Doddl Ltd. Powered by Shopify &nbsp;·&nbsp;
+      <a href="https://doddl.com/policies/refund-policy" target="_blank">Refund policy</a>
+      <a href="https://doddl.com/policies/privacy-policy" target="_blank">Privacy policy</a>
+      <a href="https://doddl.com/policies/terms-of-service" target="_blank">Terms of service</a>
+      <a href="https://doddl.com/policies/shipping-policy" target="_blank">Shipping policy</a>
+      <a href="https://doddl.com/pages/contact-us" target="_blank">Contact information</a>
+    </div>
+    <div class="sf-payments">
+      <span class="sf-pay">Amex</span>
+      <span class="sf-pay">Apple Pay</span>
+      <span class="sf-pay">Google Pay</span>
+      <span class="sf-pay">Diners</span>
+      <span class="sf-pay">Discover</span>
+      <span class="sf-pay">Maestro</span>
+      <span class="sf-pay">Mastercard</span>
+      <span class="sf-pay">PayPal</span>
+      <span class="sf-pay">Shop Pay</span>
+      <span class="sf-pay">Union Pay</span>
+      <span class="sf-pay">Visa</span>
+    </div>
+  </div>
+</footer>
 
 <div class="footer-strip">
   <a href="/prototypes/journey/" class="fl">doddl<span>.</span></a>
