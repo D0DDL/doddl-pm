@@ -35,16 +35,16 @@ body { font-family: var(--font); background: var(--grey); color: var(--text); }
 
 /* ── DESKTOP NAV ─────────────────────────────────── */
 .nav-demo-wrap { background: var(--white); border-radius: 12px; border: 1px solid var(--grey-line); overflow: hidden; margin-bottom: 16px; }
-.nb { background: var(--white); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 64px; border-bottom: 1px solid var(--grey-line); position: relative; z-index: 20; }
-.nl { font-size: 18px; font-weight: 800; color: var(--indigo); letter-spacing: -.02em; text-decoration: none; }
+.nb { background: var(--white); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 68px; border-bottom: 1px solid var(--grey-line); position: relative; z-index: 20; }
+.nl { font-size: 22px; font-weight: 800; color: var(--indigo); letter-spacing: -.02em; text-decoration: none; }
 .nl span { color: var(--aqua); }
 .ni-row { display: flex; height: 100%; }
-.ni { display: flex; align-items: center; gap: 4px; padding: 0 14px; font-size: 14px; font-weight: 800; color: var(--text-mid); cursor: pointer; position: relative; white-space: nowrap; user-select: none; transition: color .15s; }
+.ni { display: flex; align-items: center; gap: 4px; padding: 0 16px; font-size: 15px; font-weight: 800; color: #3a3060; cursor: pointer; position: relative; white-space: nowrap; user-select: none; transition: color .15s; }
 .ni:hover, .ni.act { color: var(--indigo); }
 .ni.act::after { content: ''; position: absolute; bottom: 0; left: 14px; right: 14px; height: 2px; background: var(--aqua); border-radius: 2px 2px 0 0; }
 .ch { font-size: 8px; transition: transform .18s; display: inline-block; }
 .ni.op .ch { transform: rotate(180deg); }
-.sbtn { background: var(--indigo); color: var(--white); border: none; border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 800; cursor: pointer; font-family: var(--font); }
+.sbtn { background: var(--indigo); color: var(--white); border: none; border-radius: 8px; padding: 10px 20px; font-size: 14px; font-weight: 800; cursor: pointer; font-family: var(--font); letter-spacing: -.01em; }
 .nav-right { display: flex; gap: 14px; align-items: center; }
 .nav-icon { font-size: 15px; color: var(--text-mid); cursor: pointer; }
 
@@ -56,17 +56,19 @@ body { font-family: var(--font); background: var(--grey); color: var(--text); }
 .slabel { font-size: 10px; font-weight: 800; color: var(--text-mid); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 12px; }
 
 /* Stage cards */
-.sr { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; margin-bottom: 0; border-bottom: 1px solid var(--grey-line); }
-.sc { border: none; border-bottom: 3px solid transparent; padding: 20px 8px 16px; cursor: pointer; text-align: center; transition: border-color .15s; background: none; }
+.sr { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; margin-bottom: 0; border-bottom: 2px solid var(--grey-line); }
+.sc { border: none; border-bottom: 3px solid transparent; padding: 20px 12px 18px; cursor: pointer; text-align: center; transition: border-color .15s; background: none; }
 .sc:hover, .sc.hov { border-bottom-color: var(--aqua); }
-.sc .avatar { width: 64px; height: 64px; border-radius: 50%; background: #F4F1F9; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; font-size: 28px; transition: background .15s; }
-.sc:hover .avatar, .sc.hov .avatar { background: #EAE4F4; }
-.sc .num { width: 32px; height: 32px; border-radius: 50%; background: #E8E6F0; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; color: #7a72a0; margin: 0 auto 8px; transition: background .15s, color .15s; }
-.sc:hover .num, .sc.hov .num { background: var(--aqua); color: var(--white); }
-.sc .s { font-size: 13px; font-weight: 900; color: #6a6a6a; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 3px; }
-.sc:hover .s, .sc.hov .s { color: var(--aqua); }
-.sc .a { font-size: 11px; font-weight: 600; color: #888; }
-.sc .go { font-size: 10px; font-weight: 700; color: var(--indigo); margin-top: 5px; opacity: 0; transition: opacity .15s; }
+.sc .avatar { width: 72px; height: 72px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; transition: transform .15s; }
+.sc:hover .avatar, .sc.hov .avatar { transform: scale(1.06); }
+.sc .avatar svg { width: 52px; height: 52px; }
+.sc .num { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; margin: 0 auto 9px; transition: transform .15s; }
+.sc:hover .num, .sc.hov .num { transform: scale(1.08); }
+.sc .s { font-size: 13px; font-weight: 900; color: #888; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 3px; line-height: 1.2; }
+.sc.hov .s { color: var(--aqua); }
+.sc:hover .s { color: var(--aqua); }
+.sc .a { font-size: 11px; font-weight: 600; color: #aaa; }
+.sc .go { font-size: 10px; font-weight: 700; color: var(--indigo); margin-top: 6px; opacity: 0; transition: opacity .15s; }
 .sc:hover .go, .sc.hov .go { opacity: 1; }
 
 /* Preview section */
@@ -186,12 +188,13 @@ body { font-family: var(--font); background: var(--grey); color: var(--text); }
 .d-sub.open { display: block; }
 .d-sub-head { font-size: 9px; font-weight: 800; color: var(--text-mid); text-transform: uppercase; letter-spacing: .07em; padding: 10px 16px 6px; }
 .mob-stage-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 0 12px 10px; }
-.mob-sc { border: 1px solid var(--grey-line); border-radius: 8px; padding: 10px 8px; background: var(--white); cursor: pointer; transition: border-color .15s; }
+.mob-sc { border: 1px solid var(--grey-line); border-radius: 10px; padding: 12px 8px; background: var(--white); cursor: pointer; transition: border-color .15s; text-align: center; }
 .mob-sc:hover { border-color: var(--indigo); }
-.mob-sc .e { font-size: 16px; display: block; margin-bottom: 4px; }
-.mob-sc .n { font-size: 8px; font-weight: 800; color: var(--aqua); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 1px; }
-.mob-sc .s { font-size: 11px; font-weight: 800; color: var(--text); margin-bottom: 1px; }
-.mob-sc .a { font-size: 9px; color: var(--text-mid); }
+.mob-sc .m-avatar { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 5px; }
+.mob-sc .m-avatar svg { width: 32px; height: 32px; }
+.mob-sc .m-num { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 900; margin: 0 auto 5px; }
+.mob-sc .s { font-size: 10px; font-weight: 900; color: #666; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 1px; }
+.mob-sc .a { font-size: 9px; color: #aaa; font-weight: 600; }
 .mob-cat-list { padding: 0 12px 10px; display: flex; flex-direction: column; gap: 5px; }
 .mob-cat-chip { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--grey-line); border-radius: 7px; background: var(--white); cursor: pointer; font-size: 12px; font-weight: 700; transition: border-color .15s; }
 .mob-cat-chip:hover { border-color: var(--indigo); }
@@ -274,8 +277,8 @@ body { font-family: var(--font); background: var(--grey); color: var(--text); }
         <div class="slabel">Hover a stage to preview — click to go to that stage page</div>
         <div class="sr">
           <div class="sc hov" id="sc0" onmouseenter="hs(0)" onclick="toastNav('/pages/shop-by-stage?stage=0')">
-            <div class="avatar" style="background:#FEF9F2">🌱</div>
-            <div class="num">0</div>
+            <div class="avatar" style="background:#FEF9F2"><svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="28" cy="19" r="12" fill="#FACC91"/><circle cx="24" cy="17" r="1.6" fill="#3D157D"/><circle cx="32" cy="17" r="1.6" fill="#3D157D"/><path d="M24.5 23 Q28 26.5 31.5 23" stroke="#3D157D" stroke-width="1.6" stroke-linecap="round" fill="none"/><ellipse cx="28" cy="41" rx="12" ry="7" fill="#947FB6" opacity=".7"/><ellipse cx="13" cy="44" rx="5" ry="3" fill="#947FB6" opacity=".45" transform="rotate(-25 13 44)"/><ellipse cx="43" cy="44" rx="5" ry="3" fill="#947FB6" opacity=".45" transform="rotate(25 43 44)"/></svg></div>
+            <div class="num" style="background:#FEF5EC;color:#D4890A">0</div>
             <div class="s">Preparing</div>
             <div class="a">0–6 months</div>
             <div class="go">View stage →</div>
@@ -468,11 +471,37 @@ body { font-family: var(--font); background: var(--grey); color: var(--text); }
             <div class="d-sub" id="ds-stage">
               <div class="d-sub-head">Select a stage — tap to go there</div>
               <div class="mob-stage-grid">
-                <div class="mob-sc"><span class="e">🌱</span><div class="n">Stage 0</div><div class="s">Preparing</div><div class="a">0–6 months</div></div>
-                <div class="mob-sc"><span class="e">🥄</span><div class="n">Stage 1</div><div class="s">First foods</div><div class="a">6–12 months</div></div>
-                <div class="mob-sc"><span class="e">✊</span><div class="n">Stage 2</div><div class="s">Building control</div><div class="a">12–18 months</div></div>
-                <div class="mob-sc"><span class="e">🍽</span><div class="n">Stage 3</div><div class="s">Growing skills</div><div class="a">18m–3 years</div></div>
-                <div class="mob-sc"><span class="e">🔪</span><div class="n">Stage 4</div><div class="s">Little adult</div><div class="a">3–5 years</div></div>
+                <div class="mob-sc">
+                  <div class="m-avatar" style="background:#FEF9F2"><svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="28" cy="19" r="12" fill="#FACC91"/><circle cx="24" cy="17" r="1.6" fill="#3D157D"/><circle cx="32" cy="17" r="1.6" fill="#3D157D"/><path d="M24.5 23 Q28 26.5 31.5 23" stroke="#3D157D" stroke-width="1.6" stroke-linecap="round" fill="none"/><ellipse cx="28" cy="41" rx="12" ry="7" fill="#947FB6" opacity=".7"/><ellipse cx="13" cy="44" rx="5" ry="3" fill="#947FB6" opacity=".45" transform="rotate(-25 13 44)"/><ellipse cx="43" cy="44" rx="5" ry="3" fill="#947FB6" opacity=".45" transform="rotate(25 43 44)"/></svg></div>
+                  <div class="m-num" style="background:#FEF5EC;color:#D4890A">0</div>
+                  <div class="s">Preparing</div>
+                  <div class="a">0–6 months</div>
+                </div>
+                <div class="mob-sc">
+                  <div class="m-avatar" style="background:#F2FBF9"><svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="28" cy="13" r="11" fill="#FACC91"/><circle cx="24" cy="11" r="1.5" fill="#3D157D"/><circle cx="32" cy="11" r="1.5" fill="#3D157D"/><path d="M24.5 17 Q28 20 31.5 17" stroke="#3D157D" stroke-width="1.5" stroke-linecap="round" fill="none"/><rect x="19" y="25" width="18" height="15" rx="6" fill="#30BEAA" opacity=".8"/><line x1="19" y1="31" x2="10" y2="37" stroke="#30BEAA" stroke-width="4.5" stroke-linecap="round"/><line x1="37" y1="31" x2="46" y2="26" stroke="#30BEAA" stroke-width="4.5" stroke-linecap="round"/><ellipse cx="28" cy="45" rx="10" ry="5" fill="#947FB6" opacity=".6"/></svg></div>
+                  <div class="m-num" style="background:#1E9A88;color:#fff">1</div>
+                  <div class="s">First foods</div>
+                  <div class="a">6–12 months</div>
+                </div>
+                <div class="mob-sc">
+                  <div class="m-avatar" style="background:#F2F0FB"><svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="28" cy="11" r="10" fill="#FACC91"/><circle cx="25" cy="10" r="1.4" fill="#3D157D"/><circle cx="31" cy="10" r="1.4" fill="#3D157D"/><path d="M25 15.5 Q28 18 31 15.5" stroke="#3D157D" stroke-width="1.4" stroke-linecap="round" fill="none"/><rect x="20" y="22" width="16" height="14" rx="5" fill="#9ECFC6" opacity=".85"/><line x1="20" y1="27" x2="11" y2="22" stroke="#9ECFC6" stroke-width="4" stroke-linecap="round"/><line x1="36" y1="27" x2="45" y2="22" stroke="#9ECFC6" stroke-width="4" stroke-linecap="round"/><line x1="24" y1="36" x2="22" y2="50" stroke="#947FB6" stroke-width="4.5" stroke-linecap="round"/><line x1="32" y1="36" x2="34" y2="50" stroke="#947FB6" stroke-width="4.5" stroke-linecap="round"/></svg></div>
+                  <div class="m-num" style="background:#F3EFF9;color:#7B62A8">2</div>
+                  <div class="s">Building control</div>
+                  <div class="a">12–18 months</div>
+                </div>
+                <div class="mob-sc">
+                  <div class="m-avatar" style="background:#F0FBF8"><svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="30" cy="10" r="10" fill="#FACC91"/><circle cx="27" cy="9" r="1.4" fill="#3D157D"/><circle cx="33" cy="9" r="1.4" fill="#3D157D"/><path d="M27 14 Q30 16.5 33 14" stroke="#3D157D" stroke-width="1.4" stroke-linecap="round" fill="none"/><rect x="22" y="21" width="16" height="14" rx="5" fill="#30BEAA" opacity=".85"/><line x1="22" y1="26" x2="12" y2="20" stroke="#30BEAA" stroke-width="4" stroke-linecap="round"/><line x1="38" y1="29" x2="47" y2="36" stroke="#30BEAA" stroke-width="4" stroke-linecap="round"/><line x1="26" y1="35" x2="19" y2="49" stroke="#947FB6" stroke-width="4.5" stroke-linecap="round"/><line x1="34" y1="35" x2="40" y2="49" stroke="#947FB6" stroke-width="4.5" stroke-linecap="round"/></svg></div>
+                  <div class="m-num" style="background:#E8F9F6;color:#1E9A88">3</div>
+                  <div class="s">Growing skills</div>
+                  <div class="a">18m–3 years</div>
+                </div>
+                <div class="mob-sc">
+                  <div class="m-avatar" style="background:#F8F2FB"><svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="28" cy="9" r="9" fill="#FACC91"/><circle cx="25" cy="8" r="1.3" fill="#3D157D"/><circle cx="31" cy="8" r="1.3" fill="#3D157D"/><path d="M25 13 Q28 15.5 31 13" stroke="#3D157D" stroke-width="1.3" stroke-linecap="round" fill="none"/><rect x="19" y="19" width="18" height="15" rx="5" fill="#3D157D" opacity=".7"/><line x1="19" y1="25" x2="10" y2="32" stroke="#3D157D" stroke-width="4" stroke-linecap="round" opacity=".65"/><line x1="37" y1="25" x2="46" y2="32" stroke="#3D157D" stroke-width="4" stroke-linecap="round" opacity=".65"/><line x1="23" y1="34" x2="21" y2="49" stroke="#947FB6" stroke-width="4.5" stroke-linecap="round"/><line x1="33" y1="34" x2="35" y2="49" stroke="#947FB6" stroke-width="4.5" stroke-linecap="round"/><rect x="7" y="36" width="42" height="3" rx="1.5" fill="#FACC91" opacity=".85"/></svg></div>
+                  <div class="m-num" style="background:#EDE8F6;color:#3D157D">4</div>
+                  <div class="s">Little adult</div>
+                  <div class="a">3–5 years</div>
+                </div>
+              </div>
               </div>
             </div>
             <div class="d-row" id="dr-cat" onclick="toggleSub('cat')">
