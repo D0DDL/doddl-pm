@@ -16,9 +16,18 @@ Examples: `klaviyo-api-key`, `shopify-admin-api-token`, `amazon-sp-api-refresh-t
 |-------------------------------------|-------------------|-----------------|--------------|
 | `klaviyo-api-key`                   | Klaviyo           | 90 days         | Jon Fawcett  |
 | `shopify-admin-api-token`           | Shopify           | 90 days         | Jon Fawcett  |
+| `shopify-shop-domain`               | Shopify           | Static          | Jon Fawcett  |
 | `amazon-sp-api-client-id`           | Amazon SP-API     | 365 days        | Jon Fawcett  |
 | `amazon-sp-api-client-secret`       | Amazon SP-API     | 90 days         | Jon Fawcett  |
 | `amazon-sp-api-refresh-token`       | Amazon SP-API     | 365 days        | Jon Fawcett  |
+| `google-ads-developer-token`        | Google Ads        | 365 days        | Jon Fawcett  |
+| `google-ads-client-id`              | Google Ads        | 365 days        | Jon Fawcett  |
+| `google-ads-client-secret`          | Google Ads        | 180 days        | Jon Fawcett  |
+| `google-ads-refresh-token`          | Google Ads        | 365 days        | Jon Fawcett  |
+| `google-ads-customer-id`            | Google Ads        | Static          | Jon Fawcett  |
+| `meta-ads-access-token`             | Meta Ads          | 60 days         | Jon Fawcett  |
+| `meta-ads-account-id`               | Meta Ads          | Static          | Jon Fawcett  |
+| `supabase-scheduler-db-url`         | Supabase          | Manual          | Jon Fawcett  |
 | `microsoft-graph-client-secret`     | Microsoft Graph   | 180 days        | Jon Fawcett  |
 | `anthropic-api-key`                 | Anthropic         | 90 days         | Jon Fawcett  |
 | `supabase-service-role-key-staging` | Supabase staging  | Manual          | Jon Fawcett  |

@@ -99,6 +99,11 @@ def _attach_listeners(scheduler: BlockingScheduler) -> None:
             "JOB ERROR     job_id=%s exception=%s",
             event.job_id, event.exception, exc_info=event.traceback,
         )
+        try:
+            from connectors.scheduler.alerting import create_incident_task
+            create_incident_task(event.job_id, event.exception)
+        except Exception as alert_err:
+            logger.error("JOB ERROR alerting failed: %s", alert_err)
 
     def on_job_missed(event):
         # Fired when a job was missed and coalesce=True skipped extra runs,
@@ -146,17 +151,17 @@ def register_jobs(scheduler: BlockingScheduler) -> None:
 
     To add a new connector: import its run() function and add a scheduler.add_job() call.
     """
-    from connectors.scheduler.jobs import klaviyo, shopify, amazon_sp_api
+    from connectors.scheduler.jobs import klaviyo, shopify, amazon_sp_api, google_ads, meta_ads
 
-    # ── Klaviyo — contacts + campaigns (every 30 min) ─────────────────────────
+    # ── Klaviyo — campaigns + flows (every 30 min) ────────────────────────────
     scheduler.add_job(
         func=klaviyo.run,
         trigger="interval",
         minutes=30,
         id="klaviyo-sync",
-        name="Klaviyo contacts + campaigns sync",
+        name="Klaviyo campaigns + flows sync",
         replace_existing=True,
-        misfire_grace_time=7200,   # 2h grace — Klaviyo data can be 2h stale
+        misfire_grace_time=7200,
         coalesce=True,
     )
 
@@ -169,6 +174,30 @@ def register_jobs(scheduler: BlockingScheduler) -> None:
         name="Shopify orders + products sync",
         replace_existing=True,
         misfire_grace_time=3600,
+        coalesce=True,
+    )
+
+    # ── Google Ads — campaign + ad group performance (every 60 min) ──────────
+    scheduler.add_job(
+        func=google_ads.run,
+        trigger="interval",
+        minutes=60,
+        id="google-ads-sync",
+        name="Google Ads campaign + ad group performance sync",
+        replace_existing=True,
+        misfire_grace_time=7200,
+        coalesce=True,
+    )
+
+    # ── Meta Ads — campaign + ad set + insights (every 60 min) ───────────────
+    scheduler.add_job(
+        func=meta_ads.run,
+        trigger="interval",
+        minutes=60,
+        id="meta-ads-sync",
+        name="Meta Ads campaign + ad set + insights sync",
+        replace_existing=True,
+        misfire_grace_time=7200,
         coalesce=True,
     )
 
