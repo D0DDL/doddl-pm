@@ -11,7 +11,7 @@ terraform {
 
 variable "vault_name" {
   type        = string
-  description = "Globally unique Key Vault name (3–24 chars)"
+  description = "Globally unique Key Vault name (3–24 chars, alphanumeric + hyphens)"
 }
 
 variable "resource_group_name" {
@@ -26,6 +26,7 @@ variable "location" {
 variable "tenant_id" {
   type        = string
   description = "Azure AD tenant ID"
+  sensitive   = true
 }
 
 variable "environment" {
@@ -39,14 +40,20 @@ variable "environment" {
 
 variable "service_principal_object_ids" {
   type        = list(string)
-  description = "Object IDs of service principals that need GET/LIST on secrets"
+  description = "Object IDs of service principals needing GET/LIST on secrets at runtime"
   default     = []
 }
 
 variable "admin_object_ids" {
   type        = list(string)
-  description = "Object IDs of human admins needing full secret management"
+  description = "Object IDs of human admins with full secret management"
   default     = []
+}
+
+variable "log_analytics_workspace_id" {
+  type        = string
+  description = "Log Analytics workspace resource ID for Key Vault audit logs. Leave empty to skip diagnostic settings."
+  default     = ""
 }
 
 variable "tags" {
@@ -71,11 +78,10 @@ resource "azurerm_key_vault" "kv" {
   tenant_id           = var.tenant_id
   sku_name            = "standard"
 
-  # Protect against accidental deletion; required for rotation policies
   soft_delete_retention_days = 90
   purge_protection_enabled   = true
 
-  # Deny all network access by default; connectors use private endpoint or trusted IPs
+  # Deny all by default — connectors connect via service principal or managed identity
   network_acls {
     default_action = "Deny"
     bypass         = "AzureServices"
@@ -90,19 +96,17 @@ resource "azurerm_key_vault" "kv" {
 
 # ── Access Policies ───────────────────────────────────────────────────────────
 
-# Service principals: read secrets at runtime, no management rights
 resource "azurerm_key_vault_access_policy" "connector" {
   for_each     = toset(var.service_principal_object_ids)
   key_vault_id = azurerm_key_vault.kv.id
   tenant_id    = var.tenant_id
   object_id    = each.value
 
-  secret_permissions = ["Get", "List"]
-  key_permissions    = []
+  secret_permissions      = ["Get", "List"]
+  key_permissions         = []
   certificate_permissions = []
 }
 
-# Admins: full secret management (create, rotate, delete)
 resource "azurerm_key_vault_access_policy" "admin" {
   for_each     = toset(var.admin_object_ids)
   key_vault_id = azurerm_key_vault.kv.id
@@ -119,15 +123,10 @@ resource "azurerm_key_vault_access_policy" "admin" {
   certificate_permissions = []
 }
 
-# ── Rotation Policy Key (used as template for all secret rotation) ────────────
-# Each API credential is stored as a Key Vault Secret (not a Key).
-# Rotation is enforced by setting an expiry on each secret. Operators are
-# alerted via Event Grid / Azure Monitor when a secret is within 30 days of
-# expiry. The connector re-fetches on each run, so rotating the secret
-# value is sufficient — no redeploy required.
-#
-# This key resource demonstrates the rotation policy mechanism for KV Keys.
-# For Secrets, expiry dates are set at secret creation time (see outputs).
+# ── Rotation-policy demonstration key ────────────────────────────────────────
+# API credentials are stored as Secrets (not Keys); secret rotation is enforced
+# via expiry dates and Azure Monitor alerts (see diagnostic settings below).
+# This Key resource demonstrates the automatic rotation capability for KV Keys.
 
 resource "azurerm_key_vault_key" "rotation_demo" {
   name         = "rotation-policy-demo"
@@ -137,57 +136,35 @@ resource "azurerm_key_vault_key" "rotation_demo" {
   key_opts     = ["sign", "verify"]
 
   rotation_policy {
-    # Rotate automatically 30 days before expiry
     automatic {
       time_before_expiry = "P30D"
     }
-
-    expire_after         = "P365D"  # Keys expire after 1 year
+    expire_after         = "P365D"
     notify_before_expiry = "P30D"
   }
 
   depends_on = [azurerm_key_vault_access_policy.admin]
 }
 
-# ── Diagnostic Settings (audit all Key Vault operations) ──────────────────────
+# ── Diagnostic Settings (conditional on log_analytics_workspace_id) ───────────
+# Skipped when log_analytics_workspace_id is empty — avoids requiring a workspace
+# before the vault can be provisioned. Set the variable once a workspace exists.
+# Uses azurerm 3.x enabled_log block (log block deprecated in 3.x).
 
 resource "azurerm_monitor_diagnostic_setting" "kv_audit" {
-  name               = "${var.vault_name}-audit"
-  target_resource_id = azurerm_key_vault.kv.id
+  count = var.log_analytics_workspace_id != "" ? 1 : 0
 
-  # Log Analytics workspace ID must be provided externally; omit to skip
-  # (configured via log_analytics_workspace_id in the environment tfvars)
-  storage_account_id = null
+  name                       = "${var.vault_name}-audit"
+  target_resource_id         = azurerm_key_vault.kv.id
+  log_analytics_workspace_id = var.log_analytics_workspace_id
 
-  log {
+  enabled_log {
     category = "AuditEvent"
-    enabled  = true
-    retention_policy {
-      enabled = true
-      days    = 365
-    }
-  }
-
-  log {
-    category = "AzurePolicyEvaluationDetails"
-    enabled  = false
-    retention_policy {
-      enabled = false
-      days    = 0
-    }
   }
 
   metric {
     category = "AllMetrics"
-    enabled  = true
-    retention_policy {
-      enabled = true
-      days    = 90
-    }
-  }
-
-  lifecycle {
-    ignore_changes = [log_analytics_workspace_id]
+    enabled  = false
   }
 }
 
@@ -195,7 +172,7 @@ resource "azurerm_monitor_diagnostic_setting" "kv_audit" {
 
 output "vault_uri" {
   value       = azurerm_key_vault.kv.vault_uri
-  description = "Key Vault URI — used in secrets.js / secrets.py at runtime"
+  description = "Key Vault URI — set as AZURE_KEYVAULT_URI in Vercel environment"
 }
 
 output "vault_id" {

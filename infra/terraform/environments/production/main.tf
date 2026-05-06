@@ -51,6 +51,7 @@ module "keyvault" {
 
   service_principal_object_ids = var.connector_sp_object_ids
   admin_object_ids             = var.admin_object_ids
+  log_analytics_workspace_id   = var.log_analytics_workspace_id
 
   tags = local.common_tags
 }

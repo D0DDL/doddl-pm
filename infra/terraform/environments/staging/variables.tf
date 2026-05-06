@@ -15,3 +15,9 @@ variable "admin_object_ids" {
   description = "Object IDs of human admins (Jon, authorised engineers)"
   default     = []
 }
+
+variable "log_analytics_workspace_id" {
+  type        = string
+  description = "Log Analytics workspace resource ID for Key Vault audit logs. Optional — omit to skip diagnostic settings."
+  default     = ""
+}

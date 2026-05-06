@@ -32,7 +32,7 @@ const SERVICE_KEY = process.env.AGENT_SERVICE_KEY
 if (!SERVICE_KEY) { console.error('AGENT_SERVICE_KEY missing'); process.exit(1) }
 
 const TARGETS = {
-  staging:    { ref: 'iknwprxycshrickpswjz', url: 'https://doddl-pm-git-staging-d0ddl.vercel.app' },
+  staging:    { ref: 'iknwprxycshrickpswjz', url: 'https://doddl-pm-git-staging-d0ddls-projects.vercel.app' },
   production: { ref: 'ikcjciscttsvpxoijnqe', url: 'https://doddl-pm.vercel.app' },
 }
 
