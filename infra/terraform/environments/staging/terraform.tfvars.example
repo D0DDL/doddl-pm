@@ -1,0 +1,14 @@
+# Copy to terraform.tfvars and populate — never commit terraform.tfvars
+# All values available in Azure Portal > Azure Active Directory
+
+azure_tenant_id = "YOUR_TENANT_ID"
+
+# Object ID of the service principal used by connectors to read secrets at runtime
+connector_sp_object_ids = [
+  "CONNECTOR_SP_OBJECT_ID"
+]
+
+# Object IDs of engineers with full Key Vault management access
+admin_object_ids = [
+  "JON_FAWCETT_OBJECT_ID"
+]
