@@ -123,29 +123,6 @@ resource "azurerm_key_vault_access_policy" "admin" {
   certificate_permissions = []
 }
 
-# ── Rotation-policy demonstration key ────────────────────────────────────────
-# API credentials are stored as Secrets (not Keys); secret rotation is enforced
-# via expiry dates and Azure Monitor alerts (see diagnostic settings below).
-# This Key resource demonstrates the automatic rotation capability for KV Keys.
-
-resource "azurerm_key_vault_key" "rotation_demo" {
-  name         = "rotation-policy-demo"
-  key_vault_id = azurerm_key_vault.kv.id
-  key_type     = "RSA"
-  key_size     = 2048
-  key_opts     = ["sign", "verify"]
-
-  rotation_policy {
-    automatic {
-      time_before_expiry = "P30D"
-    }
-    expire_after         = "P365D"
-    notify_before_expiry = "P30D"
-  }
-
-  depends_on = [azurerm_key_vault_access_policy.admin]
-}
-
 # ── Diagnostic Settings (conditional on log_analytics_workspace_id) ───────────
 # Skipped when log_analytics_workspace_id is empty — avoids requiring a workspace
 # before the vault can be provisioned. Set the variable once a workspace exists.
