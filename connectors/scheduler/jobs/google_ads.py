@@ -4,11 +4,12 @@ Pulls last-30-days performance for all active campaigns and ad groups using
 GAQL. Credentials fetched from Azure Key Vault on every run.
 
 Secrets required:
-  google-ads-developer-token  — Google Ads developer token
-  google-ads-client-id        — OAuth2 client ID
-  google-ads-client-secret    — OAuth2 client secret
-  google-ads-refresh-token    — OAuth2 refresh token
-  google-ads-customer-id      — Google Ads customer/account ID (digits only)
+  google-ads-developer-token    — Google Ads developer token (from MCC API Centre)
+  google-ads-client-id          — OAuth2 client ID
+  google-ads-client-secret      — OAuth2 client secret
+  google-ads-refresh-token      — OAuth2 refresh token
+  google-ads-login-customer-id  — Manager account (MCC) ID — owns the developer token
+  google-ads-customer-id        — Advertiser account ID — where campaign data lives
 """
 
 import logging
@@ -73,7 +74,7 @@ def _build_client(creds: dict) -> GoogleAdsClient:
             "client_id": creds["google-ads-client-id"],
             "client_secret": creds["google-ads-client-secret"],
             "refresh_token": creds["google-ads-refresh-token"],
-            "login_customer_id": creds["google-ads-customer-id"],
+            "login_customer_id": creds["google-ads-login-customer-id"],  # MCC that owns the token
             "use_proto_plus": True,
         }
     )
@@ -120,6 +121,7 @@ def run() -> None:
         "google-ads-client-id",
         "google-ads-client-secret",
         "google-ads-refresh-token",
+        "google-ads-login-customer-id",
         "google-ads-customer-id",
     ])
     customer_id = creds["google-ads-customer-id"]

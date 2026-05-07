@@ -24,6 +24,7 @@ Examples: `klaviyo-api-key`, `shopify-admin-api-token`, `amazon-sp-api-refresh-t
 | `google-ads-client-id`              | Google Ads        | 365 days        | Jon Fawcett  |
 | `google-ads-client-secret`          | Google Ads        | 180 days        | Jon Fawcett  |
 | `google-ads-refresh-token`          | Google Ads        | 365 days        | Jon Fawcett  |
+| `google-ads-login-customer-id`      | Google Ads        | Static          | Jon Fawcett  |
 | `google-ads-customer-id`            | Google Ads        | Static          | Jon Fawcett  |
 | `meta-ads-access-token`             | Meta Ads          | 60 days         | Jon Fawcett  |
 | `meta-ads-account-id`               | Meta Ads          | Static          | Jon Fawcett  |
