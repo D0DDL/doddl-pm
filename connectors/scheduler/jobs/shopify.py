@@ -4,8 +4,9 @@ Incremental: pulls records updated since the last successful pull (or 90 days
 on first run). Credentials fetched from Azure Key Vault on every run.
 
 Secrets required:
-  shopify-admin-api-token  — Admin API access token
-  shopify-shop-domain      — e.g. doddl.myshopify.com
+  shopify-client-id      — App client ID
+  shopify-client-secret  — App client secret (used as Admin API access token)
+  shopify-shop-domain    — e.g. doddl.myshopify.com
 """
 
 import logging
@@ -59,7 +60,7 @@ def run() -> None:
     pull_id = str(uuid.uuid4())
     logger.info("shopify.run start pull_id=%s", pull_id)
 
-    creds = get_secrets(["shopify-admin-api-token", "shopify-shop-domain"])
+    creds = get_secrets(["shopify-client-id", "shopify-client-secret", "shopify-shop-domain"])
     conn = get_connection()
     try:
         with conn:
@@ -69,7 +70,7 @@ def run() -> None:
                 ).isoformat()
                 base = _base(creds["shopify-shop-domain"])
                 headers = {
-                    "X-Shopify-Access-Token": creds["shopify-admin-api-token"],
+                    "X-Shopify-Access-Token": creds["shopify-client-secret"],
                     "Accept": "application/json",
                 }
                 with httpx.Client(headers=headers, timeout=30.0) as client:
