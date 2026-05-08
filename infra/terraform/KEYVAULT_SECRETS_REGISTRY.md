@@ -8,14 +8,15 @@ No credential lives in code, `.env` files, or Vercel environment variables
 
 `{service}-{credential-type}`
 
-Examples: `klaviyo-api-key`, `shopify-admin-api-token`, `amazon-sp-api-refresh-token`
+Examples: `klaviyo-api-key`, `shopify-client-secret`, `amazon-sp-api-refresh-token`
 
 ## Registered Secrets
 
 | Secret Name                         | Service           | Rotation Period | Owner        |
 |-------------------------------------|-------------------|-----------------|--------------|
 | `klaviyo-api-key`                   | Klaviyo           | 90 days         | Jon Fawcett  |
-| `shopify-admin-api-token`           | Shopify           | 90 days         | Jon Fawcett  |
+| `shopify-client-id`                 | Shopify           | 365 days        | Jon Fawcett  |
+| `shopify-client-secret`             | Shopify           | 90 days         | Jon Fawcett  |
 | `shopify-shop-domain`               | Shopify           | Static          | Jon Fawcett  |
 | `amazon-sp-api-client-id`           | Amazon SP-API     | 365 days        | Jon Fawcett  |
 | `amazon-sp-api-client-secret`       | Amazon SP-API     | 90 days         | Jon Fawcett  |
