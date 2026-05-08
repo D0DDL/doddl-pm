@@ -30,6 +30,27 @@ Examples: `klaviyo-api-key`, `shopify-client-secret`, `amazon-sp-api-refresh-tok
 | `meta-ads-access-token`             | Meta Ads          | 60 days         | Jon Fawcett  |
 | `meta-ads-account-id`               | Meta Ads          | Static          | Jon Fawcett  |
 | `supabase-scheduler-db-url`         | Supabase          | Manual          | Jon Fawcett  |
+| `google-sc-client-id`               | Google Search Console | 365 days    | Jon Fawcett  |
+| `google-sc-client-secret`           | Google Search Console | 180 days    | Jon Fawcett  |
+| `google-sc-refresh-token`           | Google Search Console | 365 days    | Jon Fawcett  |
+| `google-sc-site-url`                | Google Search Console | Static      | Jon Fawcett  |
+| `google-ga4-client-id`              | Google Analytics 4 | 365 days      | Jon Fawcett  |
+| `google-ga4-client-secret`          | Google Analytics 4 | 180 days      | Jon Fawcett  |
+| `google-ga4-refresh-token`          | Google Analytics 4 | 365 days      | Jon Fawcett  |
+| `google-ga4-property-id`            | Google Analytics 4 | Static        | Jon Fawcett  |
+| `semrush-api-key`                   | SEMrush           | 90 days         | Jon Fawcett  |
+| `semrush-domain`                    | SEMrush           | Static          | Jon Fawcett  |
+| `xero-client-id`                    | Xero              | 365 days        | Jon Fawcett  |
+| `xero-client-secret`                | Xero              | 90 days         | Jon Fawcett  |
+| `xero-refresh-token`                | Xero              | 60 days (rolling) | Jon Fawcett |
+| `xero-tenant-id`                    | Xero              | Static          | Jon Fawcett  |
+| `opinew-api-key`                    | Opinew            | 90 days         | Jon Fawcett  |
+| `opinew-shop-id`                    | Opinew            | Static          | Jon Fawcett  |
+| `clarity-project-id`                | Microsoft Clarity | Static          | Jon Fawcett  |
+| `clarity-client-id`                 | Microsoft Clarity | 365 days        | Jon Fawcett  |
+| `clarity-client-secret`             | Microsoft Clarity | 180 days        | Jon Fawcett  |
+| `clarity-tenant-id`                 | Microsoft Clarity | Static          | Jon Fawcett  |
+| `mintsoft-api-key`                  | Mintsoft          | 90 days         | Jon Fawcett  |
 | `microsoft-graph-client-secret`     | Microsoft Graph   | 180 days        | Jon Fawcett  |
 | `anthropic-api-key`                 | Anthropic         | 90 days         | Jon Fawcett  |
 | `supabase-service-role-key-staging` | Supabase staging  | Manual          | Jon Fawcett  |

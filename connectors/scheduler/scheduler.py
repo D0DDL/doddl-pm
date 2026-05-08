@@ -151,7 +151,11 @@ def register_jobs(scheduler: BlockingScheduler) -> None:
 
     To add a new connector: import its run() function and add a scheduler.add_job() call.
     """
-    from connectors.scheduler.jobs import klaviyo, shopify, amazon_sp_api, google_ads, meta_ads
+    from connectors.scheduler.jobs import (
+        klaviyo, shopify, amazon_sp_api, google_ads, meta_ads,
+        google_search_console, google_analytics, semrush,
+        xero, opinew, microsoft_clarity, mintsoft,
+    )
 
     # ── Klaviyo — campaigns + flows (every 30 min) ────────────────────────────
     scheduler.add_job(
@@ -208,6 +212,90 @@ def register_jobs(scheduler: BlockingScheduler) -> None:
         minutes=60,
         id="amazon-sp-api-sync",
         name="Amazon SP-API orders + inventory sync",
+        replace_existing=True,
+        misfire_grace_time=7200,
+        coalesce=True,
+    )
+
+    # ── Google Search Console — search analytics (every 6 hours) ─────────────
+    scheduler.add_job(
+        func=google_search_console.run,
+        trigger="interval",
+        hours=6,
+        id="google-search-console-sync",
+        name="Google Search Console search analytics sync",
+        replace_existing=True,
+        misfire_grace_time=7200,
+        coalesce=True,
+    )
+
+    # ── Google Analytics 4 — traffic + pages (every 6 hours) ─────────────────
+    scheduler.add_job(
+        func=google_analytics.run,
+        trigger="interval",
+        hours=6,
+        id="google-analytics-sync",
+        name="Google Analytics 4 traffic + pages sync",
+        replace_existing=True,
+        misfire_grace_time=7200,
+        coalesce=True,
+    )
+
+    # ── SEMrush — domain analytics + keywords (every 24 hours) ───────────────
+    scheduler.add_job(
+        func=semrush.run,
+        trigger="interval",
+        hours=24,
+        id="semrush-sync",
+        name="SEMrush domain analytics + organic keywords sync",
+        replace_existing=True,
+        misfire_grace_time=7200,
+        coalesce=True,
+    )
+
+    # ── Xero — invoices, contacts, payments (every 60 min) ───────────────────
+    scheduler.add_job(
+        func=xero.run,
+        trigger="interval",
+        minutes=60,
+        id="xero-sync",
+        name="Xero invoices + contacts + payments sync",
+        replace_existing=True,
+        misfire_grace_time=7200,
+        coalesce=True,
+    )
+
+    # ── Opinew — product reviews (every 60 min) ───────────────────────────────
+    scheduler.add_job(
+        func=opinew.run,
+        trigger="interval",
+        minutes=60,
+        id="opinew-sync",
+        name="Opinew product reviews sync",
+        replace_existing=True,
+        misfire_grace_time=7200,
+        coalesce=True,
+    )
+
+    # ── Microsoft Clarity — session metrics (every 6 hours) ──────────────────
+    scheduler.add_job(
+        func=microsoft_clarity.run,
+        trigger="interval",
+        hours=6,
+        id="microsoft-clarity-sync",
+        name="Microsoft Clarity session metrics sync",
+        replace_existing=True,
+        misfire_grace_time=7200,
+        coalesce=True,
+    )
+
+    # ── Mintsoft — orders, stock, despatches (every 30 min) ──────────────────
+    scheduler.add_job(
+        func=mintsoft.run,
+        trigger="interval",
+        minutes=30,
+        id="mintsoft-sync",
+        name="Mintsoft orders + stock + despatches sync",
         replace_existing=True,
         misfire_grace_time=7200,
         coalesce=True,
