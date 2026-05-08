@@ -20,7 +20,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 
 from connectors.lib.secrets import get_secrets
 from connectors.lib.google_auth import refresh_access_token
-from connectors.lib.db import get_connection, write_raw, upsert_clean
+from connectors.lib.db import write_raw, upsert_clean
 
 logger = logging.getLogger(__name__)
 
@@ -59,22 +59,16 @@ def run() -> None:
     )
     site_url = creds["google-sc-site-url"]
 
-    conn = get_connection()
-    try:
-        with conn:
-            with conn.cursor() as cur:
-                with httpx.Client(
-                    headers={"Authorization": f"Bearer {access_token}"},
-                    timeout=60.0,
-                ) as client:
-                    _sync_search_analytics(client, cur, pull_id, site_url)
-        logger.info("google_search_console.run complete pull_id=%s", pull_id)
-    finally:
-        conn.close()
+    with httpx.Client(
+        headers={"Authorization": f"Bearer {access_token}"},
+        timeout=60.0,
+    ) as client:
+        _sync_search_analytics(client, pull_id, site_url)
+    logger.info("google_search_console.run complete pull_id=%s", pull_id)
 
 
 def _sync_search_analytics(
-    client: httpx.Client, cur, pull_id: str, site_url: str
+    client: httpx.Client, pull_id: str, site_url: str
 ) -> None:
     end_date = date.today() - timedelta(days=3)   # GSC data lags ~3 days
     start_date = end_date - timedelta(days=30)
@@ -96,7 +90,7 @@ def _sync_search_analytics(
             break
 
         write_raw(
-            cur, source=SOURCE, pull_id=pull_id,
+            source=SOURCE, pull_id=pull_id,
             endpoint="searchAnalytics/query",
             response_body={"rows": rows, "count": len(rows), "startRow": body["startRow"]},
             response_status=200, connector_version=VERSION,
@@ -117,7 +111,7 @@ def _sync_search_analytics(
             }
             record_id = f"{record['date']}|{record['query']}|{record['page']}|{record['device']}|{record['country']}"
             upsert_clean(
-                cur, source=SOURCE, record_type="search_analytics",
+                source=SOURCE, record_type="search_analytics",
                 source_record_id=record_id, data=record, pull_id=pull_id,
             )
             count += 1

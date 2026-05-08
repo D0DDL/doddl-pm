@@ -19,7 +19,7 @@ from google.ads.googleads.client import GoogleAdsClient
 from google.ads.googleads.errors import GoogleAdsException
 
 from connectors.lib.secrets import get_secrets
-from connectors.lib.db import get_connection, write_raw, upsert_clean
+from connectors.lib.db import write_raw, upsert_clean
 
 logger = logging.getLogger(__name__)
 
@@ -128,51 +128,46 @@ def run() -> None:
     client = _build_client(creds)
     service = client.get_service("GoogleAdsService")
 
-    conn = get_connection()
     try:
-        with conn:
-            with conn.cursor() as cur:
-                _sync_campaigns(service, customer_id, cur, pull_id)
-                _sync_ad_groups(service, customer_id, cur, pull_id)
+        _sync_campaigns(service, customer_id, pull_id)
+        _sync_ad_groups(service, customer_id, pull_id)
         logger.info("google_ads.run complete pull_id=%s", pull_id)
     except GoogleAdsException as ex:
         for error in ex.failure.errors:
             logger.error("google_ads: API error %s — %s", error.error_code, error.message)
         raise
-    finally:
-        conn.close()
 
 
-def _sync_campaigns(service, customer_id: str, cur, pull_id: str) -> None:
+def _sync_campaigns(service, customer_id: str, pull_id: str) -> None:
     rows = list(service.search(customer_id=customer_id, query=CAMPAIGN_QUERY))
     records = [_campaign_row_to_dict(r) for r in rows]
 
     write_raw(
-        cur, source=SOURCE, pull_id=pull_id, endpoint="campaign/LAST_30_DAYS",
+        source=SOURCE, pull_id=pull_id, endpoint="campaign/LAST_30_DAYS",
         response_body={"rows": records, "count": len(records)},
         response_status=200, connector_version=VERSION,
     )
     for record in records:
         upsert_clean(
-            cur, source=SOURCE, record_type="campaign",
+            source=SOURCE, record_type="campaign",
             source_record_id=f"{record['campaign_id']}_{record['date']}",
             data=record, pull_id=pull_id,
         )
     logger.info("google_ads: %d campaign rows synced pull_id=%s", len(records), pull_id)
 
 
-def _sync_ad_groups(service, customer_id: str, cur, pull_id: str) -> None:
+def _sync_ad_groups(service, customer_id: str, pull_id: str) -> None:
     rows = list(service.search(customer_id=customer_id, query=AD_GROUP_QUERY))
     records = [_ad_group_row_to_dict(r) for r in rows]
 
     write_raw(
-        cur, source=SOURCE, pull_id=pull_id, endpoint="ad_group/LAST_30_DAYS",
+        source=SOURCE, pull_id=pull_id, endpoint="ad_group/LAST_30_DAYS",
         response_body={"rows": records, "count": len(records)},
         response_status=200, connector_version=VERSION,
     )
     for record in records:
         upsert_clean(
-            cur, source=SOURCE, record_type="ad_group",
+            source=SOURCE, record_type="ad_group",
             source_record_id=f"{record['ad_group_id']}_{record['date']}",
             data=record, pull_id=pull_id,
         )

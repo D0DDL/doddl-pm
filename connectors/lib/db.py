@@ -1,22 +1,36 @@
-"""Shared database helpers for connector jobs.
+"""Shared database helpers for connector jobs — Supabase REST API.
 
-Each connector job calls get_connection() at the start of its run and closes
-it on completion. Connections are not shared across threads.
+Writes to api_raw and api_clean via the PostgREST HTTP endpoint.
+Auth: supabase-service-role-key-prod fetched from Key Vault on each call.
+
+No psycopg2 / direct TCP connection — works with IPv4-only hosts by going
+through Cloudflare's CDN layer in front of Supabase.
 """
 
-import psycopg2
-import psycopg2.extras
+import httpx
 
 from connectors.lib.secrets import get_secret
 
+SUPABASE_URL = "https://ikcjciscttsvpxoijnqe.supabase.co/rest/v1"
+_TIMEOUT = 30.0
 
-def get_connection() -> psycopg2.extensions.connection:
-    """Create and return a new psycopg2 connection. Caller must close."""
-    return psycopg2.connect(get_secret("supabase-scheduler-db-url"))
+
+def _key() -> str:
+    return get_secret("supabase-service-role-key-prod")
+
+
+def _headers(key: str, prefer: str | None = None) -> dict:
+    h = {
+        "Authorization": f"Bearer {key}",
+        "apikey": key,
+        "Content-Type": "application/json",
+    }
+    if prefer:
+        h["Prefer"] = prefer
+    return h
 
 
 def write_raw(
-    cur,
     *,
     source: str,
     pull_id: str,
@@ -25,15 +39,25 @@ def write_raw(
     response_status: int,
     connector_version: str,
 ) -> None:
-    cur.execute(
-        "INSERT INTO api_raw (source, pull_id, endpoint, response_body, response_status, connector_version) "
-        "VALUES (%s, %s::uuid, %s, %s, %s, %s)",
-        (source, pull_id, endpoint, psycopg2.extras.Json(response_body), response_status, connector_version),
+    key = _key()
+    payload = {
+        "source": source,
+        "pull_id": pull_id,
+        "endpoint": endpoint,
+        "response_body": response_body,
+        "response_status": response_status,
+        "connector_version": connector_version,
+    }
+    resp = httpx.post(
+        f"{SUPABASE_URL}/api_raw",
+        headers=_headers(key, prefer="return=minimal"),
+        json=payload,
+        timeout=_TIMEOUT,
     )
+    resp.raise_for_status()
 
 
 def upsert_clean(
-    cur,
     *,
     source: str,
     record_type: str,
@@ -41,19 +65,37 @@ def upsert_clean(
     data: dict,
     pull_id: str,
 ) -> None:
-    cur.execute(
-        "INSERT INTO api_clean (source, record_type, source_record_id, data, last_pull_id) "
-        "VALUES (%s, %s, %s, %s, %s::uuid) "
-        "ON CONFLICT (source, record_type, source_record_id) DO UPDATE SET "
-        "  data            = EXCLUDED.data, "
-        "  last_updated_at = NOW(), "
-        "  last_pull_id    = EXCLUDED.last_pull_id",
-        (source, record_type, source_record_id, psycopg2.extras.Json(data), pull_id),
+    key = _key()
+    payload = {
+        "source": source,
+        "record_type": record_type,
+        "source_record_id": source_record_id,
+        "data": data,
+        "last_pull_id": pull_id,
+    }
+    resp = httpx.post(
+        f"{SUPABASE_URL}/api_clean",
+        headers=_headers(key, prefer="resolution=merge-duplicates,return=minimal"),
+        json=payload,
+        timeout=_TIMEOUT,
     )
+    resp.raise_for_status()
 
 
-def last_pull_ts(cur, source: str) -> str | None:
+def last_pull_ts(source: str) -> str | None:
     """Return ISO timestamp of the most recent api_raw row for a source, or None."""
-    cur.execute("SELECT MAX(received_at) FROM api_raw WHERE source = %s", (source,))
-    row = cur.fetchone()
-    return row[0].isoformat() if row and row[0] else None
+    key = _key()
+    resp = httpx.get(
+        f"{SUPABASE_URL}/api_raw",
+        headers=_headers(key),
+        params={
+            "select": "received_at",
+            "source": f"eq.{source}",
+            "order": "received_at.desc",
+            "limit": "1",
+        },
+        timeout=_TIMEOUT,
+    )
+    resp.raise_for_status()
+    rows = resp.json()
+    return rows[0]["received_at"] if rows else None

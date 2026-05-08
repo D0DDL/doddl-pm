@@ -16,7 +16,7 @@ import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from connectors.lib.secrets import get_secrets
-from connectors.lib.db import get_connection, write_raw, upsert_clean
+from connectors.lib.db import write_raw, upsert_clean
 
 logger = logging.getLogger(__name__)
 
@@ -58,21 +58,15 @@ def run() -> None:
     api_key = creds["semrush-api-key"]
     domain = creds["semrush-domain"]
 
-    conn = get_connection()
-    try:
-        with conn:
-            with conn.cursor() as cur:
-                with httpx.Client(timeout=30.0) as client:
-                    _sync_domain_overview(client, cur, pull_id, api_key, domain)
-                    _sync_organic_keywords(client, cur, pull_id, api_key, domain)
-                    _sync_backlinks_overview(client, cur, pull_id, api_key, domain)
-        logger.info("semrush.run complete pull_id=%s", pull_id)
-    finally:
-        conn.close()
+    with httpx.Client(timeout=30.0) as client:
+        _sync_domain_overview(client, pull_id, api_key, domain)
+        _sync_organic_keywords(client, pull_id, api_key, domain)
+        _sync_backlinks_overview(client, pull_id, api_key, domain)
+    logger.info("semrush.run complete pull_id=%s", pull_id)
 
 
 def _sync_domain_overview(
-    client: httpx.Client, cur, pull_id: str, api_key: str, domain: str
+    client: httpx.Client, pull_id: str, api_key: str, domain: str
 ) -> None:
     params = {
         "type": "domain_ranks",
@@ -86,7 +80,7 @@ def _sync_domain_overview(
     rows = _parse_csv(text)
 
     write_raw(
-        cur, source=SOURCE, pull_id=pull_id, endpoint="domain_ranks",
+        source=SOURCE, pull_id=pull_id, endpoint="domain_ranks",
         response_body={"raw": text, "rows": rows},
         response_status=200, connector_version=VERSION,
     )
@@ -94,7 +88,7 @@ def _sync_domain_overview(
     for row in rows:
         row["snapshot_date"] = snapshot_date
         upsert_clean(
-            cur, source=SOURCE, record_type="domain_overview",
+            source=SOURCE, record_type="domain_overview",
             source_record_id=f"{domain}_{snapshot_date}",
             data=row, pull_id=pull_id,
         )
@@ -102,7 +96,7 @@ def _sync_domain_overview(
 
 
 def _sync_organic_keywords(
-    client: httpx.Client, cur, pull_id: str, api_key: str, domain: str
+    client: httpx.Client, pull_id: str, api_key: str, domain: str
 ) -> None:
     params = {
         "type": "domain_organic",
@@ -117,7 +111,7 @@ def _sync_organic_keywords(
     rows = _parse_csv(text)
 
     write_raw(
-        cur, source=SOURCE, pull_id=pull_id, endpoint="domain_organic",
+        source=SOURCE, pull_id=pull_id, endpoint="domain_organic",
         response_body={"raw": text, "count": len(rows)},
         response_status=200, connector_version=VERSION,
     )
@@ -126,7 +120,7 @@ def _sync_organic_keywords(
         keyword = row.get("Keyword", row.get("Ph", "unknown"))
         row["snapshot_date"] = snapshot_date
         upsert_clean(
-            cur, source=SOURCE, record_type="organic_keyword",
+            source=SOURCE, record_type="organic_keyword",
             source_record_id=f"{domain}_{keyword}_{snapshot_date}",
             data=row, pull_id=pull_id,
         )
@@ -134,7 +128,7 @@ def _sync_organic_keywords(
 
 
 def _sync_backlinks_overview(
-    client: httpx.Client, cur, pull_id: str, api_key: str, domain: str
+    client: httpx.Client, pull_id: str, api_key: str, domain: str
 ) -> None:
     params = {
         "type": "backlinks_overview",
@@ -147,7 +141,7 @@ def _sync_backlinks_overview(
     rows = _parse_csv(text)
 
     write_raw(
-        cur, source=SOURCE, pull_id=pull_id, endpoint="backlinks_overview",
+        source=SOURCE, pull_id=pull_id, endpoint="backlinks_overview",
         response_body={"raw": text, "rows": rows},
         response_status=200, connector_version=VERSION,
     )
@@ -155,7 +149,7 @@ def _sync_backlinks_overview(
     for row in rows:
         row["snapshot_date"] = snapshot_date
         upsert_clean(
-            cur, source=SOURCE, record_type="backlinks_overview",
+            source=SOURCE, record_type="backlinks_overview",
             source_record_id=f"{domain}_{snapshot_date}",
             data=row, pull_id=pull_id,
         )

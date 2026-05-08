@@ -16,7 +16,7 @@ import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from connectors.lib.secrets import get_secrets
-from connectors.lib.db import get_connection, write_raw, upsert_clean
+from connectors.lib.db import write_raw, upsert_clean
 
 logger = logging.getLogger(__name__)
 
@@ -74,32 +74,26 @@ def run() -> None:
     token = creds["meta-ads-access-token"]
     account_id = creds["meta-ads-account-id"]
 
-    conn = get_connection()
-    try:
-        with conn:
-            with conn.cursor() as cur:
-                with httpx.Client(timeout=30.0) as client:
-                    _sync_campaigns(client, cur, pull_id, token, account_id)
-                    _sync_adsets(client, cur, pull_id, token, account_id)
-                    _sync_insights(client, cur, pull_id, token, account_id)
-        logger.info("meta_ads.run complete pull_id=%s", pull_id)
-    finally:
-        conn.close()
+    with httpx.Client(timeout=30.0) as client:
+        _sync_campaigns(client, pull_id, token, account_id)
+        _sync_adsets(client, pull_id, token, account_id)
+        _sync_insights(client, pull_id, token, account_id)
+    logger.info("meta_ads.run complete pull_id=%s", pull_id)
 
 
 def _sync_campaigns(
-    client: httpx.Client, cur, pull_id: str, token: str, account_id: str
+    client: httpx.Client, pull_id: str, token: str, account_id: str
 ) -> None:
     params = {"fields": CAMPAIGN_FIELDS, "access_token": token, "limit": 100}
     count = 0
     for page in _paginate(client, f"/act_{account_id}/campaigns", params):
         write_raw(
-            cur, source=SOURCE, pull_id=pull_id, endpoint=f"/act_{account_id}/campaigns",
+            source=SOURCE, pull_id=pull_id, endpoint=f"/act_{account_id}/campaigns",
             response_body=page, response_status=200, connector_version=VERSION,
         )
         for campaign in page.get("data", []):
             upsert_clean(
-                cur, source=SOURCE, record_type="campaign",
+                source=SOURCE, record_type="campaign",
                 source_record_id=campaign["id"], data=campaign, pull_id=pull_id,
             )
             count += 1
@@ -107,18 +101,18 @@ def _sync_campaigns(
 
 
 def _sync_adsets(
-    client: httpx.Client, cur, pull_id: str, token: str, account_id: str
+    client: httpx.Client, pull_id: str, token: str, account_id: str
 ) -> None:
     params = {"fields": ADSET_FIELDS, "access_token": token, "limit": 100}
     count = 0
     for page in _paginate(client, f"/act_{account_id}/adsets", params):
         write_raw(
-            cur, source=SOURCE, pull_id=pull_id, endpoint=f"/act_{account_id}/adsets",
+            source=SOURCE, pull_id=pull_id, endpoint=f"/act_{account_id}/adsets",
             response_body=page, response_status=200, connector_version=VERSION,
         )
         for adset in page.get("data", []):
             upsert_clean(
-                cur, source=SOURCE, record_type="adset",
+                source=SOURCE, record_type="adset",
                 source_record_id=adset["id"], data=adset, pull_id=pull_id,
             )
             count += 1
@@ -126,7 +120,7 @@ def _sync_adsets(
 
 
 def _sync_insights(
-    client: httpx.Client, cur, pull_id: str, token: str, account_id: str
+    client: httpx.Client, pull_id: str, token: str, account_id: str
 ) -> None:
     params = {
         "level": "adset",
@@ -138,7 +132,7 @@ def _sync_insights(
     count = 0
     for page in _paginate(client, f"/act_{account_id}/insights", params):
         write_raw(
-            cur, source=SOURCE, pull_id=pull_id, endpoint=f"/act_{account_id}/insights",
+            source=SOURCE, pull_id=pull_id, endpoint=f"/act_{account_id}/insights",
             response_body=page, response_status=200, connector_version=VERSION,
         )
         for insight in page.get("data", []):
@@ -147,7 +141,7 @@ def _sync_insights(
                 f"_{insight.get('date_start', 'unknown')}"
             )
             upsert_clean(
-                cur, source=SOURCE, record_type="adset_insight",
+                source=SOURCE, record_type="adset_insight",
                 source_record_id=record_id, data=insight, pull_id=pull_id,
             )
             count += 1

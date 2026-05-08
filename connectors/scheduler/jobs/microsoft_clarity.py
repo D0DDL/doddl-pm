@@ -19,7 +19,7 @@ import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from connectors.lib.secrets import get_secrets
-from connectors.lib.db import get_connection, write_raw, upsert_clean
+from connectors.lib.db import write_raw, upsert_clean
 
 logger = logging.getLogger(__name__)
 
@@ -76,22 +76,16 @@ def run() -> None:
     )
     project_id = creds["clarity-project-id"]
 
-    conn = get_connection()
-    try:
-        with conn:
-            with conn.cursor() as cur:
-                with httpx.Client(
-                    headers={"Authorization": f"Bearer {access_token}"},
-                    timeout=30.0,
-                ) as client:
-                    _sync_metrics(client, cur, pull_id, project_id)
-        logger.info("microsoft_clarity.run complete pull_id=%s", pull_id)
-    finally:
-        conn.close()
+    with httpx.Client(
+        headers={"Authorization": f"Bearer {access_token}"},
+        timeout=30.0,
+    ) as client:
+        _sync_metrics(client, pull_id, project_id)
+    logger.info("microsoft_clarity.run complete pull_id=%s", pull_id)
 
 
 def _sync_metrics(
-    client: httpx.Client, cur, pull_id: str, project_id: str
+    client: httpx.Client, pull_id: str, project_id: str
 ) -> None:
     """Sync daily engagement metrics for the last 30 days."""
     end_date = date.today() - timedelta(days=1)
@@ -118,7 +112,7 @@ def _sync_metrics(
     metrics = data.get("metrics", [])
 
     write_raw(
-        cur, source=SOURCE, pull_id=pull_id, endpoint="/metrics",
+        source=SOURCE, pull_id=pull_id, endpoint="/metrics",
         response_body=data, response_status=200, connector_version=VERSION,
     )
 
@@ -127,7 +121,7 @@ def _sync_metrics(
         day = metric_day.get("date", "unknown")
         record = {"date": day, **metric_day}
         upsert_clean(
-            cur, source=SOURCE, record_type="daily_metrics",
+            source=SOURCE, record_type="daily_metrics",
             source_record_id=f"{project_id}_{day}",
             data=record, pull_id=pull_id,
         )

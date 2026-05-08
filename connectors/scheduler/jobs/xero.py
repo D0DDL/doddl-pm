@@ -27,7 +27,7 @@ import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from connectors.lib.secrets import get_secrets
-from connectors.lib.db import get_connection, write_raw, upsert_clean, last_pull_ts
+from connectors.lib.db import write_raw, upsert_clean, last_pull_ts
 
 logger = logging.getLogger(__name__)
 
@@ -123,23 +123,18 @@ def run() -> None:
         "Accept": "application/json",
     }
 
-    conn = get_connection()
-    try:
-        with conn:
-            with conn.cursor() as cur:
-                since = last_pull_ts(cur, SOURCE) or (
-                    datetime.now(timezone.utc) - timedelta(days=90)
-                ).isoformat()
-                with httpx.Client(headers=headers, timeout=30.0) as client:
-                    _sync_invoices(client, cur, pull_id, since)
-                    _sync_contacts(client, cur, pull_id, since)
-                    _sync_payments(client, cur, pull_id, since)
-        logger.info("xero.run complete pull_id=%s", pull_id)
-    finally:
-        conn.close()
+    since = last_pull_ts(SOURCE) or (
+        datetime.now(timezone.utc) - timedelta(days=90)
+    ).isoformat()
+
+    with httpx.Client(headers=headers, timeout=30.0) as client:
+        _sync_invoices(client, pull_id, since)
+        _sync_contacts(client, pull_id, since)
+        _sync_payments(client, pull_id, since)
+    logger.info("xero.run complete pull_id=%s", pull_id)
 
 
-def _sync_invoices(client: httpx.Client, cur, pull_id: str, since: str) -> None:
+def _sync_invoices(client: httpx.Client, pull_id: str, since: str) -> None:
     params = {
         "where": f'UpdatedDateUTC>=DateTime.Parse("{since}")',
         "order": "UpdatedDateUTC ASC",
@@ -147,13 +142,13 @@ def _sync_invoices(client: httpx.Client, cur, pull_id: str, since: str) -> None:
     count = 0
     for page in _paginate(client, "Invoices", params):
         write_raw(
-            cur, source=SOURCE, pull_id=pull_id, endpoint="Invoices",
+            source=SOURCE, pull_id=pull_id, endpoint="Invoices",
             response_body={"Invoices": page, "count": len(page)},
             response_status=200, connector_version=VERSION,
         )
         for invoice in page:
             upsert_clean(
-                cur, source=SOURCE, record_type="invoice",
+                source=SOURCE, record_type="invoice",
                 source_record_id=invoice["InvoiceID"],
                 data=invoice, pull_id=pull_id,
             )
@@ -161,7 +156,7 @@ def _sync_invoices(client: httpx.Client, cur, pull_id: str, since: str) -> None:
     logger.info("xero: %d invoices synced pull_id=%s", count, pull_id)
 
 
-def _sync_contacts(client: httpx.Client, cur, pull_id: str, since: str) -> None:
+def _sync_contacts(client: httpx.Client, pull_id: str, since: str) -> None:
     params = {
         "where": f'UpdatedDateUTC>=DateTime.Parse("{since}")',
         "order": "UpdatedDateUTC ASC",
@@ -169,13 +164,13 @@ def _sync_contacts(client: httpx.Client, cur, pull_id: str, since: str) -> None:
     count = 0
     for page in _paginate(client, "Contacts", params):
         write_raw(
-            cur, source=SOURCE, pull_id=pull_id, endpoint="Contacts",
+            source=SOURCE, pull_id=pull_id, endpoint="Contacts",
             response_body={"Contacts": page, "count": len(page)},
             response_status=200, connector_version=VERSION,
         )
         for contact in page:
             upsert_clean(
-                cur, source=SOURCE, record_type="contact",
+                source=SOURCE, record_type="contact",
                 source_record_id=contact["ContactID"],
                 data=contact, pull_id=pull_id,
             )
@@ -183,7 +178,7 @@ def _sync_contacts(client: httpx.Client, cur, pull_id: str, since: str) -> None:
     logger.info("xero: %d contacts synced pull_id=%s", count, pull_id)
 
 
-def _sync_payments(client: httpx.Client, cur, pull_id: str, since: str) -> None:
+def _sync_payments(client: httpx.Client, pull_id: str, since: str) -> None:
     params = {
         "where": f'UpdatedDateUTC>=DateTime.Parse("{since}")',
         "order": "UpdatedDateUTC ASC",
@@ -191,13 +186,13 @@ def _sync_payments(client: httpx.Client, cur, pull_id: str, since: str) -> None:
     count = 0
     for page in _paginate(client, "Payments", params):
         write_raw(
-            cur, source=SOURCE, pull_id=pull_id, endpoint="Payments",
+            source=SOURCE, pull_id=pull_id, endpoint="Payments",
             response_body={"Payments": page, "count": len(page)},
             response_status=200, connector_version=VERSION,
         )
         for payment in page:
             upsert_clean(
-                cur, source=SOURCE, record_type="payment",
+                source=SOURCE, record_type="payment",
                 source_record_id=payment["PaymentID"],
                 data=payment, pull_id=pull_id,
             )

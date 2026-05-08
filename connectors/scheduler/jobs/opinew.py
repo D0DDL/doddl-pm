@@ -17,7 +17,7 @@ import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from connectors.lib.secrets import get_secrets
-from connectors.lib.db import get_connection, write_raw, upsert_clean, last_pull_ts
+from connectors.lib.db import write_raw, upsert_clean, last_pull_ts
 
 logger = logging.getLogger(__name__)
 
@@ -61,28 +61,23 @@ def run() -> None:
     api_key = creds["opinew-api-key"]
     shop_id = creds["opinew-shop-id"]
 
-    conn = get_connection()
-    try:
-        with conn:
-            with conn.cursor() as cur:
-                since = last_pull_ts(cur, SOURCE) or (
-                    datetime.now(timezone.utc) - timedelta(days=90)
-                ).isoformat()
-                with httpx.Client(
-                    headers={
-                        "Authorization": f"Bearer {api_key}",
-                        "Accept": "application/json",
-                    },
-                    timeout=30.0,
-                ) as client:
-                    _sync_reviews(client, cur, pull_id, shop_id, since)
-        logger.info("opinew.run complete pull_id=%s", pull_id)
-    finally:
-        conn.close()
+    since = last_pull_ts(SOURCE) or (
+        datetime.now(timezone.utc) - timedelta(days=90)
+    ).isoformat()
+
+    with httpx.Client(
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Accept": "application/json",
+        },
+        timeout=30.0,
+    ) as client:
+        _sync_reviews(client, pull_id, shop_id, since)
+    logger.info("opinew.run complete pull_id=%s", pull_id)
 
 
 def _sync_reviews(
-    client: httpx.Client, cur, pull_id: str, shop_id: str, since: str
+    client: httpx.Client, pull_id: str, shop_id: str, since: str
 ) -> None:
     params = {
         "shop_id": shop_id,
@@ -92,13 +87,13 @@ def _sync_reviews(
     count = 0
     for page in _paginate(client, "/reviews", params):
         write_raw(
-            cur, source=SOURCE, pull_id=pull_id, endpoint="/reviews",
+            source=SOURCE, pull_id=pull_id, endpoint="/reviews",
             response_body={"reviews": page, "count": len(page)},
             response_status=200, connector_version=VERSION,
         )
         for review in page:
             upsert_clean(
-                cur, source=SOURCE, record_type="review",
+                source=SOURCE, record_type="review",
                 source_record_id=str(review["id"]),
                 data=review, pull_id=pull_id,
             )

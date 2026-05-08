@@ -19,7 +19,7 @@ import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from connectors.lib.secrets import get_secrets
-from connectors.lib.db import get_connection, write_raw, upsert_clean, last_pull_ts
+from connectors.lib.db import write_raw, upsert_clean, last_pull_ts
 
 logger = logging.getLogger(__name__)
 
@@ -61,56 +61,50 @@ def run() -> None:
     logger.info("shopify.run start pull_id=%s", pull_id)
 
     creds = get_secrets(["shopify-client-id", "shopify-client-secret", "shopify-shop-domain"])
-    conn = get_connection()
-    try:
-        with conn:
-            with conn.cursor() as cur:
-                since = last_pull_ts(cur, SOURCE) or (
-                    datetime.now(timezone.utc) - timedelta(days=90)
-                ).isoformat()
-                base = _base(creds["shopify-shop-domain"])
-                headers = {
-                    "X-Shopify-Access-Token": creds["shopify-client-secret"],
-                    "Accept": "application/json",
-                }
-                with httpx.Client(headers=headers, timeout=30.0) as client:
-                    _sync_orders(client, cur, pull_id, base, since)
-                    _sync_products(client, cur, pull_id, base, since)
-        logger.info("shopify.run complete pull_id=%s", pull_id)
-    finally:
-        conn.close()
+    since = last_pull_ts(SOURCE) or (
+        datetime.now(timezone.utc) - timedelta(days=90)
+    ).isoformat()
+    base = _base(creds["shopify-shop-domain"])
+    headers = {
+        "X-Shopify-Access-Token": creds["shopify-client-secret"],
+        "Accept": "application/json",
+    }
+    with httpx.Client(headers=headers, timeout=30.0) as client:
+        _sync_orders(client, pull_id, base, since)
+        _sync_products(client, pull_id, base, since)
+    logger.info("shopify.run complete pull_id=%s", pull_id)
 
 
-def _sync_orders(client: httpx.Client, cur, pull_id: str, base: str, since: str) -> None:
+def _sync_orders(client: httpx.Client, pull_id: str, base: str, since: str) -> None:
     params = {"status": "any", "limit": 250, "updated_at_min": since}
     count = 0
     for resp in _paginate(client, f"{base}/orders.json", params):
         body = resp.json()
         write_raw(
-            cur, source=SOURCE, pull_id=pull_id, endpoint="/orders.json",
+            source=SOURCE, pull_id=pull_id, endpoint="/orders.json",
             response_body=body, response_status=resp.status_code, connector_version=VERSION,
         )
         for order in body.get("orders", []):
             upsert_clean(
-                cur, source=SOURCE, record_type="order",
+                source=SOURCE, record_type="order",
                 source_record_id=str(order["id"]), data=order, pull_id=pull_id,
             )
             count += 1
     logger.info("shopify: %d orders synced pull_id=%s", count, pull_id)
 
 
-def _sync_products(client: httpx.Client, cur, pull_id: str, base: str, since: str) -> None:
+def _sync_products(client: httpx.Client, pull_id: str, base: str, since: str) -> None:
     params = {"limit": 250, "updated_at_min": since}
     count = 0
     for resp in _paginate(client, f"{base}/products.json", params):
         body = resp.json()
         write_raw(
-            cur, source=SOURCE, pull_id=pull_id, endpoint="/products.json",
+            source=SOURCE, pull_id=pull_id, endpoint="/products.json",
             response_body=body, response_status=resp.status_code, connector_version=VERSION,
         )
         for product in body.get("products", []):
             upsert_clean(
-                cur, source=SOURCE, record_type="product",
+                source=SOURCE, record_type="product",
                 source_record_id=str(product["id"]), data=product, pull_id=pull_id,
             )
             count += 1

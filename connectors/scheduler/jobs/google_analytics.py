@@ -20,7 +20,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 
 from connectors.lib.secrets import get_secrets
 from connectors.lib.google_auth import refresh_access_token
-from connectors.lib.db import get_connection, write_raw, upsert_clean
+from connectors.lib.db import write_raw, upsert_clean
 
 logger = logging.getLogger(__name__)
 
@@ -58,19 +58,13 @@ def run() -> None:
     )
     property_id = creds["google-ga4-property-id"]
 
-    conn = get_connection()
-    try:
-        with conn:
-            with conn.cursor() as cur:
-                with httpx.Client(
-                    headers={"Authorization": f"Bearer {access_token}"},
-                    timeout=60.0,
-                ) as client:
-                    _sync_traffic(client, cur, pull_id, property_id)
-                    _sync_pages(client, cur, pull_id, property_id)
-        logger.info("google_analytics.run complete pull_id=%s", pull_id)
-    finally:
-        conn.close()
+    with httpx.Client(
+        headers={"Authorization": f"Bearer {access_token}"},
+        timeout=60.0,
+    ) as client:
+        _sync_traffic(client, pull_id, property_id)
+        _sync_pages(client, pull_id, property_id)
+    logger.info("google_analytics.run complete pull_id=%s", pull_id)
 
 
 def _build_date_range() -> dict:
@@ -80,7 +74,7 @@ def _build_date_range() -> dict:
 
 
 def _sync_traffic(
-    client: httpx.Client, cur, pull_id: str, property_id: str
+    client: httpx.Client, pull_id: str, property_id: str
 ) -> None:
     """Sync sessions, users and engagement by date + device + source."""
     url = f"{API_BASE}/properties/{property_id}:runReport"
@@ -125,14 +119,14 @@ def _sync_traffic(
             records.append(record)
 
         write_raw(
-            cur, source=SOURCE, pull_id=pull_id, endpoint="runReport/traffic",
+            source=SOURCE, pull_id=pull_id, endpoint="runReport/traffic",
             response_body={"rows": records, "count": len(records)},
             response_status=200, connector_version=VERSION,
         )
         for record in records:
             record_id = f"{record.get('date')}|{record.get('deviceCategory')}|{record.get('sessionDefaultChannelGroup')}"
             upsert_clean(
-                cur, source=SOURCE, record_type="traffic",
+                source=SOURCE, record_type="traffic",
                 source_record_id=record_id, data=record, pull_id=pull_id,
             )
             count += 1
@@ -145,7 +139,7 @@ def _sync_traffic(
 
 
 def _sync_pages(
-    client: httpx.Client, cur, pull_id: str, property_id: str
+    client: httpx.Client, pull_id: str, property_id: str
 ) -> None:
     """Sync top pages by sessions for the last 30 days."""
     url = f"{API_BASE}/properties/{property_id}:runReport"
@@ -176,14 +170,14 @@ def _sync_pages(
         records.append(record)
 
     write_raw(
-        cur, source=SOURCE, pull_id=pull_id, endpoint="runReport/pages",
+        source=SOURCE, pull_id=pull_id, endpoint="runReport/pages",
         response_body={"rows": records, "count": len(records)},
         response_status=200, connector_version=VERSION,
     )
     for record in records:
         record_id = f"{record.get('date')}|{record.get('pagePath')}"
         upsert_clean(
-            cur, source=SOURCE, record_type="page",
+            source=SOURCE, record_type="page",
             source_record_id=record_id, data=record, pull_id=pull_id,
         )
     logger.info("google_analytics: %d page rows synced pull_id=%s", len(records), pull_id)
