@@ -4,9 +4,8 @@ Incremental: pulls records updated since the last successful pull (or 90 days
 on first run). Credentials fetched from Azure Key Vault on every run.
 
 Secrets required:
-  shopify-client-id      — App client ID
-  shopify-client-secret  — App client secret (used as Admin API access token)
-  shopify-shop-domain    — e.g. doddl.myshopify.com
+  shopify-access-token  — Store access token from OAuth install (run scripts/shopify_oauth.py)
+  shopify-shop-domain   — e.g. doddl-ltd.myshopify.com
 """
 
 import logging
@@ -18,7 +17,7 @@ from typing import Iterator
 import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
-from connectors.lib.secrets import get_secrets
+from connectors.lib.secrets import get_secret, get_secrets
 from connectors.lib.db import write_raw, upsert_clean, last_pull_ts
 
 logger = logging.getLogger(__name__)
@@ -60,13 +59,14 @@ def run() -> None:
     pull_id = str(uuid.uuid4())
     logger.info("shopify.run start pull_id=%s", pull_id)
 
-    creds = get_secrets(["shopify-client-id", "shopify-client-secret", "shopify-shop-domain"])
+    access_token = get_secret("shopify-access-token")
+    shop_domain = get_secret("shopify-shop-domain")
     since = last_pull_ts(SOURCE) or (
         datetime.now(timezone.utc) - timedelta(days=90)
     ).isoformat()
-    base = _base(creds["shopify-shop-domain"])
+    base = _base(shop_domain)
     headers = {
-        "X-Shopify-Access-Token": creds["shopify-client-secret"],
+        "X-Shopify-Access-Token": access_token,
         "Accept": "application/json",
     }
     with httpx.Client(headers=headers, timeout=30.0) as client:
