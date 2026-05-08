@@ -72,7 +72,8 @@ def run() -> None:
 
     creds = get_secrets(["meta-ads-access-token", "meta-ads-account-id"])
     token = creds["meta-ads-access-token"]
-    account_id = creds["meta-ads-account-id"]
+    # Strip any existing "act_" prefix — vault value may include it already
+    account_id = creds["meta-ads-account-id"].removeprefix("act_")
 
     with httpx.Client(timeout=30.0) as client:
         _sync_campaigns(client, pull_id, token, account_id)
@@ -124,7 +125,7 @@ def _sync_insights(
 ) -> None:
     params = {
         "level": "adset",
-        "date_preset": "last_30_days",
+        "date_preset": "last_30d",
         "fields": INSIGHT_FIELDS,
         "access_token": token,
         "limit": 100,

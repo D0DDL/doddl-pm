@@ -3,11 +3,18 @@
 Pulls campaign metadata and flow definitions. Credentials fetched from
 Azure Key Vault on every run so rotation takes effect without a restart.
 
+Klaviyo API notes:
+  - campaigns endpoint requires equals(messages.channel,'email') filter
+  - page[size] is NOT a valid param for campaigns (cursor pagination only)
+  - URL params with brackets must NOT be percent-encoded; we use
+    urllib.parse.urlencode(..., safe="[](),") to preserve them
+
 Secrets required:
   klaviyo-api-key  — Klaviyo private API key (pk_...)
 """
 
 import logging
+import urllib.parse
 import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Iterator
@@ -34,33 +41,31 @@ def _auth_headers(api_key: str) -> dict:
     }
 
 
+def _build_url(path: str, params: dict) -> str:
+    """Build a Klaviyo API URL preserving [] brackets (not percent-encoded)."""
+    qs = urllib.parse.urlencode(params, safe="[](),")
+    return f"{BASE_URL}{path}?{qs}"
+
+
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=30),
     retry=retry_if_exception_type(httpx.HTTPStatusError),
     reraise=True,
 )
-def _get(client: httpx.Client, path: str, params: dict | None = None) -> dict:
-    resp = client.get(f"{BASE_URL}{path}", params=params)
+def _get_url(client: httpx.Client, url: str) -> dict:
+    resp = client.get(url)
     resp.raise_for_status()
     return resp.json()
 
 
-def _paginate(client: httpx.Client, path: str, params: dict | None = None) -> Iterator[dict]:
+def _paginate(client: httpx.Client, initial_url: str) -> Iterator[dict]:
     """Yield every page from a Klaviyo cursor-paginated endpoint."""
-    next_url: str | None = None
-    next_params = params
-    while True:
-        if next_url:
-            resp = client.get(next_url)
-            resp.raise_for_status()
-            page = resp.json()
-        else:
-            page = _get(client, path, next_params)
+    url = initial_url
+    while url:
+        page = _get_url(client, url)
         yield page
-        next_url = page.get("links", {}).get("next")
-        if not next_url:
-            break
+        url = page.get("links", {}).get("next")
 
 
 def run() -> None:
@@ -68,23 +73,26 @@ def run() -> None:
     logger.info("klaviyo.run start pull_id=%s", pull_id)
 
     api_key = get_secret("klaviyo-api-key")
-    since = last_pull_ts(SOURCE) or (
-        datetime.now(timezone.utc) - timedelta(days=90)
-    ).isoformat()
+    # Klaviyo filter timestamps: ISO 8601 without microseconds, no tz offset
+    _since_raw = last_pull_ts(SOURCE) or (
+        (datetime.now(timezone.utc) - timedelta(days=90)).isoformat()
+    )
+    since = _since_raw[:19]  # e.g. "2026-02-07T09:39:00"
+
     with httpx.Client(headers=_auth_headers(api_key), timeout=30.0) as client:
         _sync_campaigns(client, pull_id, since)
-        _sync_flows(client, pull_id, since)
+        _sync_flows(client, pull_id)
     logger.info("klaviyo.run complete pull_id=%s", pull_id)
 
 
 def _sync_campaigns(client: httpx.Client, pull_id: str, since: str) -> None:
-    params = {
-        "filter": f"greater-or-equal(updated_at,{since})",
+    # campaigns endpoint requires messages.channel filter; page[size] not supported
+    url = _build_url("/api/campaigns/", {
+        "filter": f"and(equals(messages.channel,'email'),greater-or-equal(updated_at,{since}))",
         "fields[campaign]": "name,status,send_time,archived,created_at,updated_at",
-        "page[size]": 50,
-    }
+    })
     count = 0
-    for page in _paginate(client, "/api/campaigns/", params):
+    for page in _paginate(client, url):
         write_raw(
             source=SOURCE, pull_id=pull_id, endpoint="/api/campaigns/",
             response_body=page, response_status=200, connector_version=VERSION,
@@ -100,14 +108,13 @@ def _sync_campaigns(client: httpx.Client, pull_id: str, since: str) -> None:
     logger.info("klaviyo: %d campaigns synced pull_id=%s", count, pull_id)
 
 
-def _sync_flows(client: httpx.Client, pull_id: str, since: str) -> None:
-    params = {
-        "filter": f"greater-or-equal(updated,{since})",
+def _sync_flows(client: httpx.Client, pull_id: str) -> None:
+    # Flows: pull all on every run (low volume; date filter requires matching sort)
+    url = _build_url("/api/flows/", {
         "fields[flow]": "name,status,created,updated,trigger_type",
-        "page[size]": 50,
-    }
+    })
     count = 0
-    for page in _paginate(client, "/api/flows/", params):
+    for page in _paginate(client, url):
         write_raw(
             source=SOURCE, pull_id=pull_id, endpoint="/api/flows/",
             response_body=page, response_status=200, connector_version=VERSION,
