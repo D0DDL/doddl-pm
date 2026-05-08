@@ -73,8 +73,12 @@ def upsert_clean(
         "data": data,
         "last_pull_id": pull_id,
     }
+    # on_conflict tells PostgREST which unique constraint to use for the upsert.
+    # Without it, PostgREST defaults to the primary key (id), which we don't
+    # provide — causing a 409 on second-run duplicates from the natural-key
+    # constraint api_clean_unique_record(source, record_type, source_record_id).
     resp = httpx.post(
-        f"{SUPABASE_URL}/api_clean",
+        f"{SUPABASE_URL}/api_clean?on_conflict=source,record_type,source_record_id",
         headers=_headers(key, prefer="resolution=merge-duplicates,return=minimal"),
         json=payload,
         timeout=_TIMEOUT,
