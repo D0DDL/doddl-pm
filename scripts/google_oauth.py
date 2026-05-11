@@ -42,6 +42,7 @@ PORT = 8765
 SCOPES = " ".join([
     "https://www.googleapis.com/auth/analytics.readonly",
     "https://www.googleapis.com/auth/webmasters.readonly",
+    "https://www.googleapis.com/auth/adwords",
 ])
 
 _code = None
@@ -152,8 +153,9 @@ def main():
     print(f"Scope granted: {data.get('scope', 'unknown')}")
 
     _save_to_vault("google-oauth-refresh-token", refresh_token)
+    _save_to_vault("google-ads-refresh-token", refresh_token)
 
-    print("\nDone. Both GA4 and Search Console connectors will use this refresh token.")
+    print("\nDone. GA4, Search Console, and Google Ads connectors will use this refresh token.")
 
 
 if __name__ == "__main__":
