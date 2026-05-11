@@ -82,7 +82,7 @@ def main():
     logger.info("Run started: %s", datetime.utcnow().isoformat())
 
     # Import connectors AFTER path is set up
-    from connectors.scheduler.jobs import shopify, meta_ads, klaviyo, amazon_sp_api, google_analytics, google_search_console, microsoft_clarity
+    from connectors.scheduler.jobs import shopify, meta_ads, klaviyo, amazon_sp_api, google_analytics, google_search_console, microsoft_clarity, google_ads
 
     connectors_to_run = [
         ("Shopify", shopify),
@@ -92,6 +92,7 @@ def main():
         ("GA4", google_analytics),
         ("Google Search Console", google_search_console),
         ("Microsoft Clarity", microsoft_clarity),
+        ("Google Ads", google_ads),
     ]
 
     results = []
