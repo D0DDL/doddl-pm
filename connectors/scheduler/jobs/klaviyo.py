@@ -128,3 +128,23 @@ def _sync_flows(client: httpx.Client, pull_id: str) -> None:
             )
             count += 1
     logger.info("klaviyo: %d flows synced pull_id=%s", count, pull_id)
+
+
+# ---------------------------------------------------------------------------
+# Backfill entry point
+# ---------------------------------------------------------------------------
+
+def run_backfill(start_date) -> None:
+    """Pull all campaigns updated on or after start_date, plus all flows.
+
+    Klaviyo cursor pagination is handled internally.
+    """
+    pull_id = str(uuid.uuid4())
+    since = start_date.strftime("%Y-%m-%dT00:00:00")
+    logger.info("klaviyo.run_backfill since=%s pull_id=%s", since, pull_id)
+
+    api_key = get_secret("klaviyo-api-key")
+    with httpx.Client(headers=_auth_headers(api_key), timeout=60.0) as client:
+        _sync_campaigns(client, pull_id, since)
+        _sync_flows(client, pull_id)
+    logger.info("klaviyo.run_backfill complete pull_id=%s", pull_id)

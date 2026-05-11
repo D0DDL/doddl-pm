@@ -67,6 +67,38 @@ def run() -> None:
     logger.info("google_analytics.run complete pull_id=%s", pull_id)
 
 
+# ---------------------------------------------------------------------------
+# Backfill entry point
+# ---------------------------------------------------------------------------
+
+def run_backfill(start_date, end_date) -> None:
+    """Pull traffic and page data for the specified date range."""
+    pull_id = str(uuid.uuid4())
+    logger.info("google_analytics.run_backfill %s → %s pull_id=%s", start_date, end_date, pull_id)
+
+    creds = get_secrets([
+        "google-oauth-client-id",
+        "google-oauth-client-secret",
+        "google-oauth-refresh-token",
+        "ga4-property-id",
+    ])
+    access_token = refresh_access_token(
+        creds["google-oauth-client-id"],
+        creds["google-oauth-client-secret"],
+        creds["google-oauth-refresh-token"],
+    )
+    property_id = creds["ga4-property-id"]
+    dr = {"startDate": start_date.isoformat(), "endDate": end_date.isoformat()}
+
+    with httpx.Client(
+        headers={"Authorization": f"Bearer {access_token}"},
+        timeout=60.0,
+    ) as client:
+        _sync_traffic(client, pull_id, property_id, date_range=dr)
+        _sync_pages(client, pull_id, property_id, date_range=dr)
+    logger.info("google_analytics.run_backfill complete pull_id=%s", pull_id)
+
+
 def _build_date_range() -> dict:
     end = date.today() - timedelta(days=1)
     start = end - timedelta(days=30)
@@ -74,17 +106,19 @@ def _build_date_range() -> dict:
 
 
 def _sync_traffic(
-    client: httpx.Client, pull_id: str, property_id: str
+    client: httpx.Client, pull_id: str, property_id: str,
+    date_range: dict | None = None,
 ) -> None:
     """Sync sessions, users and engagement by date + device + source."""
     url = f"{API_BASE}/properties/{property_id}:runReport"
     offset = 0
     limit = 10_000
     count = 0
+    dr = date_range or _build_date_range()
 
     while True:
         body = {
-            "dateRanges": [_build_date_range()],
+            "dateRanges": [dr],
             "dimensions": [
                 {"name": "date"},
                 {"name": "deviceCategory"},
@@ -139,12 +173,14 @@ def _sync_traffic(
 
 
 def _sync_pages(
-    client: httpx.Client, pull_id: str, property_id: str
+    client: httpx.Client, pull_id: str, property_id: str,
+    date_range: dict | None = None,
 ) -> None:
-    """Sync top pages by sessions for the last 30 days."""
+    """Sync top pages by sessions for the specified date range."""
     url = f"{API_BASE}/properties/{property_id}:runReport"
+    dr = date_range or _build_date_range()
     body = {
-        "dateRanges": [_build_date_range()],
+        "dateRanges": [dr],
         "dimensions": [{"name": "date"}, {"name": "pagePath"}],
         "metrics": [
             {"name": "sessions"},

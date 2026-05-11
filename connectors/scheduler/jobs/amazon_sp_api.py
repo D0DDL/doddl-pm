@@ -140,12 +140,14 @@ def run() -> None:
 # Sync functions
 # ---------------------------------------------------------------------------
 
-def _sync_orders(client: httpx.Client, pull_id: str, since: str) -> None:
+def _sync_orders(client: httpx.Client, pull_id: str, since: str, until: str | None = None) -> None:
     params = {
         "MarketplaceIds": MARKETPLACE_ID,
         "LastUpdatedAfter": since,
         "MaxResultsPerPage": 100,
     }
+    if until:
+        params["LastUpdatedBefore"] = until
     count = 0
     for page in _paginate_orders(client, params):
         payload = page.get("payload", {})
@@ -167,3 +169,39 @@ def _sync_orders(client: httpx.Client, pull_id: str, since: str) -> None:
             )
             count += 1
     logger.info("amazon_sp: %d orders synced pull_id=%s", count, pull_id)
+
+
+# ---------------------------------------------------------------------------
+# Backfill entry point
+# ---------------------------------------------------------------------------
+
+def run_backfill(start_date, end_date) -> None:
+    """Pull orders updated between start_date and end_date (inclusive).
+
+    Called per-chunk by the backfill runner. SP-API hard limit is 2 years;
+    caller is responsible for keeping chunks within that window.
+    """
+    pull_id = str(uuid.uuid4())
+    since = datetime(
+        start_date.year, start_date.month, start_date.day, tzinfo=timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    until = datetime(
+        end_date.year, end_date.month, end_date.day, 23, 59, 59, tzinfo=timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    logger.info("amazon_sp.run_backfill %s → %s pull_id=%s", since, until, pull_id)
+
+    creds = get_secrets([
+        "amazon-sp-api-client-id",
+        "amazon-sp-api-client-secret",
+        "amazon-sp-api-refresh-token",
+    ])
+    access_token = _get_access_token(
+        creds["amazon-sp-api-client-id"],
+        creds["amazon-sp-api-client-secret"],
+        creds["amazon-sp-api-refresh-token"],
+    )
+    headers = {"x-amz-access-token": access_token, "Accept": "application/json"}
+
+    with httpx.Client(headers=headers, timeout=30.0) as client:
+        _sync_orders(client, pull_id, since, until)
+    logger.info("amazon_sp.run_backfill complete pull_id=%s", pull_id)

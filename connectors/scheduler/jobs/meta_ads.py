@@ -8,6 +8,7 @@ Secrets required:
   meta-ads-account-id    — Ad account ID (digits only, without "act_" prefix)
 """
 
+import json
 import logging
 import uuid
 from typing import Iterator
@@ -121,15 +122,25 @@ def _sync_adsets(
 
 
 def _sync_insights(
-    client: httpx.Client, pull_id: str, token: str, account_id: str
+    client: httpx.Client, pull_id: str, token: str, account_id: str,
+    time_range: dict | None = None,
 ) -> None:
-    params = {
-        "level": "adset",
-        "date_preset": "last_30d",
-        "fields": INSIGHT_FIELDS,
-        "access_token": token,
-        "limit": 100,
-    }
+    if time_range:
+        params = {
+            "level": "adset",
+            "time_range": json.dumps(time_range),
+            "fields": INSIGHT_FIELDS,
+            "access_token": token,
+            "limit": 100,
+        }
+    else:
+        params = {
+            "level": "adset",
+            "date_preset": "last_30d",
+            "fields": INSIGHT_FIELDS,
+            "access_token": token,
+            "limit": 100,
+        }
     count = 0
     for page in _paginate(client, f"/act_{account_id}/insights", params):
         write_raw(
@@ -147,3 +158,29 @@ def _sync_insights(
             )
             count += 1
     logger.info("meta_ads: %d insight rows synced pull_id=%s", count, pull_id)
+
+
+# ---------------------------------------------------------------------------
+# Backfill entry point
+# ---------------------------------------------------------------------------
+
+def run_backfill(start_date, end_date) -> None:
+    """Pull ad-set insights for the specified date range.
+
+    Campaigns and ad sets are structural metadata already synced by run();
+    this function only fetches historical performance insights.
+    """
+    pull_id = str(uuid.uuid4())
+    logger.info("meta_ads.run_backfill %s → %s pull_id=%s", start_date, end_date, pull_id)
+
+    creds = get_secrets(["meta-ads-access-token", "meta-ads-account-id"])
+    token = creds["meta-ads-access-token"]
+    account_id = creds["meta-ads-account-id"].removeprefix("act_")
+    time_range = {
+        "since": start_date.strftime("%Y-%m-%d"),
+        "until": end_date.strftime("%Y-%m-%d"),
+    }
+
+    with httpx.Client(timeout=60.0) as client:
+        _sync_insights(client, pull_id, token, account_id, time_range=time_range)
+    logger.info("meta_ads.run_backfill complete pull_id=%s", pull_id)

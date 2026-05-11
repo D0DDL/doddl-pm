@@ -67,6 +67,50 @@ AD_GROUP_QUERY = """
 """
 
 
+def _build_campaign_query(start_date: str, end_date: str) -> str:
+    return f"""
+    SELECT
+        campaign.id,
+        campaign.name,
+        campaign.status,
+        campaign.advertising_channel_type,
+        metrics.impressions,
+        metrics.clicks,
+        metrics.cost_micros,
+        metrics.conversions,
+        metrics.all_conversions_value,
+        metrics.ctr,
+        metrics.average_cpc,
+        segments.date
+    FROM campaign
+    WHERE segments.date BETWEEN '{start_date}' AND '{end_date}'
+        AND campaign.status != 'REMOVED'
+    ORDER BY segments.date DESC
+    LIMIT 50000
+"""
+
+
+def _build_ad_group_query(start_date: str, end_date: str) -> str:
+    return f"""
+    SELECT
+        campaign.id,
+        campaign.name,
+        ad_group.id,
+        ad_group.name,
+        ad_group.status,
+        metrics.impressions,
+        metrics.clicks,
+        metrics.cost_micros,
+        metrics.conversions,
+        segments.date
+    FROM ad_group
+    WHERE segments.date BETWEEN '{start_date}' AND '{end_date}'
+        AND ad_group.status != 'REMOVED'
+    ORDER BY segments.date DESC
+    LIMIT 50000
+"""
+
+
 def _build_client(creds: dict) -> GoogleAdsClient:
     return GoogleAdsClient.load_from_dict(
         {
@@ -138,8 +182,43 @@ def run() -> None:
         raise
 
 
-def _sync_campaigns(service, customer_id: str, pull_id: str) -> None:
-    rows = list(service.search(customer_id=customer_id, query=CAMPAIGN_QUERY))
+# ---------------------------------------------------------------------------
+# Backfill entry point
+# ---------------------------------------------------------------------------
+
+def run_backfill(start_date, end_date) -> None:
+    """Pull campaign and ad group performance for the specified date range."""
+    pull_id = str(uuid.uuid4())
+    logger.info("google_ads.run_backfill %s → %s pull_id=%s", start_date, end_date, pull_id)
+
+    creds = get_secrets([
+        "google-ads-developer-token",
+        "google-ads-client-id",
+        "google-ads-client-secret",
+        "google-ads-refresh-token",
+        "google-ads-login-customer-id",
+        "google-ads-customer-id",
+    ])
+    customer_id = creds["google-ads-customer-id"]
+    client = _build_client(creds)
+    service = client.get_service("GoogleAdsService")
+    start_str = start_date.isoformat()
+    end_str = end_date.isoformat()
+
+    try:
+        _sync_campaigns(service, customer_id, pull_id, start_str, end_str)
+        _sync_ad_groups(service, customer_id, pull_id, start_str, end_str)
+        logger.info("google_ads.run_backfill complete pull_id=%s", pull_id)
+    except GoogleAdsException as ex:
+        for error in ex.failure.errors:
+            logger.error("google_ads: API error %s — %s", error.error_code, error.message)
+        raise
+
+
+def _sync_campaigns(service, customer_id: str, pull_id: str,
+                    start_date: str | None = None, end_date: str | None = None) -> None:
+    query = _build_campaign_query(start_date, end_date) if start_date else CAMPAIGN_QUERY
+    rows = list(service.search(customer_id=customer_id, query=query))
     records = [_campaign_row_to_dict(r) for r in rows]
 
     write_raw(
@@ -156,8 +235,10 @@ def _sync_campaigns(service, customer_id: str, pull_id: str) -> None:
     logger.info("google_ads: %d campaign rows synced pull_id=%s", len(records), pull_id)
 
 
-def _sync_ad_groups(service, customer_id: str, pull_id: str) -> None:
-    rows = list(service.search(customer_id=customer_id, query=AD_GROUP_QUERY))
+def _sync_ad_groups(service, customer_id: str, pull_id: str,
+                    start_date: str | None = None, end_date: str | None = None) -> None:
+    query = _build_ad_group_query(start_date, end_date) if start_date else AD_GROUP_QUERY
+    rows = list(service.search(customer_id=customer_id, query=query))
     records = [_ad_group_row_to_dict(r) for r in rows]
 
     write_raw(

@@ -61,11 +61,14 @@ def run() -> None:
 
 
 def _sync_metrics(
-    client: httpx.Client, pull_id: str, project_id: str
+    client: httpx.Client, pull_id: str, project_id: str,
+    start_date=None, end_date=None,
 ) -> None:
-    """Sync daily engagement metrics for the last 30 days."""
-    end_date = date.today() - timedelta(days=1)
-    start_date = end_date - timedelta(days=30)
+    """Sync daily engagement metrics for the specified date range."""
+    if end_date is None:
+        end_date = date.today() - timedelta(days=1)
+    if start_date is None:
+        start_date = end_date - timedelta(days=30)
 
     params = {
         "startDate": start_date.strftime("%Y-%m-%d"),
@@ -104,3 +107,23 @@ def _sync_metrics(
         count += 1
 
     logger.info("microsoft_clarity: %d metric days synced pull_id=%s", count, pull_id)
+
+
+# ---------------------------------------------------------------------------
+# Backfill entry point
+# ---------------------------------------------------------------------------
+
+def run_backfill(start_date, end_date) -> None:
+    """Pull daily engagement metrics for the specified date range."""
+    pull_id = str(uuid.uuid4())
+    logger.info("microsoft_clarity.run_backfill %s → %s pull_id=%s", start_date, end_date, pull_id)
+
+    creds = get_secrets(["clarity-api-token", "clarity-project-id"])
+    project_id = creds["clarity-project-id"]
+
+    with httpx.Client(
+        headers={"Authorization": f"Bearer {creds['clarity-api-token']}"},
+        timeout=30.0,
+    ) as client:
+        _sync_metrics(client, pull_id, project_id, start_date, end_date)
+    logger.info("microsoft_clarity.run_backfill complete pull_id=%s", pull_id)

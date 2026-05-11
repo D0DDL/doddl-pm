@@ -68,10 +68,13 @@ def run() -> None:
 
 
 def _sync_search_analytics(
-    client: httpx.Client, pull_id: str, site_url: str
+    client: httpx.Client, pull_id: str, site_url: str,
+    start_date=None, end_date=None,
 ) -> None:
-    end_date = date.today() - timedelta(days=3)   # GSC data lags ~3 days
-    start_date = end_date - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today() - timedelta(days=3)   # GSC data lags ~3 days
+    if start_date is None:
+        start_date = end_date - timedelta(days=30)
 
     url = f"{API_BASE}/sites/{site_url.replace('/', '%2F')}/searchAnalytics/query"
     body = {
@@ -121,3 +124,38 @@ def _sync_search_analytics(
         body["startRow"] += ROW_LIMIT
 
     logger.info("google_search_console: %d rows synced pull_id=%s", count, pull_id)
+
+
+# ---------------------------------------------------------------------------
+# Backfill entry point
+# ---------------------------------------------------------------------------
+
+def run_backfill(start_date, end_date) -> None:
+    """Pull search analytics for the specified date range.
+
+    GSC hard limit: 16 months rolling. Caller must not request dates
+    older than ~480 days. GSC data lags ~3 days so end_date should be
+    at least 3 days ago.
+    """
+    pull_id = str(uuid.uuid4())
+    logger.info("google_search_console.run_backfill %s → %s pull_id=%s", start_date, end_date, pull_id)
+
+    creds = get_secrets([
+        "google-oauth-client-id",
+        "google-oauth-client-secret",
+        "google-oauth-refresh-token",
+        "gsc-property-url",
+    ])
+    access_token = refresh_access_token(
+        creds["google-oauth-client-id"],
+        creds["google-oauth-client-secret"],
+        creds["google-oauth-refresh-token"],
+    )
+    site_url = creds["gsc-property-url"]
+
+    with httpx.Client(
+        headers={"Authorization": f"Bearer {access_token}"},
+        timeout=60.0,
+    ) as client:
+        _sync_search_analytics(client, pull_id, site_url, start_date, end_date)
+    logger.info("google_search_console.run_backfill complete pull_id=%s", pull_id)

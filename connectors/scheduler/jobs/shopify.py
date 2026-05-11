@@ -109,3 +109,30 @@ def _sync_products(client: httpx.Client, pull_id: str, base: str, since: str) ->
             )
             count += 1
     logger.info("shopify: %d products synced pull_id=%s", count, pull_id)
+
+
+# ---------------------------------------------------------------------------
+# Backfill entry point
+# ---------------------------------------------------------------------------
+
+def run_backfill(start_date) -> None:
+    """Pull all orders and products updated on or after start_date.
+
+    Shopify cursor pagination is handled internally, so a single call
+    fetches the entire history from start_date to now.
+    """
+    pull_id = str(uuid.uuid4())
+    since = datetime(
+        start_date.year, start_date.month, start_date.day, tzinfo=timezone.utc
+    ).isoformat()
+    logger.info("shopify.run_backfill since=%s pull_id=%s", since, pull_id)
+
+    access_token = get_secret("shopify-access-token")
+    shop_domain = get_secret("shopify-shop-domain")
+    base = _base(shop_domain)
+    headers = {"X-Shopify-Access-Token": access_token, "Accept": "application/json"}
+
+    with httpx.Client(headers=headers, timeout=60.0) as client:
+        _sync_orders(client, pull_id, base, since)
+        _sync_products(client, pull_id, base, since)
+    logger.info("shopify.run_backfill complete pull_id=%s", pull_id)
