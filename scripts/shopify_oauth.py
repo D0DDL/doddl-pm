@@ -98,9 +98,8 @@ def main():
         f"https://{SHOP}/admin/oauth/authorize"
         f"?client_id={client_id}"
         f"&scope={SCOPES}"
-        f"&redirect_uri={urllib.parse.quote(REDIRECT_URI, safe='')}"
+        f"&redirect_uri={REDIRECT_URI}"
         f"&state={state}"
-        f"&grant_options[]=per-user"
     )
 
     # Start local callback server in background
