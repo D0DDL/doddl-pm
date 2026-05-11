@@ -5,10 +5,10 @@ page for the last 30 days. Credentials fetched from Azure Key Vault on every
 run; access token refreshed from the stored refresh token each run.
 
 Secrets required:
-  google-sc-client-id      — OAuth2 client ID (same Google Cloud project as Ads)
-  google-sc-client-secret  — OAuth2 client secret
-  google-sc-refresh-token  — OAuth2 refresh token (scope: webmasters.readonly)
-  google-sc-site-url       — Verified property URL, e.g. https://doddl.com/
+  google-oauth-client-id      — OAuth2 client ID (shared across Google connectors)
+  google-oauth-client-secret  — OAuth2 client secret
+  google-oauth-refresh-token  — OAuth2 refresh token (scopes: analytics.readonly + webmasters.readonly)
+  gsc-property-url            — Verified property URL, e.g. https://doddl.com
 """
 
 import logging
@@ -47,17 +47,17 @@ def run() -> None:
     logger.info("google_search_console.run start pull_id=%s", pull_id)
 
     creds = get_secrets([
-        "google-sc-client-id",
-        "google-sc-client-secret",
-        "google-sc-refresh-token",
-        "google-sc-site-url",
+        "google-oauth-client-id",
+        "google-oauth-client-secret",
+        "google-oauth-refresh-token",
+        "gsc-property-url",
     ])
     access_token = refresh_access_token(
-        creds["google-sc-client-id"],
-        creds["google-sc-client-secret"],
-        creds["google-sc-refresh-token"],
+        creds["google-oauth-client-id"],
+        creds["google-oauth-client-secret"],
+        creds["google-oauth-refresh-token"],
     )
-    site_url = creds["google-sc-site-url"]
+    site_url = creds["gsc-property-url"]
 
     with httpx.Client(
         headers={"Authorization": f"Bearer {access_token}"},

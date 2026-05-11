@@ -82,13 +82,15 @@ def main():
     logger.info("Run started: %s", datetime.utcnow().isoformat())
 
     # Import connectors AFTER path is set up
-    from connectors.scheduler.jobs import shopify, meta_ads, klaviyo, amazon_sp_api
+    from connectors.scheduler.jobs import shopify, meta_ads, klaviyo, amazon_sp_api, google_analytics, google_search_console
 
     connectors_to_run = [
         ("Shopify", shopify),
         ("Meta Ads", meta_ads),
         ("Klaviyo", klaviyo),
         ("Amazon SP-API", amazon_sp_api),
+        ("GA4", google_analytics),
+        ("Google Search Console", google_search_console),
     ]
 
     results = []

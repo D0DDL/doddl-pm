@@ -5,10 +5,10 @@ date, page path, device category and session source for the last 30 days.
 Access token refreshed from stored refresh token on every run.
 
 Secrets required:
-  google-ga4-client-id      — OAuth2 client ID
-  google-ga4-client-secret  — OAuth2 client secret
-  google-ga4-refresh-token  — OAuth2 refresh token (scope: analytics.readonly)
-  google-ga4-property-id    — GA4 property ID (digits only, e.g. 123456789)
+  google-oauth-client-id      — OAuth2 client ID (shared across Google connectors)
+  google-oauth-client-secret  — OAuth2 client secret
+  google-oauth-refresh-token  — OAuth2 refresh token (scopes: analytics.readonly + webmasters.readonly)
+  ga4-property-id             — GA4 property ID (digits only, e.g. 123456789)
 """
 
 import logging
@@ -46,17 +46,17 @@ def run() -> None:
     logger.info("google_analytics.run start pull_id=%s", pull_id)
 
     creds = get_secrets([
-        "google-ga4-client-id",
-        "google-ga4-client-secret",
-        "google-ga4-refresh-token",
-        "google-ga4-property-id",
+        "google-oauth-client-id",
+        "google-oauth-client-secret",
+        "google-oauth-refresh-token",
+        "ga4-property-id",
     ])
     access_token = refresh_access_token(
-        creds["google-ga4-client-id"],
-        creds["google-ga4-client-secret"],
-        creds["google-ga4-refresh-token"],
+        creds["google-oauth-client-id"],
+        creds["google-oauth-client-secret"],
+        creds["google-oauth-refresh-token"],
     )
-    property_id = creds["google-ga4-property-id"]
+    property_id = creds["ga4-property-id"]
 
     with httpx.Client(
         headers={"Authorization": f"Bearer {access_token}"},
