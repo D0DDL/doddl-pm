@@ -1,14 +1,12 @@
 """Microsoft Clarity connector — session metrics sync.
 
-Pulls project-level engagement metrics (clicks, scrolls, dead clicks, rage
-clicks, JS errors, session counts) from the Microsoft Clarity REST API.
-Uses Azure AD client credentials flow for authentication.
+Pulls daily engagement metrics (sessions, pageviews, rage clicks, dead clicks,
+JS errors etc.) from the Microsoft Clarity Data Export API using a long-lived
+JWT token.
 
 Secrets required:
-  clarity-project-id     — Clarity project ID (alphanumeric, from Clarity dashboard URL)
-  clarity-client-id      — Azure AD app client ID (app registered with Clarity API access)
-  clarity-client-secret  — Azure AD app client secret
-  clarity-tenant-id      — Azure AD tenant ID
+  clarity-api-token   — Clarity Data Export JWT (generated in Clarity Settings -> Data Export)
+  clarity-project-id  — Clarity project ID (alphanumeric, from dashboard URL)
 """
 
 import logging
@@ -23,27 +21,9 @@ from connectors.lib.db import write_raw, upsert_clean
 
 logger = logging.getLogger(__name__)
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 SOURCE = "microsoft_clarity"
-CLARITY_API_BASE = "https://www.clarity.ms/api/v1"
-CLARITY_SCOPE = "https://clarity.microsoft.com/.default"
-
-
-def _get_clarity_token(client_id: str, client_secret: str, tenant_id: str) -> str:
-    """Obtain an Azure AD access token for the Clarity API."""
-    url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
-    resp = httpx.post(
-        url,
-        data={
-            "grant_type": "client_credentials",
-            "client_id": client_id,
-            "client_secret": client_secret,
-            "scope": CLARITY_SCOPE,
-        },
-        timeout=15.0,
-    )
-    resp.raise_for_status()
-    return resp.json()["access_token"]
+API_BASE = "https://www.clarity.ms/api/v1"
 
 
 @retry(
@@ -53,7 +33,9 @@ def _get_clarity_token(client_id: str, client_secret: str, tenant_id: str) -> st
     reraise=True,
 )
 def _get(client: httpx.Client, path: str, params: dict | None = None) -> dict:
-    resp = client.get(f"{CLARITY_API_BASE}{path}", params=params)
+    resp = client.get(f"{API_BASE}{path}", params=params)
+    if not resp.is_success:
+        logger.error("clarity: %s %s -> %s", resp.status_code, path, resp.text)
     resp.raise_for_status()
     return resp.json()
 
@@ -63,24 +45,18 @@ def run() -> None:
     logger.info("microsoft_clarity.run start pull_id=%s", pull_id)
 
     creds = get_secrets([
+        "clarity-api-token",
         "clarity-project-id",
-        "clarity-client-id",
-        "clarity-client-secret",
-        "clarity-tenant-id",
     ])
 
-    access_token = _get_clarity_token(
-        creds["clarity-client-id"],
-        creds["clarity-client-secret"],
-        creds["clarity-tenant-id"],
-    )
     project_id = creds["clarity-project-id"]
 
     with httpx.Client(
-        headers={"Authorization": f"Bearer {access_token}"},
+        headers={"Authorization": f"Bearer {creds['clarity-api-token']}"},
         timeout=30.0,
     ) as client:
         _sync_metrics(client, pull_id, project_id)
+
     logger.info("microsoft_clarity.run complete pull_id=%s", pull_id)
 
 
@@ -109,13 +85,13 @@ def _sync_metrics(
     }
 
     data = _get(client, f"/{project_id}/metrics", params)
-    metrics = data.get("metrics", [])
 
     write_raw(
         source=SOURCE, pull_id=pull_id, endpoint="/metrics",
         response_body=data, response_status=200, connector_version=VERSION,
     )
 
+    metrics = data.get("metrics", [])
     count = 0
     for metric_day in metrics:
         day = metric_day.get("date", "unknown")
