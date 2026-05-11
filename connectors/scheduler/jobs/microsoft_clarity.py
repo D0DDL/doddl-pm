@@ -21,9 +21,9 @@ from connectors.lib.db import write_raw, upsert_clean
 
 logger = logging.getLogger(__name__)
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 SOURCE = "microsoft_clarity"
-API_BASE = "https://www.clarity.ms/api/v1"
+API_BASE = "https://clarity.microsoft.com/api/exports/v1"
 
 
 @retry(
@@ -84,7 +84,7 @@ def _sync_metrics(
         ]),
     }
 
-    data = _get(client, f"/{project_id}/metrics", params)
+    data = _get(client, f"/projects/{project_id}/metrics", params)
 
     write_raw(
         source=SOURCE, pull_id=pull_id, endpoint="/metrics",
