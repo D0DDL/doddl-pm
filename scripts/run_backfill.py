@@ -104,7 +104,7 @@ def run_chunked(
     chunks = list(date_chunks(start, end, chunk_days))
     total = len(chunks)
     logger.info(
-        "%s: %d chunks of %d days  (%s → %s)",
+        "%s: %d chunks of %d days  (%s to %s)",
         connector_name, total, chunk_days, start, end,
     )
 
@@ -113,7 +113,7 @@ def run_chunked(
 
     for i, (chunk_start, chunk_end) in enumerate(chunks, 1):
         logger.info(
-            "%s chunk %d/%d: %s → %s",
+            "%s chunk %d/%d: %s to %s",
             connector_name, i, total, chunk_start, chunk_end,
         )
         try:
@@ -121,7 +121,7 @@ def run_chunked(
             ok += 1
         except Exception as exc:
             logger.error(
-                "%s chunk %d/%d FAILED (%s → %s): %s",
+                "%s chunk %d/%d FAILED (%s to %s): %s",
                 connector_name, i, total, chunk_start, chunk_end, exc,
                 exc_info=True,
             )
@@ -304,7 +304,7 @@ def main() -> None:
 
         print(f"\n[{status:7s}]  {r['name']}  {r['ok']}/{r['total']} chunks ok")
         for chunk_start, chunk_end, err in r["failed"]:
-            print(f"           FAILED {chunk_start} → {chunk_end}: {str(err)[:120]}")
+            print(f"           FAILED {chunk_start} to {chunk_end}: {str(err)[:120]}")
 
     total_ok = sum(1 for r in results if not r["failed"])
     print()
