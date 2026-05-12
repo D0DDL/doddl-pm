@@ -32,7 +32,7 @@ API_BASE = "https://clarity.microsoft.com/api/exports/v1"
     retry=retry_if_exception_type(httpx.HTTPStatusError),
     reraise=True,
 )
-def _get(client: httpx.Client, path: str, params: dict | None = None) -> dict:
+def _get(client: httpx.Client, path: str, params=None) -> dict:
     resp = client.get(f"{API_BASE}{path}", params=params)
     if not resp.is_success:
         logger.error("clarity: %s %s -> %s", resp.status_code, path, resp.text)
@@ -70,22 +70,23 @@ def _sync_metrics(
     if start_date is None:
         start_date = end_date - timedelta(days=30)
 
-    params = {
-        "startDate": start_date.strftime("%Y-%m-%d"),
-        "endDate": end_date.strftime("%Y-%m-%d"),
-        "granularity": "daily",
-        "metrics": ",".join([
-            "TotalSessionCount",
-            "TotalPageViewCount",
-            "TotalEngagedSessionCount",
-            "DeadClickCount",
-            "RageClickCount",
-            "ErrorClickCount",
-            "ExcessiveScrollCount",
-            "QuickBackCount",
-            "JsErrorCount",
-        ]),
-    }
+    # Clarity requires metrics as repeated query params, not comma-joined
+    # httpx sends a list value as ?metrics=X&metrics=Y&...
+    METRICS = [
+        "TotalSessionCount",
+        "TotalPageViewCount",
+        "TotalEngagedSessionCount",
+        "DeadClickCount",
+        "RageClickCount",
+        "ExcessiveScrollCount",
+        "QuickBackCount",
+        "JsErrorCount",
+    ]
+    params = [
+        ("startDate", start_date.strftime("%Y-%m-%d")),
+        ("endDate", end_date.strftime("%Y-%m-%d")),
+        ("granularity", "daily"),
+    ] + [("metrics", m) for m in METRICS]
 
     data = _get(client, f"/projects/{project_id}/metrics", params)
 
@@ -116,7 +117,7 @@ def _sync_metrics(
 def run_backfill(start_date, end_date) -> None:
     """Pull daily engagement metrics for the specified date range."""
     pull_id = str(uuid.uuid4())
-    logger.info("microsoft_clarity.run_backfill %s → %s pull_id=%s", start_date, end_date, pull_id)
+    logger.info("microsoft_clarity.run_backfill %s to %s pull_id=%s", start_date, end_date, pull_id)
 
     creds = get_secrets(["clarity-api-token", "clarity-project-id"])
     project_id = creds["clarity-project-id"]

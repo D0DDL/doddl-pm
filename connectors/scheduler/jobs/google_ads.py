@@ -189,7 +189,7 @@ def run() -> None:
 def run_backfill(start_date, end_date) -> None:
     """Pull campaign and ad group performance for the specified date range."""
     pull_id = str(uuid.uuid4())
-    logger.info("google_ads.run_backfill %s → %s pull_id=%s", start_date, end_date, pull_id)
+    logger.info("google_ads.run_backfill %s to %s pull_id=%s", start_date, end_date, pull_id)
 
     creds = get_secrets([
         "google-ads-developer-token",

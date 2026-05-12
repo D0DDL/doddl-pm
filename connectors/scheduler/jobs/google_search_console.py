@@ -138,7 +138,7 @@ def run_backfill(start_date, end_date) -> None:
     at least 3 days ago.
     """
     pull_id = str(uuid.uuid4())
-    logger.info("google_search_console.run_backfill %s → %s pull_id=%s", start_date, end_date, pull_id)
+    logger.info("google_search_console.run_backfill %s to %s pull_id=%s", start_date, end_date, pull_id)
 
     creds = get_secrets([
         "google-oauth-client-id",

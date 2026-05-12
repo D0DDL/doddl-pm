@@ -77,7 +77,7 @@ def _get(client: httpx.Client, path: str, params: dict) -> dict:
         time.sleep(retry_after)
         raise httpx.HTTPStatusError("Rate limited", request=resp.request, response=resp)
     if not resp.is_success:
-        logger.error("amazon_sp: %s %s → %s", resp.status_code, path, resp.text)
+        logger.error("amazon_sp: %s %s: %s", resp.status_code, path, resp.text)
     resp.raise_for_status()
     return resp.json()
 
@@ -188,7 +188,7 @@ def run_backfill(start_date, end_date) -> None:
     until = datetime(
         end_date.year, end_date.month, end_date.day, 23, 59, 59, tzinfo=timezone.utc
     ).strftime("%Y-%m-%dT%H:%M:%SZ")
-    logger.info("amazon_sp.run_backfill %s → %s pull_id=%s", since, until, pull_id)
+    logger.info("amazon_sp.run_backfill %s to %s pull_id=%s", since, until, pull_id)
 
     creds = get_secrets([
         "amazon-sp-api-client-id",

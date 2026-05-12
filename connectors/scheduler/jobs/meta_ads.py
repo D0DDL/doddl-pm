@@ -171,7 +171,7 @@ def run_backfill(start_date, end_date) -> None:
     this function only fetches historical performance insights.
     """
     pull_id = str(uuid.uuid4())
-    logger.info("meta_ads.run_backfill %s → %s pull_id=%s", start_date, end_date, pull_id)
+    logger.info("meta_ads.run_backfill %s to %s pull_id=%s", start_date, end_date, pull_id)
 
     creds = get_secrets(["meta-ads-access-token", "meta-ads-account-id"])
     token = creds["meta-ads-access-token"]
