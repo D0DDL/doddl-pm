@@ -185,9 +185,12 @@ def run_backfill(start_date, end_date) -> None:
     since = datetime(
         start_date.year, start_date.month, start_date.day, tzinfo=timezone.utc
     ).strftime("%Y-%m-%dT%H:%M:%SZ")
-    until = datetime(
-        end_date.year, end_date.month, end_date.day, 23, 59, 59, tzinfo=timezone.utc
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    # SP-API requires LastUpdatedBefore to be at least 2 minutes in the past
+    until_dt = min(
+        datetime(end_date.year, end_date.month, end_date.day, 23, 59, 59, tzinfo=timezone.utc),
+        datetime.now(timezone.utc) - timedelta(minutes=5),
+    )
+    until = until_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
     logger.info("amazon_sp.run_backfill %s to %s pull_id=%s", since, until, pull_id)
 
     creds = get_secrets([
