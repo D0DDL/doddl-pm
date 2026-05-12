@@ -9,14 +9,15 @@ through Cloudflare's CDN layer in front of Supabase.
 
 import httpx
 
-from connectors.lib.secrets import get_secret
+from connectors.lib.secrets import get_secret_cached
 
 SUPABASE_URL = "https://ikcjciscttsvpxoijnqe.supabase.co/rest/v1"
 _TIMEOUT = 30.0
 
 
 def _key() -> str:
-    return get_secret("supabase-service-role-key-prod")
+    # Cached: fetched once per process, not once per row
+    return get_secret_cached("supabase-service-role-key-prod")
 
 
 def _headers(key: str, prefer: str | None = None) -> dict:
@@ -81,6 +82,24 @@ def upsert_clean(
         f"{SUPABASE_URL}/api_clean?on_conflict=source,record_type,source_record_id",
         headers=_headers(key, prefer="resolution=merge-duplicates,return=minimal"),
         json=payload,
+        timeout=_TIMEOUT,
+    )
+    resp.raise_for_status()
+
+
+def upsert_clean_batch(records: list[dict]) -> None:
+    """Upsert a list of api_clean records in a single POST (much faster than row-by-row).
+
+    Each record must have keys: source, record_type, source_record_id, data, last_pull_id.
+    PostgREST accepts an array body and upserts all rows atomically.
+    """
+    if not records:
+        return
+    key = _key()
+    resp = httpx.post(
+        f"{SUPABASE_URL}/api_clean?on_conflict=source,record_type,source_record_id",
+        headers=_headers(key, prefer="resolution=merge-duplicates,return=minimal"),
+        json=records,
         timeout=_TIMEOUT,
     )
     resp.raise_for_status()

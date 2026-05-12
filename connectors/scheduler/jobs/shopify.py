@@ -18,7 +18,7 @@ import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from connectors.lib.secrets import get_secret, get_secrets
-from connectors.lib.db import write_raw, upsert_clean, last_pull_ts
+from connectors.lib.db import write_raw, upsert_clean, upsert_clean_batch, last_pull_ts
 
 logger = logging.getLogger(__name__)
 
@@ -80,16 +80,20 @@ def _sync_orders(client: httpx.Client, pull_id: str, base: str, since: str) -> N
     count = 0
     for resp in _paginate(client, f"{base}/orders.json", params):
         body = resp.json()
+        orders = body.get("orders", [])
         write_raw(
             source=SOURCE, pull_id=pull_id, endpoint="/orders.json",
             response_body=body, response_status=resp.status_code, connector_version=VERSION,
         )
-        for order in body.get("orders", []):
-            upsert_clean(
-                source=SOURCE, record_type="order",
-                source_record_id=str(order["id"]), data=order, pull_id=pull_id,
-            )
-            count += 1
+        # Batch upsert the whole page in one POST instead of one call per row
+        batch = [
+            {"source": SOURCE, "record_type": "order",
+             "source_record_id": str(o["id"]), "data": o, "last_pull_id": pull_id}
+            for o in orders
+        ]
+        upsert_clean_batch(batch)
+        count += len(orders)
+        logger.info("shopify: page of %d orders written (total so far: %d)", len(orders), count)
     logger.info("shopify: %d orders synced pull_id=%s", count, pull_id)
 
 
@@ -98,16 +102,18 @@ def _sync_products(client: httpx.Client, pull_id: str, base: str, since: str) ->
     count = 0
     for resp in _paginate(client, f"{base}/products.json", params):
         body = resp.json()
+        products = body.get("products", [])
         write_raw(
             source=SOURCE, pull_id=pull_id, endpoint="/products.json",
             response_body=body, response_status=resp.status_code, connector_version=VERSION,
         )
-        for product in body.get("products", []):
-            upsert_clean(
-                source=SOURCE, record_type="product",
-                source_record_id=str(product["id"]), data=product, pull_id=pull_id,
-            )
-            count += 1
+        batch = [
+            {"source": SOURCE, "record_type": "product",
+             "source_record_id": str(p["id"]), "data": p, "last_pull_id": pull_id}
+            for p in products
+        ]
+        upsert_clean_batch(batch)
+        count += len(products)
     logger.info("shopify: %d products synced pull_id=%s", count, pull_id)
 
 
