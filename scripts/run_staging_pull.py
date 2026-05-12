@@ -40,6 +40,9 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
     handlers=[logging.StreamHandler(sys.stdout), counter],
 )
+# Silence Azure SDK per-request HTTP logs (fire once per DB write — very noisy)
+logging.getLogger("azure").setLevel(logging.WARNING)
+logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(logging.WARNING)
 logger = logging.getLogger("runner")
 
 

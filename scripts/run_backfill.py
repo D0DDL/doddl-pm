@@ -53,6 +53,10 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
     handlers=[logging.StreamHandler(sys.stdout)],
 )
+# Silence the Azure SDK's per-request HTTP logs — they fire once per DB write
+# and make the output completely unreadable
+logging.getLogger("azure").setLevel(logging.WARNING)
+logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(logging.WARNING)
 logger = logging.getLogger("backfill")
 
 
