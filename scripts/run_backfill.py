@@ -202,8 +202,9 @@ def main() -> None:
             "mode": "chunked",
             "earliest": today - timedelta(days=730),  # 2-year hard limit
             "chunk_days": 90,
-            # SP-API: burst=10, then 0.0167 req/s; pause lets burst refill
-            "pause_s": 30.0,
+            # SP-API: burst=10, refills at 0.0167 req/s (~60s per credit)
+            # 90s pause gives enough headroom between multi-page chunks
+            "pause_s": 90.0,
             "func": amazon_sp_api.run_backfill,
         },
         {
