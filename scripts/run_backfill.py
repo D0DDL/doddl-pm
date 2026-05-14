@@ -8,6 +8,7 @@ Max lookback per connector:
   Shopify              — unlimited  (account creation; connector paginates)
   Klaviyo              — unlimited  (account creation; connector paginates)
   Amazon SP-API        — 2 years   (Orders API hard limit)
+  Amazon Advertising   — ~3 years  (Reporting API v3; varies per report type)
   Meta Ads insights    — 37 months (Graph API hard limit)
   GA4                  — property creation date
   Google Search Console— 16 months (hard limit; data lags 3 days)
@@ -24,6 +25,7 @@ Usage:
     python scripts/run_backfill.py --connector meta
     python scripts/run_backfill.py --connector klaviyo
     python scripts/run_backfill.py --connector amazon
+    python scripts/run_backfill.py --connector amazon_ads
     python scripts/run_backfill.py --connector gsc
     python scripts/run_backfill.py --connector clarity
     python scripts/run_backfill.py --connector google_ads
@@ -149,7 +151,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Historical data backfill runner")
     parser.add_argument(
         "--connector",
-        help="Run only this connector (shopify, klaviyo, amazon, meta, ga4, gsc, clarity, google_ads)",
+        help="Run only this connector (shopify, klaviyo, amazon, amazon_ads, meta, ga4, gsc, clarity, google_ads)",
     )
     parser.add_argument(
         "--start",
@@ -166,7 +168,7 @@ def main() -> None:
 
     # Import connectors after path setup
     from connectors.scheduler.jobs import (
-        shopify, meta_ads, klaviyo, amazon_sp_api,
+        shopify, meta_ads, klaviyo, amazon_sp_api, amazon_advertising,
         google_analytics, google_search_console,
         microsoft_clarity, google_ads,
     )
@@ -206,6 +208,19 @@ def main() -> None:
             # 90s pause gives enough headroom between multi-page chunks
             "pause_s": 90.0,
             "func": amazon_sp_api.run_backfill,
+        },
+        {
+            "name": "Amazon Advertising",
+            "key": "amazon_ads",
+            "mode": "chunked",
+            "earliest": date(2022, 1, 1),   # Ads API v3 reports go back ~3 years;
+                                             # 2022 covers full campaign history
+            "chunk_days": 30,               # 30-day chunks: 4 report types x N profiles
+                                             # per chunk; keep within API timeout budget
+            # Ads Reporting API: 4 reports x N profiles per chunk; each report
+            # takes ~20-60s to generate. 60s pause between chunks is conservative.
+            "pause_s": 60.0,
+            "func": amazon_advertising.run_backfill,
         },
         {
             "name": "Meta Ads",

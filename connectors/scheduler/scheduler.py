@@ -152,7 +152,7 @@ def register_jobs(scheduler: BlockingScheduler) -> None:
     To add a new connector: import its run() function and add a scheduler.add_job() call.
     """
     from connectors.scheduler.jobs import (
-        klaviyo, shopify, amazon_sp_api, google_ads, meta_ads,
+        klaviyo, shopify, amazon_sp_api, amazon_advertising, google_ads, meta_ads,
         google_search_console, google_analytics, semrush,
         xero, opinew, microsoft_clarity, mintsoft,
     )
@@ -212,6 +212,19 @@ def register_jobs(scheduler: BlockingScheduler) -> None:
         minutes=60,
         id="amazon-sp-api-sync",
         name="Amazon SP-API orders + inventory sync",
+        replace_existing=True,
+        misfire_grace_time=7200,
+        coalesce=True,
+    )
+
+    # ── Amazon Advertising — SP campaigns, ad groups, keywords, search terms
+    #    (every 60 min; covers all authorised marketplaces across EU/NA/FE) ───
+    scheduler.add_job(
+        func=amazon_advertising.run,
+        trigger="interval",
+        minutes=60,
+        id="amazon-advertising-sync",
+        name="Amazon Advertising SP campaigns + performance sync",
         replace_existing=True,
         misfire_grace_time=7200,
         coalesce=True,

@@ -21,6 +21,10 @@ Examples: `klaviyo-api-key`, `shopify-client-secret`, `amazon-sp-api-refresh-tok
 | `amazon-sp-api-client-id`           | Amazon SP-API     | 365 days        | Jon Fawcett  |
 | `amazon-sp-api-client-secret`       | Amazon SP-API     | 90 days         | Jon Fawcett  |
 | `amazon-sp-api-refresh-token`       | Amazon SP-API     | 365 days        | Jon Fawcett  |
+| `amazon-ads-client-id`              | Amazon Advertising | 365 days       | Jon Fawcett  |
+| `amazon-ads-client-secret`          | Amazon Advertising | 90 days        | Jon Fawcett  |
+| `amazon-ads-refresh-token`          | Amazon Advertising | 365 days       | Jon Fawcett  |
+| `amazon-ads-profile-ids`            | Amazon Advertising | Static (optional) | Jon Fawcett  |
 | `google-ads-developer-token`        | Google Ads        | 365 days        | Jon Fawcett  |
 | `google-ads-client-id`              | Google Ads        | 365 days        | Jon Fawcett  |
 | `google-ads-client-secret`          | Google Ads        | 180 days        | Jon Fawcett  |
