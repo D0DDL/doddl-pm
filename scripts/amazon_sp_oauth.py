@@ -71,7 +71,7 @@ SECRET_NAMES = {
 
 # Which Seller Central account to log in to
 ACCOUNT_NOTES = {
-    "eu":    "Log in as your EU/UK seller account (seller A9SLVHANDHOSF, covers UK/DE/FR/IT/ES/NL/BE/PL/SE/TR/IE/AE/SA)",
+    "eu":    "Log in as your EU/UK seller account (seller A95LVHANDHOSF, covers UK/DE/FR/IT/ES/NL/BE/PL/SE/TR/IE/AE/SA)",
     "na":    "Log in as your US seller account (seller A2JUH74WYQ3T7U)",
     "na-2":  "Log in as your CA/MX seller account (seller A2J5OJ1QMMOAR5)",
     "fe-jp": "Log in as your Japan seller account (seller A3HUZ3EE07Z6DX)",

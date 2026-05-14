@@ -3,7 +3,7 @@
 Covers every marketplace visible in the doddl Amazon Seller Central account,
 grouped by seller account (each has its own LWA refresh token):
 
-  EU account  — sellingpartnerapi-eu.amazon.com  seller A9SLVHANDHOSF
+  EU account  — sellingpartnerapi-eu.amazon.com  seller A95LVHANDHOSF
     UK  A1F83G8C2ARO7P      DE  A1PA6795UKMFR9      FR  A13V1IB3VIYZZH
     IT  APJ6JRA9NG5V4       ES  A1RKKUPIHCS9HS      NL  A1805IZSGTT6HS
     BE  AMEN7PMS3EDWL       PL  A1C3SOZRARQ6R3      SE  A2NODRKZP88ZB9
@@ -94,20 +94,20 @@ ACCOUNTS: dict[str, dict] = {
         "refresh_token_secret": "amazon-sp-api-refresh-token-eu",
         "refresh_token_fallback": "amazon-sp-api-refresh-token",  # legacy compat
         "marketplaces": [
-            ("A1F83G8C2ARO7P", "UK", "A9SLVHANDHOSF"),
-            ("A1PA6795UKMFR9", "DE", "A9SLVHANDHOSF"),
-            ("A13V1IB3VIYZZH", "FR", "A9SLVHANDHOSF"),
-            ("APJ6JRA9NG5V4",  "IT", "A9SLVHANDHOSF"),
-            ("A1RKKUPIHCS9HS", "ES", "A9SLVHANDHOSF"),
-            ("A1805IZSGTT6HS", "NL", "A9SLVHANDHOSF"),
-            ("AMEN7PMS3EDWL",  "BE", "A9SLVHANDHOSF"),
-            ("A1C3SOZRARQ6R3", "PL", "A9SLVHANDHOSF"),
-            ("A2NODRKZP88ZB9", "SE", "A9SLVHANDHOSF"),
-            ("A33AVAJ2PDY3EV", "TR", "A9SLVHANDHOSF"),
-            ("A28R8C7NBKEWEA", "IE", "A9SLVHANDHOSF"),
+            ("A1F83G8C2ARO7P", "UK", "A95LVHANDHOSF"),
+            ("A1PA6795UKMFR9", "DE", "A95LVHANDHOSF"),
+            ("A13V1IB3VIYZZH", "FR", "A95LVHANDHOSF"),
+            ("APJ6JRA9NG5V4",  "IT", "A95LVHANDHOSF"),
+            ("A1RKKUPIHCS9HS", "ES", "A95LVHANDHOSF"),
+            ("A1805IZSGTT6HS", "NL", "A95LVHANDHOSF"),
+            ("AMEN7PMS3EDWL",  "BE", "A95LVHANDHOSF"),
+            ("A1C3SOZRARQ6R3", "PL", "A95LVHANDHOSF"),
+            ("A2NODRKZP88ZB9", "SE", "A95LVHANDHOSF"),
+            ("A33AVAJ2PDY3EV", "TR", "A95LVHANDHOSF"),
+            ("A28R8C7NBKEWEA", "IE", "A95LVHANDHOSF"),
             # Middle East — uses EU endpoint
-            ("A2VIGQ35RCS4UG", "AE", "A9SLVHANDHOSF"),
-            ("A17E79C6D8DWNP", "SA", "A9SLVHANDHOSF"),
+            ("A2VIGQ35RCS4UG", "AE", "A95LVHANDHOSF"),
+            ("A17E79C6D8DWNP", "SA", "A95LVHANDHOSF"),
         ],
     },
 
