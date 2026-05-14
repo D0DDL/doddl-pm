@@ -18,15 +18,15 @@ Examples: `klaviyo-api-key`, `shopify-client-secret`, `amazon-sp-api-refresh-tok
 | `shopify-client-id`                 | Shopify           | 365 days        | Jon Fawcett  |
 | `shopify-client-secret`             | Shopify           | 90 days         | Jon Fawcett  |
 | `shopify-shop-domain`               | Shopify           | Static          | Jon Fawcett  |
-| `amazon-sp-api-client-id`           | Amazon SP-API     | 365 days        | Jon Fawcett  |
-| `amazon-sp-api-client-secret`       | Amazon SP-API     | 90 days         | Jon Fawcett  |
-| `amazon-sp-api-refresh-token`       | Amazon SP-API (EU legacy) | 365 days | Jon Fawcett  |
-| `amazon-sp-api-refresh-token-eu`    | Amazon SP-API EU  | 365 days        | Jon Fawcett  |
-| `amazon-sp-api-refresh-token-na`    | Amazon SP-API NA  | 365 days        | Jon Fawcett  |
-| `amazon-sp-api-refresh-token-fe`    | Amazon SP-API FE  | 365 days        | Jon Fawcett  |
-| `amazon-sp-api-seller-id-eu`        | Amazon SP-API EU (Listings) | Static | Jon Fawcett  |
-| `amazon-sp-api-seller-id-na`        | Amazon SP-API NA (Listings) | Static | Jon Fawcett  |
-| `amazon-sp-api-seller-id-fe`        | Amazon SP-API FE (Listings) | Static | Jon Fawcett  |
+| `amazon-sp-api-client-id`              | Amazon SP-API (shared)    | 365 days  | Jon Fawcett  |
+| `amazon-sp-api-client-secret`          | Amazon SP-API (shared)    | 90 days   | Jon Fawcett  |
+| `amazon-sp-api-refresh-token`          | Amazon SP-API EU (legacy) | 365 days  | Jon Fawcett  |
+| `amazon-sp-api-refresh-token-eu`       | Amazon SP-API EU account  | 365 days  | Jon Fawcett  |
+| `amazon-sp-api-refresh-token-na`       | Amazon SP-API NA account (US, seller A2JUH74WYQ3T7U) | 365 days | Jon Fawcett |
+| `amazon-sp-api-refresh-token-na-2`     | Amazon SP-API NA-2 account (CA+MX, seller A2J5OJ1QMMOAR5) | 365 days | Jon Fawcett |
+| `amazon-sp-api-refresh-token-fe-jp`    | Amazon SP-API FE Japan account (seller A3HUZ3EE07Z6DX) | 365 days | Jon Fawcett |
+| `amazon-sp-api-refresh-token-fe-au`    | Amazon SP-API FE Australia account (seller A1LAIASXD1QDDB) | 365 days | Jon Fawcett |
+| `amazon-sp-api-refresh-token-fe-sg`    | Amazon SP-API FE Singapore account (seller A3N8BDRT3JKMZ7) | 365 days | Jon Fawcett |
 | `amazon-ads-client-id`              | Amazon Advertising | 365 days       | Jon Fawcett  |
 | `amazon-ads-client-secret`          | Amazon Advertising | 90 days        | Jon Fawcett  |
 | `amazon-ads-refresh-token`          | Amazon Advertising | 365 days       | Jon Fawcett  |
