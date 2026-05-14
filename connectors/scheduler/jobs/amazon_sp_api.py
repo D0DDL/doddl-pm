@@ -13,7 +13,7 @@ grouped by seller account (each has its own LWA refresh token):
   NA account  — sellingpartnerapi-na.amazon.com   seller A2JUH74WYQ3T7U
     US  ATVPDKIKX0DER
 
-  NA-2 account — sellingpartnerapi-na.amazon.com  seller A2J5OJ1QMMOAR5
+  NA-2 account — sellingpartnerapi-na.amazon.com  seller A2J3OJ1QMMOAR5
     CA  A2EUQ1WTGCTBG2      MX  A1AM78C64UM0Y8
 
   FE-JP account — sellingpartnerapi-fe.amazon.com  seller A3HUZ3EE07Z6DX
@@ -127,8 +127,8 @@ ACCOUNTS: dict[str, dict] = {
         "endpoint": "https://sellingpartnerapi-na.amazon.com",
         "refresh_token_secret": "amazon-sp-api-refresh-token-na-2",
         "marketplaces": [
-            ("A2EUQ1WTGCTBG2", "CA", "A2J5OJ1QMMOAR5"),
-            ("A1AM78C64UM0Y8", "MX", "A2J5OJ1QMMOAR5"),
+            ("A2EUQ1WTGCTBG2", "CA", "A2J3OJ1QMMOAR5"),
+            ("A1AM78C64UM0Y8", "MX", "A2J3OJ1QMMOAR5"),
         ],
     },
 

@@ -73,7 +73,7 @@ SECRET_NAMES = {
 ACCOUNT_NOTES = {
     "eu":    "Log in as your EU/UK seller account (seller A95LVHANDHOSF, covers UK/DE/FR/IT/ES/NL/BE/PL/SE/TR/IE/AE/SA)",
     "na":    "Log in as your US seller account (seller A2JUH74WYQ3T7U)",
-    "na-2":  "Log in as your CA/MX seller account (seller A2J5OJ1QMMOAR5)",
+    "na-2":  "Log in as your CA/MX seller account (seller A2J3OJ1QMMOAR5)",
     "fe-jp": "Log in as your Japan seller account (seller A3HUZ3EE07Z6DX)",
     "fe-au": "Log in as your Australia seller account (seller A1LAIASXD1QDDB)",
     "fe-sg": "Log in as your Singapore seller account (seller A3N8BDRT3JKMZ7)",
