@@ -20,7 +20,13 @@ Examples: `klaviyo-api-key`, `shopify-client-secret`, `amazon-sp-api-refresh-tok
 | `shopify-shop-domain`               | Shopify           | Static          | Jon Fawcett  |
 | `amazon-sp-api-client-id`           | Amazon SP-API     | 365 days        | Jon Fawcett  |
 | `amazon-sp-api-client-secret`       | Amazon SP-API     | 90 days         | Jon Fawcett  |
-| `amazon-sp-api-refresh-token`       | Amazon SP-API     | 365 days        | Jon Fawcett  |
+| `amazon-sp-api-refresh-token`       | Amazon SP-API (EU legacy) | 365 days | Jon Fawcett  |
+| `amazon-sp-api-refresh-token-eu`    | Amazon SP-API EU  | 365 days        | Jon Fawcett  |
+| `amazon-sp-api-refresh-token-na`    | Amazon SP-API NA  | 365 days        | Jon Fawcett  |
+| `amazon-sp-api-refresh-token-fe`    | Amazon SP-API FE  | 365 days        | Jon Fawcett  |
+| `amazon-sp-api-seller-id-eu`        | Amazon SP-API EU (Listings) | Static | Jon Fawcett  |
+| `amazon-sp-api-seller-id-na`        | Amazon SP-API NA (Listings) | Static | Jon Fawcett  |
+| `amazon-sp-api-seller-id-fe`        | Amazon SP-API FE (Listings) | Static | Jon Fawcett  |
 | `amazon-ads-client-id`              | Amazon Advertising | 365 days       | Jon Fawcett  |
 | `amazon-ads-client-secret`          | Amazon Advertising | 90 days        | Jon Fawcett  |
 | `amazon-ads-refresh-token`          | Amazon Advertising | 365 days       | Jon Fawcett  |
