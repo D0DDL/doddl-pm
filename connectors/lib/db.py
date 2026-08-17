@@ -105,6 +105,58 @@ def upsert_clean_batch(records: list[dict]) -> None:
     resp.raise_for_status()
 
 
+def upsert_table(table: str, records: list[dict], on_conflict: str) -> None:
+    """Generic upsert into any table via PostgREST — same shape as
+    upsert_clean_batch but parameterized by table name and conflict columns,
+    for connectors that need their own table instead of the generic api_clean
+    schema (e.g. amazon_asin_daily). Added for the Amazon SP-API Sales & Traffic
+    connector (rev 3) — existing upsert_clean/upsert_clean_batch are untouched.
+    """
+    if not records:
+        return
+    key = _key()
+    resp = httpx.post(
+        f"{SUPABASE_URL}/{table}?on_conflict={on_conflict}",
+        headers=_headers(key, prefer="resolution=merge-duplicates,return=minimal"),
+        json=records,
+        timeout=_TIMEOUT,
+    )
+    resp.raise_for_status()
+
+
+def select_rows(
+    table: str,
+    *,
+    select: str = "*",
+    filters: dict | None = None,
+    order: str | None = None,
+    limit: int | None = None,
+) -> list[dict]:
+    """Generic PostgREST GET for any table — mirrors last_pull_ts's existing
+    select/filter/order/limit pattern, parameterized by table name.
+
+    filters values are PostgREST filter strings ("eq.X", "gte.Y"); a list value
+    produces a repeated query-string key (e.g. a date range: {"report_date":
+    ["gte.2026-01-01", "lte.2026-01-31"]} -> ?report_date=gte...&report_date=lte...).
+    """
+    key = _key()
+    params: dict = {"select": select}
+    if filters:
+        params.update(filters)
+    if order:
+        params["order"] = order
+    if limit:
+        params["limit"] = str(limit)
+    resp = httpx.get(
+        f"{SUPABASE_URL}/{table}",
+        headers=_headers(key),
+        params=params,
+        timeout=_TIMEOUT,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
 def last_pull_ts(source: str) -> str | None:
     """Return ISO timestamp of the most recent api_raw row for a source, or None."""
     key = _key()

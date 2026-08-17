@@ -73,11 +73,10 @@ class CallbackHandler(BaseHTTPRequestHandler):
 
 def _save_to_vault(name: str, value: str) -> None:
     try:
-        from azure.keyvault.secrets import SecretClient
-        from azure.identity import DefaultAzureCredential
-        vault_uri = os.environ["AZURE_KEYVAULT_URI"]
-        client = SecretClient(vault_url=vault_uri, credential=DefaultAzureCredential())
+        from connectors.lib.secrets import _get_client
+        client = _get_client()
         client.set_secret(name, value)
+        vault_uri = os.environ["AZURE_KEYVAULT_URI"]
         print(f"[OK] Saved '{name}' to Key Vault: {vault_uri}")
     except Exception as e:
         print(f"[FAIL] Could not save '{name}' to Key Vault: {e}")

@@ -7,7 +7,9 @@ Queue-based APScheduler setup with:
   - Missed run recovery: misfire_grace_time set per job; if a scheduled run was
     missed (e.g. service was down), APScheduler fires it on resume unless the
     grace window has passed
-  - NOT cron-based: uses IntervalTrigger or DateTrigger with explicit jitter
+  - Cron-based as of 2026-08-03: one run per source per day, staggered overnight
+    on CronTrigger with timezone="Europe/London" set explicitly per job so the
+    stagger holds across BST/GMT transitions
 
 Configuration:
   - DATABASE_URL (Supabase connection string) — from Key Vault at runtime
@@ -141,13 +143,15 @@ def _install_shutdown_handler(scheduler: BlockingScheduler) -> None:
 
 def register_jobs(scheduler: BlockingScheduler) -> None:
     """
-    Register all connector jobs. Each job specifies an IntervalTrigger.
+    Register all connector jobs. Each job specifies a CronTrigger with an
+    explicit timezone="Europe/London" — one run per source per day, staggered
+    at 30-minute offsets from 01:00 so no two connectors run concurrently.
     Jobs are persisted in the SQLAlchemy job store — re-registering an existing
     job with replace_existing=True is idempotent and updates the schedule if changed.
 
     Missed run recovery behaviour:
       coalesce=True  → if N runs were missed, fire exactly once on resume
-      misfire_grace_time=3600 → if service was down > 1h, skip the missed runs
+      misfire_grace_time=7200 → if service was down > 2h, skip the missed run
 
     To add a new connector: import its run() function and add a scheduler.add_job() call.
     """
@@ -157,59 +161,27 @@ def register_jobs(scheduler: BlockingScheduler) -> None:
         xero, opinew, microsoft_clarity, mintsoft,
     )
 
-    # ── Klaviyo — campaigns + flows (every 30 min) ────────────────────────────
-    scheduler.add_job(
-        func=klaviyo.run,
-        trigger="interval",
-        minutes=30,
-        id="klaviyo-sync",
-        name="Klaviyo campaigns + flows sync",
-        replace_existing=True,
-        misfire_grace_time=7200,
-        coalesce=True,
-    )
-
-    # ── Shopify — orders + products (every 15 min) ────────────────────────────
+    # ── Shopify — orders + products (daily 01:00 Europe/London) ───────────────
     scheduler.add_job(
         func=shopify.run,
-        trigger="interval",
-        minutes=15,
+        trigger="cron",
+        hour=1,
+        minute=0,
+        timezone="Europe/London",
         id="shopify-sync",
         name="Shopify orders + products sync",
         replace_existing=True,
-        misfire_grace_time=3600,
-        coalesce=True,
-    )
-
-    # ── Google Ads — campaign + ad group performance (every 60 min) ──────────
-    scheduler.add_job(
-        func=google_ads.run,
-        trigger="interval",
-        minutes=60,
-        id="google-ads-sync",
-        name="Google Ads campaign + ad group performance sync",
-        replace_existing=True,
         misfire_grace_time=7200,
         coalesce=True,
     )
 
-    # ── Meta Ads — campaign + ad set + insights (every 60 min) ───────────────
-    scheduler.add_job(
-        func=meta_ads.run,
-        trigger="interval",
-        minutes=60,
-        id="meta-ads-sync",
-        name="Meta Ads campaign + ad set + insights sync",
-        replace_existing=True,
-        misfire_grace_time=7200,
-        coalesce=True,
-    )
-
-    # ── Amazon SP-API — orders + inventory (every 60 min) ─────────────────────
+    # ── Amazon SP-API — orders + inventory (daily 01:30 Europe/London) ────────
     scheduler.add_job(
         func=amazon_sp_api.run,
-        trigger="interval",
-        minutes=60,
+        trigger="cron",
+        hour=1,
+        minute=30,
+        timezone="Europe/London",
         id="amazon-sp-api-sync",
         name="Amazon SP-API orders + inventory sync",
         replace_existing=True,
@@ -217,24 +189,55 @@ def register_jobs(scheduler: BlockingScheduler) -> None:
         coalesce=True,
     )
 
-    # ── Amazon Advertising — SP campaigns, ad groups, keywords, search terms
-    #    (every 60 min; covers all authorised marketplaces across EU/NA/FE) ───
+    # ── Klaviyo — campaigns + flows (daily 02:00 Europe/London) ───────────────
     scheduler.add_job(
-        func=amazon_advertising.run,
-        trigger="interval",
-        minutes=60,
-        id="amazon-advertising-sync",
-        name="Amazon Advertising SP campaigns + performance sync",
+        func=klaviyo.run,
+        trigger="cron",
+        hour=2,
+        minute=0,
+        timezone="Europe/London",
+        id="klaviyo-sync",
+        name="Klaviyo campaigns + flows sync",
         replace_existing=True,
         misfire_grace_time=7200,
         coalesce=True,
     )
 
-    # ── Google Search Console — search analytics (every 6 hours) ─────────────
+    # ── Meta Ads — campaign + ad set + insights (daily 02:30 Europe/London) ───
+    scheduler.add_job(
+        func=meta_ads.run,
+        trigger="cron",
+        hour=2,
+        minute=30,
+        timezone="Europe/London",
+        id="meta-ads-sync",
+        name="Meta Ads campaign + ad set + insights sync",
+        replace_existing=True,
+        misfire_grace_time=7200,
+        coalesce=True,
+    )
+
+    # ── Google Ads — campaign + ad group performance (daily 03:00 Europe/London)
+    scheduler.add_job(
+        func=google_ads.run,
+        trigger="cron",
+        hour=3,
+        minute=0,
+        timezone="Europe/London",
+        id="google-ads-sync",
+        name="Google Ads campaign + ad group performance sync",
+        replace_existing=True,
+        misfire_grace_time=7200,
+        coalesce=True,
+    )
+
+    # ── Google Search Console — search analytics (daily 03:30 Europe/London) ──
     scheduler.add_job(
         func=google_search_console.run,
-        trigger="interval",
-        hours=6,
+        trigger="cron",
+        hour=3,
+        minute=30,
+        timezone="Europe/London",
         id="google-search-console-sync",
         name="Google Search Console search analytics sync",
         replace_existing=True,
@@ -242,11 +245,13 @@ def register_jobs(scheduler: BlockingScheduler) -> None:
         coalesce=True,
     )
 
-    # ── Google Analytics 4 — traffic + pages (every 6 hours) ─────────────────
+    # ── Google Analytics 4 — traffic + pages (daily 04:00 Europe/London) ──────
     scheduler.add_job(
         func=google_analytics.run,
-        trigger="interval",
-        hours=6,
+        trigger="cron",
+        hour=4,
+        minute=0,
+        timezone="Europe/London",
         id="google-analytics-sync",
         name="Google Analytics 4 traffic + pages sync",
         replace_existing=True,
@@ -254,65 +259,88 @@ def register_jobs(scheduler: BlockingScheduler) -> None:
         coalesce=True,
     )
 
+    # out of scope 2026-08-03 — re-enable by uncommenting
+    # Amazon Advertising API partner registration was REJECTED — no credentials
+    # exist, so this connector cannot function. Left registered it would fail
+    # every night and bury genuine errors in the incident log.
+    # ── Amazon Advertising — SP campaigns, ad groups, keywords, search terms ──
+    # scheduler.add_job(
+    #     func=amazon_advertising.run,
+    #     trigger="cron",
+    #     hour=4,
+    #     minute=30,
+    #     timezone="Europe/London",
+    #     id="amazon-advertising-sync",
+    #     name="Amazon Advertising SP campaigns + performance sync",
+    #     replace_existing=True,
+    #     misfire_grace_time=7200,
+    #     coalesce=True,
+    # )
+
+    # out of scope 2026-08-03 — re-enable by uncommenting
     # ── SEMrush — domain analytics + keywords (every 24 hours) ───────────────
-    scheduler.add_job(
-        func=semrush.run,
-        trigger="interval",
-        hours=24,
-        id="semrush-sync",
-        name="SEMrush domain analytics + organic keywords sync",
-        replace_existing=True,
-        misfire_grace_time=7200,
-        coalesce=True,
-    )
+    # scheduler.add_job(
+    #     func=semrush.run,
+    #     trigger="interval",
+    #     hours=24,
+    #     id="semrush-sync",
+    #     name="SEMrush domain analytics + organic keywords sync",
+    #     replace_existing=True,
+    #     misfire_grace_time=7200,
+    #     coalesce=True,
+    # )
 
+    # out of scope 2026-08-03 — re-enable by uncommenting
     # ── Xero — invoices, contacts, payments (every 60 min) ───────────────────
-    scheduler.add_job(
-        func=xero.run,
-        trigger="interval",
-        minutes=60,
-        id="xero-sync",
-        name="Xero invoices + contacts + payments sync",
-        replace_existing=True,
-        misfire_grace_time=7200,
-        coalesce=True,
-    )
+    # scheduler.add_job(
+    #     func=xero.run,
+    #     trigger="interval",
+    #     minutes=60,
+    #     id="xero-sync",
+    #     name="Xero invoices + contacts + payments sync",
+    #     replace_existing=True,
+    #     misfire_grace_time=7200,
+    #     coalesce=True,
+    # )
 
+    # out of scope 2026-08-03 — re-enable by uncommenting
     # ── Opinew — product reviews (every 60 min) ───────────────────────────────
-    scheduler.add_job(
-        func=opinew.run,
-        trigger="interval",
-        minutes=60,
-        id="opinew-sync",
-        name="Opinew product reviews sync",
-        replace_existing=True,
-        misfire_grace_time=7200,
-        coalesce=True,
-    )
+    # scheduler.add_job(
+    #     func=opinew.run,
+    #     trigger="interval",
+    #     minutes=60,
+    #     id="opinew-sync",
+    #     name="Opinew product reviews sync",
+    #     replace_existing=True,
+    #     misfire_grace_time=7200,
+    #     coalesce=True,
+    # )
 
+    # out of scope 2026-08-03 — re-enable by uncommenting
     # ── Microsoft Clarity — session metrics (every 6 hours) ──────────────────
-    scheduler.add_job(
-        func=microsoft_clarity.run,
-        trigger="interval",
-        hours=6,
-        id="microsoft-clarity-sync",
-        name="Microsoft Clarity session metrics sync",
-        replace_existing=True,
-        misfire_grace_time=7200,
-        coalesce=True,
-    )
+    # scheduler.add_job(
+    #     func=microsoft_clarity.run,
+    #     trigger="interval",
+    #     hours=6,
+    #     id="microsoft-clarity-sync",
+    #     name="Microsoft Clarity session metrics sync",
+    #     replace_existing=True,
+    #     misfire_grace_time=7200,
+    #     coalesce=True,
+    # )
 
+    # out of scope 2026-08-03 — re-enable by uncommenting
     # ── Mintsoft — orders, stock, despatches (every 30 min) ──────────────────
-    scheduler.add_job(
-        func=mintsoft.run,
-        trigger="interval",
-        minutes=30,
-        id="mintsoft-sync",
-        name="Mintsoft orders + stock + despatches sync",
-        replace_existing=True,
-        misfire_grace_time=7200,
-        coalesce=True,
-    )
+    # scheduler.add_job(
+    #     func=mintsoft.run,
+    #     trigger="interval",
+    #     minutes=30,
+    #     id="mintsoft-sync",
+    #     name="Mintsoft orders + stock + despatches sync",
+    #     replace_existing=True,
+    #     misfire_grace_time=7200,
+    #     coalesce=True,
+    # )
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────

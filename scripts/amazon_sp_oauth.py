@@ -52,8 +52,7 @@ APP_ID = "amzn1.sp.solution.9b36ab59-7298-4c1c-899e-598727e325e5"
 # Seller Central authorization URLs per region
 SELLERCENTRAL_URLS = {
     "eu":    "https://sellercentral.amazon.co.uk",
-    "na":    "https://sellercentral.amazon.com",
-    "na-2":  "https://sellercentral.amazon.com",
+    "na":    "https://sellercentral.amazon.com",   # covers US + CA + MX (seller A2J3OJ1QMMOAR5)
     "fe-jp": "https://sellercentral.amazon.co.jp",
     "fe-au": "https://sellercentral.amazon.com.au",
     "fe-sg": "https://sellercentral.amazon.sg",
@@ -62,8 +61,7 @@ SELLERCENTRAL_URLS = {
 # Key Vault secret name that will be written for each account
 SECRET_NAMES = {
     "eu":    "amazon-sp-api-refresh-token-eu",
-    "na":    "amazon-sp-api-refresh-token-na",
-    "na-2":  "amazon-sp-api-refresh-token-na-2",
+    "na":    "amazon-sp-api-refresh-token-na-2",   # US/CA/MX share one seller account
     "fe-jp": "amazon-sp-api-refresh-token-fe-jp",
     "fe-au": "amazon-sp-api-refresh-token-fe-au",
     "fe-sg": "amazon-sp-api-refresh-token-fe-sg",
@@ -72,8 +70,7 @@ SECRET_NAMES = {
 # Which Seller Central account to log in to
 ACCOUNT_NOTES = {
     "eu":    "Log in as your EU/UK seller account (seller A95LVHANDHOSF, covers UK/DE/FR/IT/ES/NL/BE/PL/SE/TR/IE/AE/SA)",
-    "na":    "Log in as your US seller account (seller A2JUH74WYQ3T7U)",
-    "na-2":  "Log in as your CA/MX seller account (seller A2J3OJ1QMMOAR5)",
+    "na":    "Log in as your NA seller account (seller A2J3OJ1QMMOAR5, covers US/CA/MX)",
     "fe-jp": "Log in as your Japan seller account (seller A3HUZ3EE07Z6DX)",
     "fe-au": "Log in as your Australia seller account (seller A1LAIASXD1QDDB)",
     "fe-sg": "Log in as your Singapore seller account (seller A3N8BDRT3JKMZ7)",
@@ -225,6 +222,11 @@ def main() -> None:
     else:
         print("All accounts configured — run the backfill when ready:")
         print("  python scripts/run_backfill.py --connector amazon")
+
+    # NA note
+    if account == "na":
+        print()
+        print("Note: This token covers US, CA, and MX (all share seller A2J3OJ1QMMOAR5).")
 
 
 if __name__ == "__main__":

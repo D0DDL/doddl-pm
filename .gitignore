@@ -20,3 +20,11 @@ bin/terraform.exe
 connectors/__pycache__/
 connectors/**/__pycache__/
 connectors/**/*.pyc
+
+# Backfill logs and data exports — not source, not meant to be tracked
+backfill_log.txt
+backfill_shopify.txt
+backfill_shopify2.txt
+exports/
+*.log
+__pycache__/
