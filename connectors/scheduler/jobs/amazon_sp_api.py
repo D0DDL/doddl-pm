@@ -883,18 +883,29 @@ _SALES_TRAFFIC_RETENTION_DAYS = 730 # UNVERIFIED — used only to flag an empty 
                                      # a backfill if this number was wrong).
 
 _MAX_ATTEMPTS = 3
-# Sales & traffic backfill: a day marked 'gap' or 'parse_failed' this many
-# times stops being retried on resume and is logged as needing manual
-# investigation instead — see amazon_asin_daily_status.attempts,
+# Sales & traffic backfill: a day marked 'parse_failed', or 'gap' for a REAL
+# rejection (http_400), this many times stops being retried on resume and is
+# logged as needing manual investigation instead. Fixed 2026-08-19: 'gap' from
+# an exhausted-429-retries pass does NOT count toward this — a 429 is
+# transient (measured 33-42% createReport rate, see
+# reports/amazon-reports-api.md), not a defect in that day, so it must stay
+# retryable indefinitely rather than getting silently abandoned partway
+# through a long backfill. See amazon_asin_daily_status.attempts,
 # _resume_skip_info, run_sales_traffic_backfill.
 
 ACTIVE_MARKETPLACES: set[str] = {
     # Filled in 2026-08-17 per Jon: every marketplace_id in ACCOUNTS above
-    # EXCEPT Mexico, Australia and Singapore (16 of 19). IDs copied directly
-    # from ACCOUNTS, not from any external source. Filtering happens at the
+    # EXCEPT Mexico, Australia and Singapore. IDs copied directly from
+    # ACCOUNTS, not from any external source. Filtering happens at the
     # iteration point in run_sales_traffic_nightly / run_sales_traffic_backfill
     # — not by removing entries from ACCOUNTS — so re-enabling a marketplace
     # later is one line here, no other code changes.
+    #
+    # Japan dropped 2026-08-19 (out of scope, not just untested) — the FE-JP
+    # account has no working credentials (amazon-sp-api-refresh-token-fe-jp and
+    # its fallback amazon-sp-api-refresh-token-fe both 404 in Key Vault,
+    # confirmed live). Not a rate-limit finding, a configuration gap. Final
+    # scope: 15 marketplaces — 13 EU, 2 NA.
 
     # EU (13) — all included
     "A1F83G8C2ARO7P",  # UK
@@ -915,8 +926,10 @@ ACTIVE_MARKETPLACES: set[str] = {
     "ATVPDKIKX0DER",   # US
     "A2EUQ1WTGCTBG2",  # CA
 
-    # FE (1 of 3) — AU and SG excluded
-    "A1VC38T7YXB528",  # JP
+    # out of scope 2026-08-19 — re-enable by uncommenting, once
+    # amazon-sp-api-refresh-token-fe-jp exists in Key Vault
+    # FE (0 of 3) — AU and SG excluded (never in scope); JP excluded (no credentials)
+    # "A1VC38T7YXB528",  # JP
 }
 
 class AccountSkipped(Exception):
@@ -1623,32 +1636,58 @@ def _mark_fetched(marketplace_id: str, d: date) -> None:
     )
 
 
-def _mark_gap(marketplace_id: str, d: date, reason: str) -> None:
+def _mark_gap(marketplace_id: str, d: date, reason: str, *, count_toward_attempts: bool = True) -> None:
     """status='gap' — report succeeded (or was rejected) but there is nothing
     to parse: pre-retention (no longer used to SKIP the call, only reachable
     now via an empty result near the cutoff — see run comment above), a 400,
-    or exhausted rate-limit retries. Increments attempts.
+    or exhausted rate-limit retries.
+
+    count_toward_attempts (fixed 2026-08-19 — was unconditional before this):
+    a 429 is transient, not a defect in that day's data — with the measured
+    real-world 33-42% createReport 429 rate (see reports/amazon-reports-api.md),
+    treating 'rate_limited_exhausted' as counting toward _MAX_ATTEMPTS would
+    permanently abandon days purely on bad luck during an 87-hour run, and
+    _resume_skip_info would silently skip them on any later resume/retry —
+    reported as if the run had succeeded when it had actually given up on
+    real, fetchable data. Callers pass count_toward_attempts=False for
+    'rate_limited_exhausted' — always retryable, no matter how many times it
+    happens. 'http_400' (a real rejection from Amazon, not a rate limit)
+    keeps count_toward_attempts=True, same as before.
+
+    When False, 'attempts' is omitted from the upsert payload entirely —
+    PostgREST's merge-duplicates upsert only updates columns present in the
+    payload, so omitting it leaves whatever value was already there untouched
+    (same mechanism _mark_fetched already relies on for 'ok', immediately
+    above).
     """
-    attempts = _next_attempt_count(marketplace_id, d)
+    record: dict = {
+        "marketplace_id": marketplace_id, "report_date": d.isoformat(),
+        "status": "gap", "reason": reason,
+    }
+    if count_toward_attempts:
+        record["attempts"] = _next_attempt_count(marketplace_id, d)
     upsert_table(
         "amazon_asin_daily_status",
-        [{
-            "marketplace_id": marketplace_id, "report_date": d.isoformat(),
-            "status": "gap", "reason": reason, "attempts": attempts,
-        }],
+        [record],
         on_conflict="marketplace_id,report_date",
     )
 
 
 def _mark_parse_failed(marketplace_id: str, d: date, reason: str) -> None:
     """status='parse_failed' — Amazon returned DONE with a real response body,
-    but _parse_sales_traffic_asin's field-name assumptions did not match it
-    (missing key, wrong type, or every entry lacked childAsin). Distinct from
-    'gap' on purpose: this is a US bug/wrong-assumption signal, not something
-    Amazon reported as absent. The raw response is in api_raw (see
-    _fetch_sales_traffic_day) so the transform can be re-run once the real
-    field names are known, without re-fetching from Amazon. Increments
-    attempts, same as 'gap'.
+    but something on our side went wrong with it: _parse_sales_traffic_asin's
+    field-name assumptions didn't match (reason: missing_salesAndTrafficByAsin_key
+    | salesAndTrafficByAsin_not_list | zero_rows_extracted_all_missing_child_asin),
+    or the parsed rows failed to write to amazon_asin_daily (reason:
+    upsert_failed — e.g. the 2026-08-19 numeric overflow, see
+    _fetch_sales_traffic_day). Distinct from 'gap' on purpose: this is a bug/
+    schema/wrong-assumption signal on our side, not something Amazon reported
+    as absent. The raw response is in api_raw (see _fetch_sales_traffic_day)
+    so the transform/upsert can be re-run once the real cause is known,
+    without re-fetching from Amazon. Always increments attempts (unconditionally,
+    unlike 'gap' — see _mark_gap's count_toward_attempts — because every
+    parse_failed reason here is a real bug/assumption signal, never a
+    transient rate limit).
     """
     attempts = _next_attempt_count(marketplace_id, d)
     upsert_table(
@@ -1814,10 +1853,11 @@ def _fetch_sales_traffic_day(
             raise
     else:
         logger.error(
-            "amazon_sp: sales_traffic marketplace=%s (%s) date=%s: giving up after %d rate-limit retries",
+            "amazon_sp: sales_traffic marketplace=%s (%s) date=%s: giving up after %d rate-limit retries "
+            "for this pass — transient, does not count toward _MAX_ATTEMPTS, always retryable on resume",
             marketplace_id, marketplace_name, d, _SALES_TRAFFIC_RATE_LIMIT_RETRIES,
         )
-        _mark_gap(marketplace_id, d, reason="rate_limited_exhausted")
+        _mark_gap(marketplace_id, d, reason="rate_limited_exhausted", count_toward_attempts=False)
         return 0, 0
 
     # Full response stored regardless of what happens next — fix for rev 4:
@@ -1883,7 +1923,32 @@ def _fetch_sales_traffic_day(
         _mark_parse_failed(marketplace_id, d, reason="zero_rows_extracted_all_missing_child_asin")
         return 0, skipped
 
-    _upsert_asin_daily(rows)
+    try:
+        _upsert_asin_daily(rows)
+    except Exception as exc:
+        # Fixed 2026-08-19: this used to propagate and kill the entire
+        # multi-day run — exactly what happened on 2026-06-18 (UK), where one
+        # ASIN's unitSessionPercentageB2B (1000, one digit past
+        # numeric(6,3)'s max) took down a 100+ day backfill outright. The
+        # resume mechanism and attempts cap exist precisely so a bad day can
+        # be retried or eventually abandoned instead of raising — a crash
+        # bypasses both. Never raise here; always mark_parse_failed and
+        # return so the caller (and the rest of the backfill) keeps going.
+        detail = None
+        if isinstance(exc, httpx.HTTPStatusError) and exc.response is not None:
+            try:
+                detail = exc.response.json()
+            except Exception:
+                detail = exc.response.text
+        logger.error(
+            "amazon_sp: sales_traffic marketplace=%s (%s) date=%s: upsert to amazon_asin_daily "
+            "FAILED for %d row(s), asins=%s: %s | response detail: %s",
+            marketplace_id, marketplace_name, d, len(rows),
+            [r.get("asin") for r in rows], exc, detail,
+        )
+        _mark_parse_failed(marketplace_id, d, reason="upsert_failed")
+        return 0, skipped
+
     _mark_fetched(marketplace_id, d)
     return len(rows), skipped
 
