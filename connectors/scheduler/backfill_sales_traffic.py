@@ -14,6 +14,13 @@ Optional:
                              connectors/scheduler/jobs/amazon_sp_api.py)
     BACKFILL_PACE_SECONDS   minimum seconds between createReport call starts,
                              per account. Default 65.
+    BACKFILL_REVERSE        true/false. When true (default), each marketplace's
+                             pending days are processed newest-first instead of
+                             oldest-first, so recent data lands early in a long
+                             run instead of at the end. Purely an ordering
+                             change — does not affect resume/skip logic, which
+                             is keyed by (marketplace_id, date) regardless of
+                             visit order.
 
 Built 2026-08-19 on two MEASURED findings, not assumptions (see
 reports/amazon-reports-api.md for the full test output):
@@ -160,6 +167,7 @@ def _run_account(
     start: date,
     end: date,
     pace_seconds: float,
+    reverse: bool,
     progress: _Progress,
     client_id: str,
     client_secret: str,
@@ -186,6 +194,8 @@ def _run_account(
             ok_days, failed_days = _resume_skip_info(marketplace_id, start, end)
             already_skipped = ok_days | failed_days
             pending = [d for d in _daterange(start, end) if d not in already_skipped]
+            if reverse:
+                pending.reverse()
 
             logger.info(
                 "amazon_sp_backfill: account=%s marketplace=%s (%s) %d day(s) pending "
@@ -235,6 +245,7 @@ def main() -> None:
     catalog = _all_marketplace_ids()
     marketplace_ids = _marketplaces_from_env(catalog)
     pace_seconds = float(os.environ.get("BACKFILL_PACE_SECONDS", str(DEFAULT_PACE_SECONDS)))
+    reverse = os.environ.get("BACKFILL_REVERSE", "true").strip().lower() not in ("false", "0", "no")
 
     by_account: dict[str, list[str]] = {}
     marketplace_names: dict[str, str] = {}
@@ -248,8 +259,8 @@ def main() -> None:
 
     logger.info(
         "amazon_sp_backfill: PLAN start=%s end=%s (%d day(s)) marketplaces=%d accounts=%s "
-        "pace=%.0fs total_pairs=%d",
-        start, end, total_days, len(marketplace_ids), sorted(by_account.keys()), pace_seconds, total_pairs,
+        "pace=%.0fs reverse=%s total_pairs=%d",
+        start, end, total_days, len(marketplace_ids), sorted(by_account.keys()), pace_seconds, reverse, total_pairs,
     )
     logger.info("amazon_sp_backfill: marketplace_ids=%s", sorted(marketplace_ids))
 
@@ -276,7 +287,7 @@ def main() -> None:
         futures = {
             executor.submit(
                 _run_account, account_name, mids, marketplace_names, start, end,
-                pace_seconds, progress, client_id, client_secret,
+                pace_seconds, reverse, progress, client_id, client_secret,
             ): account_name
             for account_name, mids in by_account.items()
         }
