@@ -64,10 +64,6 @@ export default function AppSidebar({ view, setView, projects, activeProject, set
         <NavBtn view={view} setView={setView} activeKey="approvals"  label="✅ Approvals"     count={approvalsCount} />
         <NavBtn view={view} setView={setView} activeKey="inbox"      label="🔔 Notifications" count={unreadCount} />
       </div>
-      <p style={{ fontSize: 10, fontWeight: 700, color: '#a0aec0', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '0 12px', marginBottom: 6 }}>Reports</p>
-      <div style={{ marginBottom: 20 }}>
-        <NavBtn view={view} setView={setView} activeKey="amazon"     label="📦 Amazon"        count={0} />
-      </div>
       <p style={{ fontSize: 10, fontWeight: 700, color: '#a0aec0', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '0 12px', marginBottom: 6 }}>Projects</p>
       <button onClick={() => setActiveProject(null)} style={{ width: '100%', textAlign: 'left', padding: '6px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 600, fontSize: 12, marginBottom: 2, background: !activeProject ? '#e9f2ff' : 'transparent', color: !activeProject ? '#0052cc' : '#42526e' }}>All projects</button>
       {projects.map((p, i) => (

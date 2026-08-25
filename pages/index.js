@@ -16,7 +16,6 @@ import InboxView from '../components/InboxView'
 import ApprovalsView from '../components/ApprovalsView'
 import ProjectGallery from '../components/ProjectGallery'
 import ProjectSection from '../components/ProjectSection'
-import AmazonReportView from '../components/AmazonReportView'
 
 export default function Home() {
   const [user, setUser]                         = useState(null)
@@ -151,8 +150,6 @@ export default function Home() {
           ) : view === 'inbox' ? (
             <InboxView notifications={notifications} tasks={tasks} unreadCount={unreadCount}
               markRead={markRead} markAllRead={markAllRead} setSelectedTask={setSelectedTask} />
-          ) : view === 'amazon' ? (
-            <AmazonReportView />
           ) : view === 'approvals' ? (
             <ApprovalsView tasks={tasks} projects={projects} setSelectedTask={setSelectedTask} />
           ) : activeProjectData ? (
