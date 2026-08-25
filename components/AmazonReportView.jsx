@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { addDays, daysBetween, previousPeriod, bucketLabel } from '../lib/amazonMetrics'
+import { addDays, daysBetween, previousPeriod, bucketLabel, ratePresentation, suspectDataFor } from '../lib/amazonMetrics'
 import { authFetch, SessionExpiredError } from '../lib/authFetch'
 
 // Amazon performance summary — grouped by marketplace, no ASIN-level detail.
@@ -57,6 +57,28 @@ function fmtMoney(n, currency) {
 function fmtPct(fraction, dp = 2) {
   if (fraction == null) return '—'
   return `${(fraction * 100).toFixed(dp)}%`
+}
+
+// Render a derived rate according to how much of the period was actually pulled.
+// See ratePresentation() in lib/amazonMetrics.js for why a zero over partial
+// coverage is withheld while a non-zero one is still shown.
+function Rate({ value, coverage, dp = 2 }) {
+  const { state } = ratePresentation(value, coverage)
+  const cov = coverage ? `${coverage.days_with_data}/${coverage.days_expected} days pulled` : 'coverage unknown'
+  if (state === 'none') return <span style={{ color: '#a5adba' }}>—</span>
+  if (state === 'incomplete') {
+    return (
+      <span title={`Coverage is incomplete (${cov}) and every day pulled so far is zero. That is indistinguishable from the days carrying the sales not having been pulled yet, so no rate is shown.`}
+        style={{ color: '#b7601a', fontWeight: 700 }}>incomplete</span>
+    )
+  }
+  if (state === 'partial') {
+    return (
+      <span title={`Based on ${cov}. This rate covers the days present, not the whole period.`}
+        style={{ color: '#b7601a' }}>{fmtPct(value, dp)}<sup style={{ fontSize: '0.7em' }}>†</sup></span>
+    )
+  }
+  return <span>{fmtPct(value, dp)}</span>
 }
 
 // Percentage-point deltas render as pp; count/money deltas render as %.
@@ -162,10 +184,13 @@ function Banner({ tone = 'warn', children }) {
 // Per-marketplace block
 // ---------------------------------------------------------------------------
 
-function MarketplaceBlock({ mp, grain, compareSuppressed }) {
+function MarketplaceBlock({ mp, grain, compareSuppressed, rangeStart }) {
   const [open, setOpen] = useState(true)
   const c = mp.current
   const d = mp.delta || {}
+  // Fetch status cannot detect data pulled from the wrong seller account — the
+  // pull succeeds, so coverage reads as complete. This is the only signal.
+  const suspect = suspectDataFor(mp.marketplace_id, rangeStart)
 
   const th = { ...LABEL, fontSize: 10, textAlign: 'right', padding: '8px 10px', borderBottom: '1px solid #dfe1e6', whiteSpace: 'nowrap' }
   const thL = { ...th, textAlign: 'left' }
@@ -182,6 +207,11 @@ function MarketplaceBlock({ mp, grain, compareSuppressed }) {
         <span style={{ background: '#f0f1f3', color: '#42526e', borderRadius: 4, fontSize: 10, fontWeight: 700, padding: '2px 6px' }}>{mp.short}</span>
         <span style={{ background: '#ede9fe', color: '#5b21b6', borderRadius: 4, fontSize: 10, fontWeight: 700, padding: '2px 6px' }}>{mp.currency || 'currency unknown'}</span>
         <CoverageChip coverage={c.coverage} />
+        {suspect && (
+          <span title={suspect.reason} style={{ background: '#fce8e8', color: '#a01414', borderRadius: 4, fontSize: 10, fontWeight: 800, padding: '2px 6px' }}>
+            data unreliable
+          </span>
+        )}
         {mp.currency_conflict && (
           <span title={`Rows in this marketplace report more than one currency: ${mp.currency_conflict.join(', ')}. Revenue below mixes them.`}
             style={{ background: '#fce8e8', color: '#a01414', borderRadius: 4, fontSize: 10, fontWeight: 700, padding: '2px 6px' }}>
@@ -198,9 +228,9 @@ function MarketplaceBlock({ mp, grain, compareSuppressed }) {
         <Stat label={`Revenue (${mp.currency || '?'})`} value={fmtMoney(c.revenue, mp.currency)} delta={d.revenue} suppressed={compareSuppressed} />
         <Stat label="Sessions" value={fmtInt(c.sessions)} delta={d.sessions} suppressed={compareSuppressed} />
         <Stat label="Page views" value={fmtInt(c.page_views)} delta={d.page_views} suppressed={compareSuppressed} />
-        <Stat label="Conversion" value={fmtPct(c.conversion)} delta={d.conversion_pp} deltaKind="pp" suppressed={compareSuppressed}
+        <Stat label="Conversion" value={<Rate value={c.conversion} coverage={c.coverage} />} delta={d.conversion_pp} deltaKind="pp" suppressed={compareSuppressed}
           note="units ÷ sessions" />
-        <Stat label="Buy box" value={fmtPct(c.buy_box, 1)} delta={d.buy_box_pp} deltaKind="pp" suppressed={compareSuppressed}
+        <Stat label="Buy box" value={<Rate value={c.buy_box} coverage={c.coverage} dp={1} />} delta={d.buy_box_pp} deltaKind="pp" suppressed={compareSuppressed}
           note={c.buy_box_rows_missing ? `session-weighted · ${fmtInt(c.buy_box_rows_missing)} rows w/o buy box` : 'session-weighted'} />
       </div>
 
@@ -229,8 +259,8 @@ function MarketplaceBlock({ mp, grain, compareSuppressed }) {
                   <td style={td}>{fmtMoney(b.revenue, mp.currency)}</td>
                   <td style={td}>{fmtInt(b.sessions)}</td>
                   <td style={td}>{fmtInt(b.page_views)}</td>
-                  <td style={td}>{fmtPct(b.conversion)}</td>
-                  <td style={td}>{fmtPct(b.buy_box, 1)}</td>
+                  <td style={td}><Rate value={b.conversion} coverage={b.coverage} /></td>
+                  <td style={td}><Rate value={b.buy_box} coverage={b.coverage} dp={1} /></td>
                   {grain !== 'daily' && (
                     <td style={{ ...td, textAlign: 'right' }}><CoverageChip coverage={b.coverage} /></td>
                   )}
@@ -247,8 +277,8 @@ function MarketplaceBlock({ mp, grain, compareSuppressed }) {
                 <td style={{ ...td, fontWeight: 800 }}>{fmtMoney(c.revenue, mp.currency)}</td>
                 <td style={{ ...td, fontWeight: 800 }}>{fmtInt(c.sessions)}</td>
                 <td style={{ ...td, fontWeight: 800 }}>{fmtInt(c.page_views)}</td>
-                <td style={{ ...td, fontWeight: 800 }} title="sum(units_ordered) ÷ sum(sessions) across the whole period — not the average of the rows above">{fmtPct(c.conversion)}</td>
-                <td style={{ ...td, fontWeight: 800 }} title="session-weighted across the whole period — not the average of the rows above">{fmtPct(c.buy_box, 1)}</td>
+                <td style={{ ...td, fontWeight: 800 }} title="sum(units_ordered) ÷ sum(sessions) across the whole period — not the average of the rows above"><Rate value={c.conversion} coverage={c.coverage} /></td>
+                <td style={{ ...td, fontWeight: 800 }} title="session-weighted across the whole period — not the average of the rows above"><Rate value={c.buy_box} coverage={c.coverage} dp={1} /></td>
                 {grain !== 'daily' && <td style={td}><CoverageChip coverage={c.coverage} /></td>}
               </tr>
             </tbody>
@@ -456,13 +486,18 @@ export default function AmazonReportView() {
             </div>
           ) : (
             data.marketplaces.map(mp => (
-              <MarketplaceBlock key={mp.marketplace_id} mp={mp} grain={data.grain} compareSuppressed={compareSuppressed} />
+              <MarketplaceBlock key={mp.marketplace_id} mp={mp} grain={data.grain} compareSuppressed={compareSuppressed} rangeStart={data.range.start} />
             ))
           )}
 
           <p style={{ fontSize: 11, color: '#a5adba', fontWeight: 600, marginTop: 8, lineHeight: 1.6 }}>
             Revenue is shown in each marketplace&apos;s own currency and is deliberately not totalled across marketplaces — there is no FX table yet.
             Conversion is <code>sum(units_ordered) ÷ sum(sessions)</code> and buy box is session-weighted, both recalculated at the grain displayed rather than averaged from the per-ASIN columns.
+            <br />
+            Scope is fixed to {data.meta.scope?.length ?? 12} marketplaces; rows for any other marketplace in the table are ignored entirely.
+            {data.meta.rows_out_of_scope > 0 ? ` ${fmtInt(data.meta.rows_out_of_scope)} out-of-scope rows were discarded.` : ''}
+            <br />
+            <span title="A rate marked with a dagger covers only the days pulled so far, not the whole period.">† rate covers part of the period only.</span>
             <br />
             {fmtInt(data.meta.row_count)} source rows · generated {data.meta.generated_at?.slice(0, 19).replace('T', ' ')} UTC
           </p>

@@ -64,6 +64,23 @@ async function main() {
 
   __setJwksForTests([{ kty: 'RSA', kid: KID, use: 'sig', alg: 'RS256', n: pubJwk.n, e: pubJwk.e }])
 
+  // Block real network calls to the tenant JWKS endpoint. The "unknown kid"
+  // case below forces a refetch (loadJwks(force=true)) — on a machine with
+  // internet access that refetch previously succeeded against the real
+  // login.microsoftonline.com, evicting the injected test key and turning
+  // every later assertion in this file into a false failure. lib/apiAuth.js's
+  // loadJwks() already falls back to the cached keys when a fetch fails, so
+  // blocking the call is sufficient — it exercises that real fallback path
+  // instead of needing a second copy of the same logic here. Same fix as
+  // doddl-reports/scripts/test-api-auth.js, applied there first 2026-08-25.
+  const realFetch = global.fetch
+  global.fetch = async (url, ...rest) => {
+    if (typeof url === 'string' && url.includes('login.microsoftonline.com')) {
+      throw new Error('network blocked in tests — see comment above')
+    }
+    return realFetch(url, ...rest)
+  }
+
   console.log('\nA valid token is accepted')
   const claims = await verifyIdToken(sign({}, goodClaims()))
   ok('verifies and returns claims', claims.preferred_username === 'jon@doddl.com')
