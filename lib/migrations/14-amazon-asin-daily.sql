@@ -116,9 +116,12 @@ create table if not exists amazon_asin_daily_status (
   marketplace_id text        not null,
   report_date    date        not null,
   status         text        not null,
-  reason         text,       -- 'gap': 'http_400' | 'rate_limited_exhausted' (no longer 'pre_retention' as a
-                              -- skip reason — retention no longer blocks the call, only interprets an empty
-                              -- result; see run comment above _fetch_sales_traffic_day)
+  reason         text,       -- 'gap': 'http_400' | 'rate_limited_exhausted' | 'pre_retention' (reinstated as a
+                              -- skip reason 2026-08-25 — _SALES_TRAFFIC_RETENTION_DAYS is now CONFIRMED
+                              -- (exact 730/731-day boundary, 151 cases, zero exceptions across 3
+                              -- marketplaces), so a date past it is skipped before calling Amazon;
+                              -- count_toward_attempts=False, not a failure. See run comment above
+                              -- _fetch_sales_traffic_day)
                               -- 'parse_failed': 'missing_salesAndTrafficByAsin_key' |
                               --   'salesAndTrafficByAsin_not_list' | 'zero_rows_extracted_all_missing_child_asin' |
                               --   'upsert_failed' (added 2026-08-19 — the write to amazon_asin_daily itself

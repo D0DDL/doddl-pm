@@ -859,28 +859,33 @@ _REPORT_POLL_MAX_DELAY_S = 120.0
 _REPORT_POLL_MAX_WAIT_S = 30 * 60   # give up after 30 minutes of IN_QUEUE / IN_PROGRESS
 
 # ---------------------------------------------------------------------------
-# Configurable, UNVERIFIED date-range/retention limits — moved here (top of
-# the Reports API section) so they're easy to find and edit in one place.
+# Configurable date-range/retention limits — moved here (top of the Reports
+# API section) so they're easy to find and edit in one place.
 #
-# Neither number was confirmed this session. developer-docs.amazon.com
-# redirected to a non-resolving host ("developer-docs.amazon", no TLD) for
-# every path tried; a GitHub docs mirror and the Wayback Machine were also
-# both unreachable; there were no live Amazon credentials to test against
-# either (Key Vault access is broken locally — WON'T FIX, see
-# reports/scheduler-deploy-prep.md). Full detail in reports/amazon-reports-api.md.
+# _ORDER_ITEMS_CHUNK_DAYS is a STARTING POINT, not a hard wall, and remains
+# UNVERIFIED (developer-docs.amazon.com and a GitHub docs mirror were both
+# unreachable this session, no live credentials to test against either — see
+# reports/amazon-reports-api.md): run_order_items() halves a chunk and retries
+# if Amazon rejects it as too wide (_create_report_adaptive below), so the
+# real limit is discovered at runtime instead of assumed.
 #
-# Both are STARTING POINTS, not hard walls:
-#   - _ORDER_ITEMS_CHUNK_DAYS: run_order_items() halves a chunk and retries if
-#     Amazon rejects it as too wide (_create_report_adaptive below), so the
-#     real limit is discovered at runtime instead of assumed.
-#   - _SALES_TRAFFIC_RETENTION_DAYS: only used to flag an empty result as a
-#     "possible retention limit" in the log — never to block a request.
+# _SALES_TRAFFIC_RETENTION_DAYS is CONFIRMED (2026-08-25), not a guess.
+# Evidence: amazon_asin_daily_status rows with status='parse_failed',
+# reason='missing_salesAndTrafficByAsin_key' were cross-checked against their
+# raw api_raw response — every one carries processingStatus=CANCELLED and an
+# empty report body, never a differently-shaped payload. Checked the exact
+# day-gap (api_raw.received_at date minus the requested report_date) across
+# UK, US and Poland independently: day 730 back always succeeds, day 731
+# always comes back CANCELLED, no drift between marketplaces, no exceptions
+# across 151 distinct (marketplace, day) cases. This is a hard wall on
+# Amazon's side, not ours — see _fetch_sales_traffic_day, which now skips a
+# date past this wall before calling Amazon at all.
 # ---------------------------------------------------------------------------
 _ORDER_ITEMS_CHUNK_DAYS = 30        # UNVERIFIED — commonly cited for BY_ORDER_DATE flat-file reports
-_SALES_TRAFFIC_RETENTION_DAYS = 730 # UNVERIFIED — used only to flag an empty result as a possible
-                                     # retention hit in the log; NEVER blocks a request (fixed 2026-08-17
-                                     # rev 4 — it used to skip the call entirely, which silently truncated
-                                     # a backfill if this number was wrong).
+_SALES_TRAFFIC_RETENTION_DAYS = 730 # CONFIRMED 2026-08-25 — see header comment above. Dates past this
+                                     # wall are skipped before calling Amazon (see
+                                     # _fetch_sales_traffic_day) rather than wasting a createReport call
+                                     # on a request that cannot succeed.
 
 _MAX_ATTEMPTS = 3
 # Sales & traffic backfill: a day marked 'parse_failed', or 'gap' for a REAL
@@ -1546,13 +1551,16 @@ def run_order_items(start_date: date, end_date: date) -> None:
 # lib/migrations/14-amazon-asin-daily.sql — NOT YET APPLIED, see
 # reports/amazon-reports-api.md.
 #
-# Retention (_SALES_TRAFFIC_RETENTION_DAYS) is used ONLY to interpret an empty
-# result after the fact ("possible retention limit") — fixed 2026-08-17 rev 4.
-# It used to skip the request entirely for old dates, which meant a wrong
-# constant would silently truncate a backfill and leave gap rows that looked
-# like real findings instead of an untested assumption. Every day is always
-# attempted now; Amazon's own response is the only authority on whether a date
-# is actually out of range.
+# Retention (_SALES_TRAFFIC_RETENTION_DAYS) skips the request entirely for a
+# date past the wall — reinstated 2026-08-25 now that the constant is
+# CONFIRMED (see the header comment above it), reversing the 2026-08-17 rev 4
+# decision to always attempt the call regardless. That decision was correct
+# at the time: the number was unverified, so a wrong constant would have
+# silently truncated a backfill. It no longer applies — every one of 151
+# checked cases past this exact wall came back CANCELLED with an empty body,
+# zero exceptions across three marketplaces — so skipping is now the correct
+# behaviour, not a risk. Marked status='gap', reason='pre_retention',
+# count_toward_attempts=False (not a failure, nothing to retry).
 #
 # Marketplace scope: iterate ACTIVE_MARKETPLACES, not every configured
 # marketplace — doddl sells in a subset of the 19 configured. Two entry
@@ -1638,9 +1646,10 @@ def _mark_fetched(marketplace_id: str, d: date) -> None:
 
 def _mark_gap(marketplace_id: str, d: date, reason: str, *, count_toward_attempts: bool = True) -> None:
     """status='gap' — report succeeded (or was rejected) but there is nothing
-    to parse: pre-retention (no longer used to SKIP the call, only reachable
-    now via an empty result near the cutoff — see run comment above), a 400,
-    or exhausted rate-limit retries.
+    to parse: pre-retention (skips the call entirely, reinstated 2026-08-25
+    now that _SALES_TRAFFIC_RETENTION_DAYS is confirmed — see the module
+    comment above and the header comment on the constant), a 400, or
+    exhausted rate-limit retries.
 
     count_toward_attempts (fixed 2026-08-19 — was unconditional before this):
     a 429 is transient, not a defect in that day's data — with the measured
@@ -1796,8 +1805,12 @@ def _fetch_sales_traffic_day(
     marketplace. dataStartTime == dataEndTime == d, always. No
     _create_report_adaptive: there is nothing to halve, width is always 1.
 
-    ALWAYS attempts the request — _SALES_TRAFFIC_RETENTION_DAYS never blocks a
-    call, only interprets an empty result afterward (fixed 2026-08-17 rev 4).
+    Skips the request entirely for a date past _SALES_TRAFFIC_RETENTION_DAYS
+    — reinstated 2026-08-25 now that the constant is confirmed (see its
+    header comment). Amazon cancels the report job for these regardless of
+    how many times it's asked, so calling is a wasted createReport slot
+    (~1/60s budget) on every remaining marketplace as the backfill keeps
+    working backward.
 
     Returns (row_count, no_child_asin_skipped_count). row_count is 0 on any
     gap/parse failure. Writes to amazon_asin_daily / amazon_asin_daily_status,
@@ -1808,7 +1821,14 @@ def _fetch_sales_traffic_day(
     callers must catch this.
     """
     cutoff = date.today() - timedelta(days=_SALES_TRAFFIC_RETENTION_DAYS)
-    near_or_past_cutoff = d < cutoff   # interpretation only — never gates the call, see module comment above
+    if d < cutoff:
+        logger.info(
+            "amazon_sp: sales_traffic marketplace=%s (%s) date=%s: past the confirmed "
+            "%d-day retention wall (cutoff %s) — skipping without calling Amazon",
+            marketplace_id, marketplace_name, d, _SALES_TRAFFIC_RETENTION_DAYS, cutoff,
+        )
+        _mark_gap(marketplace_id, d, reason="pre_retention", count_toward_attempts=False)
+        return 0, 0
 
     day_start_str = d.strftime("%Y-%m-%dT00:00:00Z")
     day_end_str = d.strftime("%Y-%m-%dT23:59:59Z")
@@ -1893,19 +1913,13 @@ def _fetch_sales_traffic_day(
 
     if not by_asin_raw:
         # Genuinely empty list -> a real "no ASIN entries" result, not a parse
-        # failure. status='ok' either way; only the log line differs.
-        if near_or_past_cutoff:
-            logger.warning(
-                "amazon_sp: sales_traffic marketplace=%s (%s) date=%s: empty, and the date is at/before "
-                "the assumed (UNVERIFIED) retention cutoff %s — possible retention limit, not necessarily "
-                "a genuine zero",
-                marketplace_id, marketplace_name, d, cutoff,
-            )
-        else:
-            logger.info(
-                "amazon_sp: sales_traffic marketplace=%s (%s) date=%s: empty (no sales that day)",
-                marketplace_id, marketplace_name, d,
-            )
+        # failure. status='ok'. Never a retention-boundary artefact here — any
+        # date past the retention wall was already skipped above without
+        # calling Amazon at all, so by this point d >= cutoff is guaranteed.
+        logger.info(
+            "amazon_sp: sales_traffic marketplace=%s (%s) date=%s: empty (no sales that day)",
+            marketplace_id, marketplace_name, d,
+        )
         _mark_fetched(marketplace_id, d)
         return 0, 0
 

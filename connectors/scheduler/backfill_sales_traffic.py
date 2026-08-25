@@ -6,7 +6,12 @@ Run as:
     python -m connectors.scheduler.backfill_sales_traffic
 
 Required environment variables:
-    BACKFILL_START          YYYY-MM-DD, required, no default
+    BACKFILL_START          YYYY-MM-DD, required, no default. Clamped at
+                             runtime to the confirmed 730-day retention floor
+                             (today - 730 days) if given an earlier date —
+                             Amazon cancels report requests past that wall,
+                             see _SALES_TRAFFIC_RETENTION_DAYS in
+                             connectors/scheduler/jobs/amazon_sp_api.py.
     BACKFILL_END            YYYY-MM-DD, required, no default (inclusive)
 Optional:
     BACKFILL_MARKETPLACES   comma-separated marketplace_id list; defaults to
@@ -72,7 +77,7 @@ import threading
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 import httpx
 
@@ -82,6 +87,7 @@ from connectors.scheduler.jobs.amazon_sp_api import (
     ACTIVE_MARKETPLACES,
     AccountSkipped,
     ReportsRateLimiters,
+    _SALES_TRAFFIC_RETENTION_DAYS,
     _TokenHolder,
     _daterange,
     _fetch_sales_traffic_day,
@@ -241,6 +247,31 @@ def main() -> None:
     end = _require_date_env("BACKFILL_END")
     if start > end:
         raise SystemExit(f"BACKFILL_START ({start}) is after BACKFILL_END ({end})")
+
+    # Clamp at runtime rather than requiring the operator to compute the floor
+    # by hand — the floor moves with today's date on every run anyway.
+    # _SALES_TRAFFIC_RETENTION_DAYS is CONFIRMED (2026-08-25, see its header
+    # comment in amazon_sp_api.py): Amazon cancels GET_SALES_AND_TRAFFIC_REPORT
+    # past this wall, every time, no exceptions found. _fetch_sales_traffic_day
+    # already skips an individual day past the wall without calling Amazon,
+    # but clamping here too means a long historical BACKFILL_START doesn't
+    # spend hours walking through days that are all going to be skipped
+    # anyway — the plan log below reports the true, already-clamped range.
+    retention_floor = date.today() - timedelta(days=_SALES_TRAFFIC_RETENTION_DAYS)
+    if start < retention_floor:
+        logger.warning(
+            "amazon_sp_backfill: BACKFILL_START %s is before the %d-day retention floor "
+            "(%s) — Amazon cancels report requests past this wall. Clamping BACKFILL_START "
+            "to %s.",
+            start, _SALES_TRAFFIC_RETENTION_DAYS, retention_floor, retention_floor,
+        )
+        start = retention_floor
+    if start > end:
+        raise SystemExit(
+            f"Requested range ({end} back to the original BACKFILL_START) is entirely "
+            f"before the {_SALES_TRAFFIC_RETENTION_DAYS}-day retention floor ({retention_floor}) "
+            f"— nothing in this range is fetchable."
+        )
 
     catalog = _all_marketplace_ids()
     marketplace_ids = _marketplaces_from_env(catalog)
