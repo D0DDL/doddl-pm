@@ -87,27 +87,54 @@ LWA_TOKEN_URL = "https://api.amazon.com/auth/o2/token"
 # ---------------------------------------------------------------------------
 
 ACCOUNTS: dict[str, dict] = {
-    # ── EU + Middle East ───────────────────────────────────────────────────
-    # One unified EU seller account covers all 13 markets.
+    # ── UK + Middle East ─────────────────────────────────────────────────────
+    # Corrected 2026-08-25: this used to claim ONE unified EU account (seller
+    # A95LVHANDHOSF) covered all 13 markets below. It doesn't — DE/FR/NL/PL/
+    # BE/IT/ES/IE/SE actually belong to a second, separate seller account
+    # (Doddl Europe, A1TR5EU9D7ZMRC — see "EU-2" below) that this app's token
+    # was never authorised against. The old token is only valid for UK.
+    # Evidence: run_sales_traffic_backfill returned status='ok' with zero
+    # rows for those 9 markets across the entire backfilled range — a valid
+    # token against the wrong seller account produces exactly that signature
+    # (200 OK, no data), indistinguishable from a real zero without knowing
+    # the account structure. TR/AE/SA left here provisionally — which seller
+    # account they actually belong to is NOT yet confirmed either, so they're
+    # paused in ACTIVE_MARKETPLACES below rather than assumed.
     "EU": {
         "endpoint": "https://sellingpartnerapi-eu.amazon.com",
         "refresh_token_secret": "amazon-sp-api-refresh-token-eu",
         "refresh_token_fallback": "amazon-sp-api-refresh-token",  # legacy compat
         "marketplaces": [
             ("A1F83G8C2ARO7P", "UK", "A95LVHANDHOSF"),
-            ("A1PA6795UKMFR9", "DE", "A95LVHANDHOSF"),
-            ("A13V1IB3VIYZZH", "FR", "A95LVHANDHOSF"),
-            ("APJ6JRA9NG5V4",  "IT", "A95LVHANDHOSF"),
-            ("A1RKKUPIHCS9HS", "ES", "A95LVHANDHOSF"),
-            ("A1805IZSGTT6HS", "NL", "A95LVHANDHOSF"),
-            ("AMEN7PMS3EDWL",  "BE", "A95LVHANDHOSF"),
-            ("A1C3SOZRARQ6R3", "PL", "A95LVHANDHOSF"),
-            ("A2NODRKZP88ZB9", "SE", "A95LVHANDHOSF"),
-            ("A33AVAJ2PDY3EV", "TR", "A95LVHANDHOSF"),
-            ("A28R8C7NBKEWEA", "IE", "A95LVHANDHOSF"),
+            ("A33AVAJ2PDY3EV", "TR", "A95LVHANDHOSF"),  # unconfirmed account — see comment above
             # Middle East — uses EU endpoint
-            ("A2VIGQ35RCS4UG", "AE", "A95LVHANDHOSF"),
-            ("A17E79C6D8DWNP", "SA", "A95LVHANDHOSF"),
+            ("A2VIGQ35RCS4UG", "AE", "A95LVHANDHOSF"),  # unconfirmed account — see comment above
+            ("A17E79C6D8DWNP", "SA", "A95LVHANDHOSF"),  # unconfirmed account — see comment above
+        ],
+    },
+
+    # ── Europe (Doddl Europe) ────────────────────────────────────────────────
+    # Added 2026-08-25. Seller A1TR5EU9D7ZMRC — a distinct Amazon seller
+    # identity from the UK account above, confirmed by Jon from the account
+    # structure itself (not derivable from our data — a wrong-account token
+    # still returns 200 OK with zero rows, see the EU comment above).
+    # refresh_token_secret does not exist in Key Vault yet: this account is
+    # inert (skipped, same as FE-JP before its credentials existed) until
+    # scripts/amazon_sp_oauth.py --account eu-2 is run against the Doddl
+    # Europe Seller Central login.
+    "EU-2": {
+        "endpoint": "https://sellingpartnerapi-eu.amazon.com",
+        "refresh_token_secret": "amazon-sp-api-refresh-token-eu-2",
+        "marketplaces": [
+            ("A1PA6795UKMFR9", "DE", "A1TR5EU9D7ZMRC"),
+            ("A13V1IB3VIYZZH", "FR", "A1TR5EU9D7ZMRC"),
+            ("APJ6JRA9NG5V4",  "IT", "A1TR5EU9D7ZMRC"),
+            ("A1RKKUPIHCS9HS", "ES", "A1TR5EU9D7ZMRC"),
+            ("A1805IZSGTT6HS", "NL", "A1TR5EU9D7ZMRC"),
+            ("AMEN7PMS3EDWL",  "BE", "A1TR5EU9D7ZMRC"),
+            ("A1C3SOZRARQ6R3", "PL", "A1TR5EU9D7ZMRC"),
+            ("A2NODRKZP88ZB9", "SE", "A1TR5EU9D7ZMRC"),
+            ("A28R8C7NBKEWEA", "IE", "A1TR5EU9D7ZMRC"),
         ],
     },
 
@@ -909,10 +936,20 @@ ACTIVE_MARKETPLACES: set[str] = {
     # Japan dropped 2026-08-19 (out of scope, not just untested) — the FE-JP
     # account has no working credentials (amazon-sp-api-refresh-token-fe-jp and
     # its fallback amazon-sp-api-refresh-token-fe both 404 in Key Vault,
-    # confirmed live). Not a rate-limit finding, a configuration gap. Final
-    # scope: 15 marketplaces — 13 EU, 2 NA.
+    # confirmed live). Not a rate-limit finding, a configuration gap.
+    #
+    # TR, AE and SA paused 2026-08-25 (reduced 15 -> 12) — same reasoning as
+    # DE/FR/NL/PL/BE/IT/ES/IE/SE being moved to ACCOUNTS["EU-2"]: which real
+    # seller account these three belong to is NOT confirmed. Leaving them
+    # active under the UK token would risk repeating exactly the silent
+    # wrong-account-zero-rows problem just found for the other nine — a
+    # valid token against the wrong seller returns 200 OK with no data,
+    # indistinguishable from a genuine zero without knowing the account
+    # structure. Re-enable once confirmed, same one-line pattern as JP above.
+    # Final scope: 12 marketplaces — UK + 9 EU-2 (pending their new token,
+    # see ACCOUNTS["EU-2"]), 2 NA.
 
-    # EU (13) — all included
+    # EU (10 of 13) — TR, AE, SA paused pending account confirmation
     "A1F83G8C2ARO7P",  # UK
     "A1PA6795UKMFR9",  # DE
     "A13V1IB3VIYZZH",  # FR
@@ -922,14 +959,18 @@ ACTIVE_MARKETPLACES: set[str] = {
     "AMEN7PMS3EDWL",   # BE
     "A1C3SOZRARQ6R3",  # PL
     "A2NODRKZP88ZB9",  # SE
-    "A33AVAJ2PDY3EV",  # TR
     "A28R8C7NBKEWEA",  # IE
-    "A2VIGQ35RCS4UG",  # AE
-    "A17E79C6D8DWNP",  # SA
 
     # NA (2 of 3) — MX excluded
     "ATVPDKIKX0DER",   # US
     "A2EUQ1WTGCTBG2",  # CA
+
+    # paused 2026-08-25 — re-enable by uncommenting once it's confirmed which
+    # seller account (UK A95LVHANDHOSF, Doddl Europe A1TR5EU9D7ZMRC, or a
+    # third account) actually holds these
+    # "A33AVAJ2PDY3EV",  # TR
+    # "A2VIGQ35RCS4UG",  # AE
+    # "A17E79C6D8DWNP",  # SA
 
     # out of scope 2026-08-19 — re-enable by uncommenting, once
     # amazon-sp-api-refresh-token-fe-jp exists in Key Vault

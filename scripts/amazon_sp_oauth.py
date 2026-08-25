@@ -2,16 +2,22 @@
 Amazon SP-API OAuth helper — generate and store LWA refresh tokens.
 
 Run this once per seller account to produce the refresh token that the
-connector needs. Each account (EU, NA, NA-2, FE-JP, FE-AU, FE-SG) has
+connector needs. Each account (EU, EU-2, NA, FE-JP, FE-AU, FE-SG) has
 its own token because each is a separate Amazon seller identity.
 
 Usage:
     python scripts/amazon_sp_oauth.py --account eu
+    python scripts/amazon_sp_oauth.py --account eu-2
     python scripts/amazon_sp_oauth.py --account na
-    python scripts/amazon_sp_oauth.py --account na-2
     python scripts/amazon_sp_oauth.py --account fe-jp
     python scripts/amazon_sp_oauth.py --account fe-au
     python scripts/amazon_sp_oauth.py --account fe-sg
+
+    Add --print-only to any of the above to skip the Key Vault write and
+    print the refresh token to stdout instead, for adding it via the portal
+    by hand — added 2026-08-25 after the SDK write started failing with
+    RemoteDisconnected on the write path specifically (read access already
+    confirmed working). Not a permanent replacement for the normal path.
 
 What this script does:
   1. Reads your LWA client_id and client_secret from Key Vault.
@@ -20,7 +26,8 @@ What this script does:
   3. After you click Confirm, Amazon redirects your browser to a URL that
      contains ?spapi_oauth_code=...  Paste that full URL here.
   4. Exchanges the code for a refresh token via the LWA token endpoint.
-  5. Stores the refresh token in Key Vault under the correct secret name.
+  5. Stores the refresh token in Key Vault under the correct secret name —
+     or, with --print-only, prints it instead and skips the write.
 
 Pre-requisites:
   - AZURE_KEYVAULT_URI must point to doddl-kv-prod.
@@ -52,6 +59,7 @@ APP_ID = "amzn1.sp.solution.9b36ab59-7298-4c1c-899e-598727e325e5"
 # Seller Central authorization URLs per region
 SELLERCENTRAL_URLS = {
     "eu":    "https://sellercentral.amazon.co.uk",
+    "eu-2":  "https://sellercentral.amazon.co.uk",  # same region login front-end — confirm at login time
     "na":    "https://sellercentral.amazon.com",   # covers US + CA + MX (seller A2J3OJ1QMMOAR5)
     "fe-jp": "https://sellercentral.amazon.co.jp",
     "fe-au": "https://sellercentral.amazon.com.au",
@@ -61,6 +69,7 @@ SELLERCENTRAL_URLS = {
 # Key Vault secret name that will be written for each account
 SECRET_NAMES = {
     "eu":    "amazon-sp-api-refresh-token-eu",
+    "eu-2":  "amazon-sp-api-refresh-token-eu-2",   # Doddl Europe — separate seller account, added 2026-08-25
     "na":    "amazon-sp-api-refresh-token-na-2",   # US/CA/MX share one seller account
     "fe-jp": "amazon-sp-api-refresh-token-fe-jp",
     "fe-au": "amazon-sp-api-refresh-token-fe-au",
@@ -69,7 +78,13 @@ SECRET_NAMES = {
 
 # Which Seller Central account to log in to
 ACCOUNT_NOTES = {
-    "eu":    "Log in as your EU/UK seller account (seller A95LVHANDHOSF, covers UK/DE/FR/IT/ES/NL/BE/PL/SE/TR/IE/AE/SA)",
+    # Corrected 2026-08-25 — this used to claim A95LVHANDHOSF covers all 13 EU
+    # markets. It doesn't: DE/FR/NL/PL/BE/IT/ES/IE/SE actually belong to a
+    # second seller (A1TR5EU9D7ZMRC, "eu-2" below) that this app was never
+    # authorised against. The old wording is exactly the wrong assumption
+    # that caused those marketplaces to silently return zero real rows.
+    "eu":    "Log in as your UK seller account (seller A95LVHANDHOSF, UK only)",
+    "eu-2":  "Log in as Doddl Europe (seller A1TR5EU9D7ZMRC, covers DE/FR/NL/PL/BE/IT/ES/IE/SE)",
     "na":    "Log in as your NA seller account (seller A2J3OJ1QMMOAR5, covers US/CA/MX)",
     "fe-jp": "Log in as your Japan seller account (seller A3HUZ3EE07Z6DX)",
     "fe-au": "Log in as your Australia seller account (seller A1LAIASXD1QDDB)",
@@ -92,6 +107,15 @@ def main() -> None:
         required=True,
         choices=list(SELLERCENTRAL_URLS.keys()),
         help="Which seller account to authorise",
+    )
+    parser.add_argument(
+        "--print-only",
+        action="store_true",
+        help="Skip the Key Vault write and print the refresh token to stdout instead "
+             "(added 2026-08-25 — the SDK write was failing with RemoteDisconnected on "
+             "the write path specifically, not a permissions issue, so this is a "
+             "workaround for adding the secret manually via the portal, not a "
+             "permanent alternative).",
     )
     args = parser.parse_args()
     account = args.account.lower()
@@ -195,8 +219,24 @@ def main() -> None:
 
     print("  Refresh token obtained.")
 
-    # ── Store in Key Vault ──────────────────────────────────────────────────
     secret_name = SECRET_NAMES[account]
+
+    if args.print_only:
+        # Skips the Key Vault write entirely — added 2026-08-25 because the
+        # SDK write was failing with RemoteDisconnected on the write path
+        # specifically (read-path access already confirmed working via the
+        # client_id/client_secret fetch above), not a permissions problem.
+        print(f"\nSTEP 4 — skipped (--print-only). Add this secret via the portal instead:")
+        print(f"  Vault:       {vault_uri}")
+        print(f"  Secret name: {secret_name}")
+        print(f"\n{'─'*60}")
+        print(refresh_token)
+        print(f"{'─'*60}\n")
+        print(f"SUCCESS — token obtained for {account.upper()}, not yet stored.")
+        print(f"  Add it as '{secret_name}' in the portal, then the connector will use it.")
+        return
+
+    # ── Store in Key Vault ──────────────────────────────────────────────────
     print(f"\nSTEP 4 — Storing refresh token in Key Vault as '{secret_name}'...")
 
     from azure.keyvault.secrets import SecretClient
