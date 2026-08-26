@@ -946,19 +946,24 @@ ACTIVE_MARKETPLACES: set[str] = {
     # valid token against the wrong seller returns 200 OK with no data,
     # indistinguishable from a genuine zero without knowing the account
     # structure. Re-enable once confirmed, same one-line pattern as JP above.
-    # Final scope: 12 marketplaces — UK + 9 EU-2 (pending their new token,
-    # see ACCOUNTS["EU-2"]), 2 NA.
+    #
+    # BE, PL and SE dropped 2026-08-26 per Jon (reduced 12 -> 9) — out of
+    # scope entirely, not paused pending confirmation like TR/AE/SA below.
+    # doddl-reports' lib/marketplaces.js ALLOWED_MARKETPLACES dropped the same
+    # three the same day — both codebases must agree or the reports drift from
+    # the connector again. PL already has rows in amazon_asin_daily from
+    # before this change; left in place, just no longer fetched or displayed.
+    # Final scope: 9 marketplaces — UK + 6 EU-2 (pending their new token, see
+    # ACCOUNTS["EU-2"]), 2 NA.
 
-    # EU (10 of 13) — TR, AE, SA paused pending account confirmation
+    # EU (7 of 13) — TR, AE, SA paused pending account confirmation;
+    # BE, PL, SE dropped entirely 2026-08-26
     "A1F83G8C2ARO7P",  # UK
     "A1PA6795UKMFR9",  # DE
     "A13V1IB3VIYZZH",  # FR
     "APJ6JRA9NG5V4",   # IT
     "A1RKKUPIHCS9HS",  # ES
     "A1805IZSGTT6HS",  # NL
-    "AMEN7PMS3EDWL",   # BE
-    "A1C3SOZRARQ6R3",  # PL
-    "A2NODRKZP88ZB9",  # SE
     "A28R8C7NBKEWEA",  # IE
 
     # NA (2 of 3) — MX excluded
@@ -971,6 +976,14 @@ ACTIVE_MARKETPLACES: set[str] = {
     # "A33AVAJ2PDY3EV",  # TR
     # "A2VIGQ35RCS4UG",  # AE
     # "A17E79C6D8DWNP",  # SA
+
+    # dropped 2026-08-26 per Jon — out of scope entirely, not paused. IDs
+    # taken from ACCOUNTS["EU-2"] above, which is untouched — re-enable by
+    # uncommenting here, same one-line pattern as TR/AE/SA above, if ever
+    # brought back into scope.
+    # "AMEN7PMS3EDWL",   # BE
+    # "A1C3SOZRARQ6R3",  # PL
+    # "A2NODRKZP88ZB9",  # SE
 
     # out of scope 2026-08-19 — re-enable by uncommenting, once
     # amazon-sp-api-refresh-token-fe-jp exists in Key Vault
