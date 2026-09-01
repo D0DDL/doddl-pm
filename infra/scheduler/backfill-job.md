@@ -3,7 +3,16 @@
 **For:** Jon — one operator, Azure Cloud Shell
 **Where:** <https://shell.azure.com>
 **Date written:** 2026-08-19
-**Run this:** once per backfill range you want to run (the job is reusable — re-trigger with different `BACKFILL_*` env vars for a different range)
+**Run this:** once per backfill range you want to run (the job is reusable — re-trigger with a different `BACKFILL_START` for a different range; `BACKFILL_END` now defaults to yesterday and is normally left unset)
+
+> **Update 2026-09-01:** `BACKFILL_END` defaults to yesterday in code — Section D
+> no longer sets it. Active scope is now **9 marketplaces** (7 EU + 2 NA), not the
+> 15 the measured findings below were written against (BE/PL/SE/TR/AE/SA/JP/MX all
+> dropped or paused since — see `ACTIVE_MARKETPLACES` in `amazon_sp_api.py`). The
+> per-pair timing and rate-limit findings still hold; only the pair *count* is
+> lower. To fill the current gap, run Section D as written with `BACKFILL_START`
+> at the last known-good date (`2026-05-01` is always safe — earlier `ok` days
+> skip fast).
 
 > This runs `connectors/scheduler/backfill_sales_traffic.py`
 > (`python -m connectors.scheduler.backfill_sales_traffic`) as a standalone
@@ -23,7 +32,7 @@
 - EU and NA run as two parallel threads inside the one job replica — confirmed independent rate-limit buckets (Test 1b).
 - **Deliberate pacing (default 65s between `createReport` calls) does NOT reliably avoid 429s** — measured 5/12 (42%) hit rate at a strict 65s gap (Test 1a). The job survives this via the same retry-with-backoff already proven in production (`_fetch_sales_traffic_day`), not via the pacing interval. Don't expect a faster wall-clock time by lowering `BACKFILL_PACE_SECONDS` — the evidence doesn't support that.
 - **Revised time estimate: EU alone (1,404 of the 1,620 pairs) at the already-observed real-world ~3.7 min/pair ≈ ~87 hours (~3.6 days).** NA's 216 pairs run in parallel alongside EU and don't add to this, since wall time is `max(EU, NA)`, not the sum. This is well past the ~29 hours a naive 65s-floor calculation would suggest — flagged here so the timeout setting below isn't a surprise.
-- **It is idempotent and resumable at any point**, including if it hits the job's own `--replica-timeout`. If that happens, it is not a failure — just start a new execution with the same `BACKFILL_START`/`BACKFILL_END`; `resume=True` picks up exactly where it left off (already proven locally, three times, across kills and one real crash).
+- **It is idempotent and resumable at any point**, including if it hits the job's own `--replica-timeout`. If that happens, it is not a failure — just start a new execution with the same `BACKFILL_START` (and the same default `BACKFILL_END`); `resume=True` picks up exactly where it left off (already proven locally, three times, across kills and one real crash).
 
 **A real prerequisite this runbook assumes and does not itself perform:** the image at `doddlacr.azurecr.io/doddl-scheduler:latest` must actually contain `connectors/scheduler/backfill_sales_traffic.py`. That file was written and tested locally this session but has **not** been committed, pushed, or built into any image. Section A below rebuilds the image from the current `staging` checkout before creating the job, using the same `az acr build` mechanism as the original scheduler bootstrap (`infra/scheduler/bootstrap-corrected.md` Section C5) — so the file needs to be committed and pushed to `staging` (or otherwise present in whatever you check out in Cloud Shell) before you run Section A, or the build won't include it.
 
@@ -141,14 +150,14 @@ containers:
     value: "https://doddl-kv-prod.vault.azure.net/"
   - name: BACKFILL_START
     value: "2026-05-01"
-  - name: BACKFILL_END
-    value: "2026-08-16"
 EOF
 ```
 
-**What this does:** Starts one execution with `BACKFILL_START`/`BACKFILL_END` overridden for this run — per-execution overrides replace the whole template for that execution only (per Microsoft's docs: "the job's entire template configuration is replaced," which is why `AZURE_KEYVAULT_URI`, image, command, and resources are repeated here even though they're already on the job definition).
+**What this does:** Starts one execution with `BACKFILL_START` overridden for this run — per-execution overrides replace the whole template for that execution only (per Microsoft's docs: "the job's entire template configuration is replaced," which is why `AZURE_KEYVAULT_URI`, image, command, and resources are repeated here even though they're already on the job definition).
 
-`BACKFILL_MARKETPLACES` is deliberately omitted — defaults to `ACTIVE_MARKETPLACES` (all 15). To backfill a subset instead, add e.g.:
+**`BACKFILL_END` is deliberately not set.** It defaults to yesterday (`today - 1 day`) in `backfill_sales_traffic.py`. Amazon's sales/traffic data for a day isn't final until that marketplace's day has closed, so yesterday is the furthest forward worth requesting, and leaving it unset means the range always reaches up to yesterday instead of stopping at a date someone typed once. An earlier version of this runbook pinned `BACKFILL_END=2026-08-16`; that value went stale and silently capped the backfill while nightly data had also stopped landing — hence the default. Only set `BACKFILL_END` to reproduce a historical run or to deliberately stop short of yesterday. The run is idempotent and keyed by `(marketplace_id, date)`, so re-triggering with the same `BACKFILL_START` and the (moving) default end just fills whatever days have appeared since — already-`ok` days are skipped fast.
+
+`BACKFILL_MARKETPLACES` is deliberately omitted — defaults to `ACTIVE_MARKETPLACES` (currently 9). To backfill a subset instead, add e.g.:
 ```yaml
   - name: BACKFILL_MARKETPLACES
     value: "A1F83G8C2ARO7P,A1PA6795UKMFR9"
@@ -185,7 +194,7 @@ If that command isn't available in your CLI version, use the portal instead: **p
 
 | What you see | What it means | Do |
 |---|---|---|
-| Execution status `Failed` almost immediately, no `PLAN:` log line | `BACKFILL_START`/`BACKFILL_END` missing or malformed, or `BACKFILL_MARKETPLACES` contains an unknown marketplace_id | The orchestrator calls `SystemExit` with a specific message for both — read the log, fix the YAML in Section D, re-run |
+| Execution status `Failed` almost immediately, no `PLAN:` log line | `BACKFILL_START` missing, `BACKFILL_START`/`BACKFILL_END` malformed, or `BACKFILL_MARKETPLACES` contains an unknown marketplace_id (`BACKFILL_END` unset is fine — it defaults to yesterday) | The orchestrator calls `SystemExit` with a specific message for each — read the log, fix the YAML in Section D, re-run |
 | `amazon_sp_backfill: account=... — no token obtainable, skipping this account entirely` | That account's refresh token secret is missing/wrong in Key Vault | Same as the FE-JP finding this session — check the secret exists before assuming it's a job-config problem |
 | Execution status `Failed`/`Stopped` after running for a long time, no Python traceback in the logs | Hit `--replica-timeout` (86400s) | **Not a failure to fix — expected for the full range.** Re-run Section D unchanged; resume picks up where it left off |
 | A Python traceback in the logs | An actual unhandled exception — the known ones (bad upsert values, AccountSkipped) are already caught inside `_fetch_sales_traffic_day`/this orchestrator, so a traceback here is a *new* failure mode, not one already covered | Read the traceback, it's the real cause — don't assume it's the timeout |

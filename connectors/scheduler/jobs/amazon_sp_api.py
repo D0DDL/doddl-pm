@@ -2030,8 +2030,9 @@ def run_sales_traffic_nightly() -> None:
     the top of the Reports API section) rather than silently doing nothing or
     falling back to all 19 configured marketplaces.
 
-    Not registered in scheduler.py. Call directly, e.g. from a one-off script
-    or the dry-run CLI at the bottom of this file.
+    Registered in scheduler.py as the "amazon-sales-traffic-nightly" cron job
+    (daily 04:30 Europe/London). Can also be called directly, e.g. from a
+    one-off script or the dry-run CLI at the bottom of this file.
     """
     if not ACTIVE_MARKETPLACES:
         logger.error(

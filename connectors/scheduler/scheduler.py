@@ -259,6 +259,28 @@ def register_jobs(scheduler: BlockingScheduler) -> None:
         coalesce=True,
     )
 
+    # ── Amazon SP-API sales & traffic — yesterday's ASIN sales/traffic data
+    #    (daily 04:30 Europe/London, after google-analytics-sync at 04:00) ──────
+    # Iterates all 9 ACTIVE_MARKETPLACES at ~1 report/minute plus 429 backoff,
+    # so a single run takes 20-30 minutes — hence the slot after GA4 rather than
+    # on the 30-minute stagger with the others.
+    # Pulls YESTERDAY ONLY. Amazon's sales/traffic data for a given day isn't
+    # final until that marketplace's day has closed, so filling anything earlier
+    # is the backfill orchestrator's job (connectors/scheduler/backfill_sales_traffic.py),
+    # not this nightly job's.
+    scheduler.add_job(
+        func=amazon_sp_api.run_sales_traffic_nightly,
+        trigger="cron",
+        hour=4,
+        minute=30,
+        timezone="Europe/London",
+        id="amazon-sales-traffic-nightly",
+        name="Amazon SP-API ASIN sales + traffic nightly (yesterday only)",
+        replace_existing=True,
+        misfire_grace_time=7200,
+        coalesce=True,
+    )
+
     # out of scope 2026-08-03 — re-enable by uncommenting
     # Amazon Advertising API partner registration was REJECTED — no credentials
     # exist, so this connector cannot function. Left registered it would fail

@@ -12,10 +12,17 @@ Required environment variables:
                              Amazon cancels report requests past that wall,
                              see _SALES_TRAFFIC_RETENTION_DAYS in
                              connectors/scheduler/jobs/amazon_sp_api.py.
-    BACKFILL_END            YYYY-MM-DD, required, no default (inclusive)
+    BACKFILL_END            YYYY-MM-DD, optional (inclusive). Defaults to
+                             yesterday (today - 1 day) when unset — Amazon's
+                             sales/traffic data for a day isn't final until
+                             that marketplace's day has closed, so yesterday
+                             is the latest end date worth requesting. Leaving
+                             it unset is preferred: a fixed value goes stale
+                             and silently caps how far forward the backfill
+                             reaches.
 Optional:
     BACKFILL_MARKETPLACES   comma-separated marketplace_id list; defaults to
-                             ACTIVE_MARKETPLACES (15: 13 EU, 2 NA — see
+                             ACTIVE_MARKETPLACES (currently 9: 7 EU, 2 NA — see
                              connectors/scheduler/jobs/amazon_sp_api.py)
     BACKFILL_PACE_SECONDS   minimum seconds between createReport call starts,
                              per account. Default 65.
@@ -100,14 +107,22 @@ logger = logging.getLogger(__name__)
 DEFAULT_PACE_SECONDS = 65.0
 
 
-def _require_date_env(name: str) -> date:
+def _parse_date_env(name: str) -> date | None:
+    """Parse a YYYY-MM-DD env var. Returns None if unset; raises SystemExit if malformed."""
     raw = os.environ.get(name)
     if not raw:
-        raise SystemExit(f"{name} environment variable is required (format YYYY-MM-DD)")
+        return None
     try:
         return datetime.strptime(raw, "%Y-%m-%d").date()
     except ValueError as exc:
         raise SystemExit(f"{name}={raw!r} is not a valid YYYY-MM-DD date") from exc
+
+
+def _require_date_env(name: str) -> date:
+    parsed = _parse_date_env(name)
+    if parsed is None:
+        raise SystemExit(f"{name} environment variable is required (format YYYY-MM-DD)")
+    return parsed
 
 
 def _all_marketplace_ids() -> dict[str, tuple[str, str]]:
@@ -244,7 +259,16 @@ def main() -> None:
     logging.getLogger("httpcore").setLevel(logging.WARNING)
 
     start = _require_date_env("BACKFILL_START")
-    end = _require_date_env("BACKFILL_END")
+    # BACKFILL_END defaults to yesterday when unset. Amazon's sales/traffic data
+    # for a day isn't final until that marketplace's day has closed, so yesterday
+    # is the furthest forward worth requesting — and defaulting means the value
+    # can't go stale and silently cap the backfill's reach, the way a hardcoded
+    # env var did (it sat at 2026-08-16 while data quietly stopped landing).
+    end = _parse_date_env("BACKFILL_END") or (date.today() - timedelta(days=1))
+    logger.info(
+        "amazon_sp_backfill: BACKFILL_END=%s (%s)",
+        end, "from env" if os.environ.get("BACKFILL_END") else "defaulted to yesterday",
+    )
     if start > end:
         raise SystemExit(f"BACKFILL_START ({start}) is after BACKFILL_END ({end})")
 
