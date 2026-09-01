@@ -1,47 +1,67 @@
 """
 Amazon Advertising API OAuth helper — generate and store the LWA refresh token.
 
-The Advertising API uses a SINGLE refresh token per app (unlike SP-API which
-needs one per seller account). One token grants access to all profiles (EU,
-NA, FE) that were authorised during the consent flow.
+Modelled on scripts/amazon_sp_oauth.py. Same interactive flow: the script
+prints a consent URL, you open it signed in to the Amazon account that manages
+doddl's advertising, approve, and paste the redirect URL back. It then exchanges
+the code for a refresh token and writes it to Key Vault.
+
+KEY DIFFERENCE FROM SP-API — the Ads API is NOT region-scoped the way SP-API is.
+SP-API needs one refresh token per seller account because each region is a
+separate Amazon seller identity. The Ads API uses ONE Login-with-Amazon
+authorization: "an authorization code retrieved from any of [the regional auth]
+URLs can be used to access the advertising API in any region"
+(developer.amazon.com LWA docs — "Applications are not region-specific"). The
+connector (connectors/scheduler/jobs/amazon_advertising.py) already proves this
+model: it obtains one access token and calls the NA, EU and FE
+/v2/profiles endpoints with it, keeping whatever each returns.
+
+So the default is a single token in `amazon-ads-refresh-token`, and --region
+only chooses which regional Amazon sign-in page you see. You would only need a
+second token if doddl's US advertising is managed under a DIFFERENT Amazon
+login (a separate account, not just a separate marketplace) — in which case run
+again with --region na --secret-name amazon-ads-refresh-token-na, and the
+connector will need a change to load both. STEP 4 below probes all three
+regions with the new token so you can see immediately whether that applies.
 
 Usage:
     python scripts/amazon_ads_oauth.py
+    python scripts/amazon_ads_oauth.py --region eu           # default
+    python scripts/amazon_ads_oauth.py --region na --secret-name amazon-ads-refresh-token-na
+    python scripts/amazon_ads_oauth.py --print-only          # skip the KV write, print the token
+
+    --print-only skips the Key Vault write and prints the refresh token to
+    stdout instead, for adding it via the portal by hand. The script also
+    falls back to this automatically if the KV write fails after retries
+    (same RemoteDisconnected-on-write failure mode seen with amazon_sp_oauth.py).
 
 What this script does:
-  1. Reads your Advertising API client_id and client_secret from Key Vault.
-  2. Prints an authorization URL — open it in a browser while logged in to
-     the Amazon account that manages your Advertising Console.
-  3. After you click "Allow", Amazon redirects to your registered callback URL
-     with ?code=... in the query string. Paste the full redirect URL here.
-  4. Exchanges the code for an access token + refresh token via LWA.
-  5. Stores the refresh token in Key Vault as 'amazon-ads-refresh-token'.
+  1. Reads amazon-ads-client-id / amazon-ads-client-secret from Key Vault.
+  2. Prints an authorization URL — open it in a browser signed in to the Amazon
+     account that manages doddl's Advertising Console.
+  3. After you click Allow, Amazon redirects to the registered redirect URI with
+     ?code=... in the query string. Paste that full URL here.
+  4. Exchanges the code for a refresh token via the LWA token endpoint, then
+     probes the NA / EU / FE profile endpoints so you can see which regions the
+     one token reaches.
+  5. Stores the refresh token in Key Vault (with retry) — or, with --print-only
+     or on repeated write failure, prints it instead.
 
 Pre-requisites:
   - AZURE_KEYVAULT_URI must point to doddl-kv-prod.
-  - amazon-ads-client-id and amazon-ads-client-secret must already be in
-    Key Vault (from advertising.amazon.com → Manage Applications → your app).
-  - A redirect URI must be registered in your Advertising API app. It can be
-    anything you control — even https://localhost — the script only reads the
-    code from the browser address bar, no server needed.
+  - amazon-ads-client-id and amazon-ads-client-secret already in Key Vault.
+  - The redirect URI passed here must be registered on the Ads API app
+    (https://doddl.com/callback is registered).
 
 Set AZURE_KEYVAULT_URI before running:
     $env:AZURE_KEYVAULT_URI = "https://doddl-kv-prod.vault.azure.net/"
-
-Where to find your Advertising API credentials:
-  1. Go to https://advertising.amazon.com/API/index.html
-  2. Click "Login" → then "Manage your applications"
-  3. Select your app (or create one if you haven't yet)
-  4. Copy the "Client ID" and "Client Secret"
-  5. Add both to Key Vault before running this script:
-       az keyvault secret set --vault-name doddl-kv-prod --name amazon-ads-client-id --value "<paste>"
-       az keyvault secret set --vault-name doddl-kv-prod --name amazon-ads-client-secret --value "<paste>"
 """
 
 import argparse
 import os
 import sys
 import secrets
+import time
 import urllib.parse
 
 import httpx
@@ -50,195 +70,278 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
-# ── LWA / Advertising API constants ─────────────────────────────────────────
-LWA_TOKEN_URL    = "https://api.amazon.com/auth/o2/token"
-LWA_AUTH_URL     = "https://www.amazon.com/ap/oa"
-ADS_API_SCOPE    = "advertising::campaign_management"
+# ── App / OAuth constants ───────────────────────────────────────────────────
+SCOPE = "advertising::campaign_management"
+DEFAULT_REDIRECT_URI = "https://doddl.com/callback"
 
-# Secret names in Key Vault
-SECRET_CLIENT_ID     = "amazon-ads-client-id"
+# LWA token exchange endpoint. Any regional LWA endpoint works regardless of the
+# region the token is for; the connector uses this one too.
+LWA_TOKEN_URL = "https://api.amazon.com/auth/o2/token"
+
+# Regional consent (authorization) URLs. These differ only in which regional
+# Amazon sign-in the user sees — the resulting code/token is not region-locked.
+AUTH_URLS = {
+    "na": "https://www.amazon.com/ap/oa",
+    "eu": "https://eu.account.amazon.com/ap/oa",
+    "fe": "https://apac.account.amazon.com/ap/oa",
+}
+
+# Regional Advertising API hosts — used for the post-auth profile probe (STEP 4).
+ADS_API_HOSTS = {
+    "na": "https://advertising-api.amazon.com",
+    "eu": "https://advertising-api-eu.amazon.com",
+    "fe": "https://advertising-api-fe.amazon.com",
+}
+
+SECRET_CLIENT_ID = "amazon-ads-client-id"
 SECRET_CLIENT_SECRET = "amazon-ads-client-secret"
-SECRET_REFRESH_TOKEN = "amazon-ads-refresh-token"
+DEFAULT_REFRESH_TOKEN_SECRET = "amazon-ads-refresh-token"
+
+REGION_NOTES = {
+    "eu": "Sign in with the Amazon account that manages doddl's UK/EU advertising.",
+    "na": "Sign in with the Amazon account that manages doddl's US/CA advertising "
+          "(only a separate token if this is a DIFFERENT Amazon login from EU).",
+    "fe": "Sign in with the Amazon account that manages doddl's JP/AU/SG advertising.",
+}
+
+# Key Vault write retry
+KV_WRITE_ATTEMPTS = 4
+KV_WRITE_BACKOFF_S = 3.0
+
+
+def _probe_region(region: str, access_token: str, client_id: str) -> None:
+    """Call one region's /v2/profiles and print what comes back. Best-effort."""
+    host = ADS_API_HOSTS[region]
+    try:
+        resp = httpx.get(
+            f"{host}/v2/profiles",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Amazon-Advertising-API-ClientId": client_id,
+            },
+            timeout=15.0,
+        )
+    except Exception as exc:
+        print(f"  {region.upper():3} — probe failed ({exc})")
+        return
+
+    if resp.status_code in (401, 403):
+        print(f"  {region.upper():3} — no access (HTTP {resp.status_code}) — "
+              f"this token's account has no advertising profile in {region.upper()}")
+        return
+    if not resp.is_success:
+        print(f"  {region.upper():3} — HTTP {resp.status_code}: {resp.text[:200]}")
+        return
+
+    body = resp.json()
+    profiles = body if isinstance(body, list) else []
+    print(f"  {region.upper():3} — {len(profiles)} profile(s)")
+    for p in profiles[:8]:
+        country = p.get("countryCode", "?")
+        pid = p.get("profileId", "?")
+        name = p.get("accountInfo", {}).get("name", "")
+        acct_type = p.get("accountInfo", {}).get("type", "")
+        print(f"        [{country}] profileId={pid}  {name} {acct_type}".rstrip())
+    if len(profiles) > 8:
+        print(f"        ... and {len(profiles) - 8} more")
+
+
+def _store_with_retry(vault_uri: str, secret_name: str, value: str) -> bool:
+    """Write to Key Vault, retrying transient failures. Returns True on success."""
+    from azure.keyvault.secrets import SecretClient
+    from azure.identity import DefaultAzureCredential
+
+    last_exc: Exception | None = None
+    for attempt in range(1, KV_WRITE_ATTEMPTS + 1):
+        try:
+            client = SecretClient(vault_url=vault_uri, credential=DefaultAzureCredential())
+            client.set_secret(secret_name, value)
+            return True
+        except Exception as exc:  # noqa: BLE001 — any failure is a retry candidate
+            last_exc = exc
+            wait = KV_WRITE_BACKOFF_S * attempt
+            print(f"  write attempt {attempt}/{KV_WRITE_ATTEMPTS} failed: {exc}")
+            if attempt < KV_WRITE_ATTEMPTS:
+                print(f"  retrying in {wait:.0f}s...")
+                time.sleep(wait)
+    print(f"\n  Key Vault write failed after {KV_WRITE_ATTEMPTS} attempts ({last_exc}).")
+    return False
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Generate the Amazon Advertising API refresh token and store it in Key Vault",
+    )
+    parser.add_argument(
+        "--region",
+        choices=list(AUTH_URLS.keys()),
+        default="eu",
+        help="Which regional Amazon sign-in page to use for consent (default: eu). "
+             "The token itself is not region-locked; this only picks the login screen.",
+    )
+    parser.add_argument(
+        "--secret-name",
+        default=DEFAULT_REFRESH_TOKEN_SECRET,
+        help=f"Key Vault secret to write (default: {DEFAULT_REFRESH_TOKEN_SECRET}). "
+             f"Only override if storing a SECOND account's token, e.g. "
+             f"amazon-ads-refresh-token-na.",
+    )
+    parser.add_argument(
+        "--redirect-uri",
+        default=DEFAULT_REDIRECT_URI,
+        help=f"Redirect URI registered on the Ads API app (default: {DEFAULT_REDIRECT_URI}).",
+    )
+    parser.add_argument(
+        "--print-only",
+        action="store_true",
+        help="Skip the Key Vault write and print the refresh token to stdout instead, "
+             "for adding it via the portal by hand.",
+    )
+    args = parser.parse_args()
+    region = args.region.lower()
+    secret_name = args.secret_name.strip()
+    redirect_uri = args.redirect_uri.strip()
+
     vault_uri = os.environ.get("AZURE_KEYVAULT_URI")
     if not vault_uri:
         print("ERROR: AZURE_KEYVAULT_URI is not set.")
         print('  Run:  $env:AZURE_KEYVAULT_URI = "https://doddl-kv-prod.vault.azure.net/"')
         sys.exit(1)
 
-    parser = argparse.ArgumentParser(
-        description="Generate Amazon Advertising API refresh token and store in Key Vault"
-    )
-    # No --account flag — Ads API uses a single token for all regions
-    args = parser.parse_args()
-
-    # ── Load credentials from Key Vault ────────────────────────────────────
+    # ── Load LWA credentials from Key Vault ────────────────────────────────
     from connectors.lib.secrets import get_secret
 
     print(f"\n{'='*60}")
-    print("Amazon Advertising API OAuth")
+    print(f"Amazon Advertising API OAuth — region: {region.upper()}")
     print(f"{'='*60}")
     print("\nFetching Advertising API credentials from Key Vault...")
 
     try:
-        client_id     = get_secret(SECRET_CLIENT_ID)
+        client_id = get_secret(SECRET_CLIENT_ID)
         client_secret = get_secret(SECRET_CLIENT_SECRET)
     except Exception as exc:
         print(f"\nERROR: Could not load credentials from Key Vault: {exc}")
-        print("\nYou need to add these secrets first:")
-        print(f"  {SECRET_CLIENT_ID}")
-        print(f"  {SECRET_CLIENT_SECRET}")
-        print("\nWhere to find them:")
-        print("  1. Go to https://advertising.amazon.com/API/index.html")
-        print("  2. Click Login → Manage your applications")
-        print("  3. Open your app (or create one)")
-        print("  4. Copy the Client ID and Client Secret")
-        print("\nThen add to Key Vault:")
-        print(f"  az keyvault secret set --vault-name doddl-kv-prod \\")
-        print(f"    --name {SECRET_CLIENT_ID} --value \"<client_id>\"")
-        print(f"  az keyvault secret set --vault-name doddl-kv-prod \\")
-        print(f"    --name {SECRET_CLIENT_SECRET} --value \"<client_secret>\"")
+        print("  These secrets must exist first:")
+        print(f"    {SECRET_CLIENT_ID}")
+        print(f"    {SECRET_CLIENT_SECRET}")
         sys.exit(1)
 
     print("  client_id loaded OK")
 
-    # ── Prompt for redirect URI ─────────────────────────────────────────────
-    print("\nWhat redirect URI is registered in your Advertising API app?")
-    print("  (Go to advertising.amazon.com → Manage Applications → your app → OAuth2 Redirect URI)")
-    print("  Common values: https://localhost  or  https://doddl.com/callback")
-    redirect_uri = input("  Redirect URI: ").strip()
-    if not redirect_uri:
-        redirect_uri = "https://localhost"
-        print(f"  Using default: {redirect_uri}")
-
-    # ── Build authorization URL ─────────────────────────────────────────────
+    # ── Build authorization URL ────────────────────────────────────────────
     state = secrets.token_urlsafe(16)
     params = {
-        "client_id":     client_id,
-        "scope":         ADS_API_SCOPE,
+        "client_id": client_id,
+        "scope": SCOPE,
         "response_type": "code",
-        "redirect_uri":  redirect_uri,
-        "state":         state,
+        "redirect_uri": redirect_uri,
+        "state": state,
     }
-    auth_url = LWA_AUTH_URL + "?" + urllib.parse.urlencode(params)
+    auth_url = AUTH_URLS[region] + "?" + urllib.parse.urlencode(params)
 
-    print(f"\n{'─'*60}")
-    print("STEP 1 — Open this URL in your browser:")
-    print(f"\n  {auth_url}")
-    print(f"\n  Log in with the Amazon account that owns your Advertising Console.")
-    print(f"  Click 'Allow' to grant campaign management access.")
-    print(f"{'─'*60}")
+    print(f"\n{'-'*60}")
+    print("STEP 1 — Open this URL in a browser:")
+    print(f"\n  {auth_url}\n")
+    print(f"  {REGION_NOTES[region]}")
+    print("  Click 'Allow' to grant campaign management access.")
+    print(f"{'-'*60}")
 
-    # ── Collect redirect URL ────────────────────────────────────────────────
+    # ── Collect redirect URL ──────────────────────────────────────────────
     print("\nSTEP 2 — After clicking Allow, your browser redirects to:")
     print(f"  {redirect_uri}?code=...&scope=...&state=...")
     print("\n  Paste the full redirect URL here (even if the page doesn't load):")
     redirect_received = input("  URL: ").strip()
 
     parsed = urllib.parse.urlparse(redirect_received)
-    qs     = urllib.parse.parse_qs(parsed.query)
+    qs = urllib.parse.parse_qs(parsed.query)
 
     if "code" not in qs:
         print("\nERROR: Could not find 'code' in the redirect URL.")
-        print("  Make sure you pasted the full URL including the query string.")
-        print("  The URL should contain ?code=Atc... or similar.")
+        print("  Paste the full URL including the query string (it contains ?code=...).")
         sys.exit(1)
 
-    auth_code      = qs["code"][0]
+    auth_code = qs["code"][0]
     returned_state = qs.get("state", [""])[0]
 
     if returned_state != state:
         print(f"\nWARNING: state mismatch (expected {state}, got {returned_state})")
-        print("  This could indicate a CSRF attempt — make sure you used the URL above.")
-        confirm = input("  Continue anyway? [y/N]: ").strip().lower()
-        if confirm != "y":
+        print("  Could indicate CSRF — make sure you used the URL printed above.")
+        if input("  Continue anyway? [y/N]: ").strip().lower() != "y":
             sys.exit(1)
 
     print(f"\n  Code received: {auth_code[:20]}...")
 
-    # ── Exchange code for refresh token ─────────────────────────────────────
+    # ── Exchange code for refresh token ──────────────────────────────────
     print("\nSTEP 3 — Exchanging code for refresh token...")
     resp = httpx.post(
         LWA_TOKEN_URL,
         data={
-            "grant_type":    "authorization_code",
-            "code":          auth_code,
-            "redirect_uri":  redirect_uri,
-            "client_id":     client_id,
+            "grant_type": "authorization_code",
+            "code": auth_code,
+            "redirect_uri": redirect_uri,
+            "client_id": client_id,
             "client_secret": client_secret,
         },
         timeout=15.0,
     )
-
     if not resp.is_success:
         print(f"\nERROR: LWA token exchange failed: HTTP {resp.status_code}")
         print(f"  {resp.text}")
         sys.exit(1)
 
-    token_data    = resp.json()
+    token_data = resp.json()
     refresh_token = token_data.get("refresh_token")
+    access_token = token_data.get("access_token")
     if not refresh_token:
         print(f"\nERROR: No refresh_token in response: {token_data}")
         sys.exit(1)
 
     print("  Refresh token obtained.")
 
-    # ── Verify: call /v2/profiles to confirm access ─────────────────────────
-    print("\n  Verifying token by fetching Advertising profiles...")
-    access_token = token_data.get("access_token")
+    # ── Probe all three regions with the new token ───────────────────────
+    print("\nSTEP 4 — Checking which regions this one token reaches")
+    print("  (this is the 'does NA need its own token' check):")
     if access_token:
-        try:
-            probe = httpx.get(
-                "https://advertising-api-eu.amazon.com/v2/profiles",
-                headers={
-                    "Authorization":         f"Bearer {access_token}",
-                    "Amazon-Advertising-API-ClientId": client_id,
-                },
-                timeout=10.0,
-            )
-            if probe.is_success:
-                profiles = probe.json()
-                print(f"  EU profiles found: {len(profiles)}")
-                for p in profiles[:5]:
-                    country = p.get("countryCode", "?")
-                    pid     = p.get("profileId", "?")
-                    name    = p.get("accountInfo", {}).get("name", "")
-                    print(f"    [{country}] profileId={pid}  {name}")
-                if len(profiles) > 5:
-                    print(f"    ... and {len(profiles)-5} more")
-            else:
-                print(f"  (Could not probe EU profiles: HTTP {probe.status_code} — token is still valid)")
-        except Exception as probe_err:
-            print(f"  (Profile probe skipped: {probe_err})")
+        for r in ("na", "eu", "fe"):
+            _probe_region(r, access_token, client_id)
+        print("\n  If NA shows profiles above, the single token covers NA — no second")
+        print("  authorisation needed. If NA shows 'no access' AND doddl runs US ads,")
+        print("  US advertising is under a separate Amazon login: re-run with")
+        print("    --region na --secret-name amazon-ads-refresh-token-na")
+        print("  and the connector will need a change to load both tokens.")
+    else:
+        print("  (no access_token in the response — skipping the probe)")
 
-    # ── Store in Key Vault ──────────────────────────────────────────────────
-    print(f"\nSTEP 4 — Storing refresh token in Key Vault as '{SECRET_REFRESH_TOKEN}'...")
+    # ── Store (or print) the refresh token ──────────────────────────────
+    if args.print_only:
+        print(f"\nSTEP 5 — skipped (--print-only). Add this secret via the portal:")
+        print(f"  Vault:       {vault_uri}")
+        print(f"  Secret name: {secret_name}")
+        print(f"\n{'-'*60}")
+        print(refresh_token)
+        print(f"{'-'*60}\n")
+        print("SUCCESS — token obtained, not yet stored.")
+        return
 
-    from azure.keyvault.secrets import SecretClient
-    from azure.identity import DefaultAzureCredential
-
-    kv_client = SecretClient(vault_url=vault_uri, credential=DefaultAzureCredential())
-    kv_client.set_secret(SECRET_REFRESH_TOKEN, refresh_token)
-
-    print(f"  Stored: {SECRET_REFRESH_TOKEN}")
-    print(f"\n{'='*60}")
-    print("SUCCESS — Amazon Advertising API is now configured.")
-    print(f"  Secret: {SECRET_REFRESH_TOKEN}")
-    print(f"  The connector will use this token on its next scheduled run.")
-    print(f"{'='*60}")
-    print()
-    print("Optional: if you want to restrict syncing to specific profiles,")
-    print("add a comma-separated list of profile IDs to Key Vault:")
-    print()
-    print("  az keyvault secret set --vault-name doddl-kv-prod \\")
-    print("    --name amazon-ads-profile-ids --value \"<id1>,<id2>,...\"")
-    print()
-    print("If that secret is absent (default), ALL profiles linked to the token are synced.")
-    print()
-    print("Run a backfill when ready:")
-    print("  python scripts/run_backfill.py --connector amazon_ads")
+    print(f"\nSTEP 5 — Storing refresh token in Key Vault as '{secret_name}' (with retry)...")
+    if _store_with_retry(vault_uri, secret_name, refresh_token):
+        print(f"  Stored: {secret_name}")
+        print(f"\n{'='*60}")
+        print("SUCCESS — Amazon Advertising API refresh token is in Key Vault.")
+        print(f"  Secret: {secret_name}")
+        print(f"{'='*60}\n")
+        print("Next: the connector is still disabled. To wire it up:")
+        print("  - confirm STEP 4 showed the profiles you expect")
+        print("  - test:  python scripts/run_backfill.py --connector amazon_ads   (short range)")
+        print("  - then uncomment the amazon_advertising add_job block in")
+        print("    connectors/scheduler/scheduler.py and redeploy the scheduler")
+    else:
+        print("\n  Falling back to print-only so the token is not lost:")
+        print(f"  Add it as '{secret_name}' in the portal at {vault_uri}")
+        print(f"\n{'-'*60}")
+        print(refresh_token)
+        print(f"{'-'*60}\n")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
