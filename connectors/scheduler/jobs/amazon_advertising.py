@@ -1,7 +1,10 @@
 """Amazon Advertising API connector — Sponsored Products performance sync.
 
-Pulls campaign, ad group, keyword metadata and daily performance reports across
-all authorised marketplaces. Uses LWA OAuth2 — separate credentials from SP-API.
+Pulls campaign, ad group, keyword metadata and daily performance reports for
+the marketplaces in ACTIVE_AD_COUNTRIES (derived from ACTIVE_MARKETPLACES in
+amazon_sp_api.py — the single LWA token returns profiles for more marketplaces
+than that, and the extras are dropped in _fetch_profiles). Uses LWA OAuth2 —
+separate credentials from SP-API.
 
 Regional endpoints:
   EU  — advertising-api-eu.amazon.com  (GB, DE, FR, IT, ES, NL, BE, PL, SE, TR, IE, AE, SA)
@@ -18,8 +21,9 @@ Secrets required:
   amazon-ads-client-id       — LWA OAuth client ID (separate app from SP-API)
   amazon-ads-client-secret   — LWA OAuth client secret
   amazon-ads-refresh-token   — LWA refresh token (authorised for target regions)
-  amazon-ads-profile-ids     — (Optional) Comma-separated profile IDs to restrict sync.
-                               If absent or empty, all profiles linked to the token are synced.
+  amazon-ads-profile-ids     — (Optional) Comma-separated profile IDs to restrict sync
+                               further. If absent or empty, every profile in
+                               ACTIVE_AD_COUNTRIES is synced.
 
 Performance data pulled:
   spCampaigns  — daily campaign-level impressions, clicks, cost, purchases, sales
@@ -52,11 +56,15 @@ from tenacity import (
     retry,
     stop_after_attempt,
     wait_exponential,
-    retry_if_exception_type,
+    retry_if_exception,
 )
 
 from connectors.lib.secrets import get_secret, get_secrets
 from connectors.lib.db import write_raw, upsert_clean_batch
+from connectors.scheduler.jobs.amazon_sp_api import (
+    ACCOUNTS as _SP_ACCOUNTS,
+    ACTIVE_MARKETPLACES as _SP_ACTIVE_MARKETPLACES,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +88,24 @@ _COUNTRY_TO_REGION: dict[str, str] = {
     "US": "NA", "CA": "NA", "MX": "NA",
     # Far East / Asia-Pacific
     "JP": "FE", "AU": "FE", "SG": "FE",
+}
+
+# Marketplace scope — kept in lockstep with ACTIVE_MARKETPLACES in
+# amazon_sp_api.py so ad spend is only collected for marketplaces the
+# sales/traffic reports also cover. The single LWA token returns profiles for
+# every marketplace doddl advertises in (MX, TR, AE, SA, JP included); those
+# are dropped at the profile-iteration point in _fetch_profiles rather than by
+# pinning profile IDs, so re-enabling a marketplace upstream needs no change
+# here. The Advertising API reports ISO country codes ("GB"); the SP-API
+# ACCOUNTS table uses Amazon's marketplace labels ("UK") — translate the ones
+# that differ.
+_SP_LABEL_TO_ISO_COUNTRY: dict[str, str] = {"UK": "GB"}
+
+ACTIVE_AD_COUNTRIES: set[str] = {
+    _SP_LABEL_TO_ISO_COUNTRY.get(country, country)
+    for account_cfg in _SP_ACCOUNTS.values()
+    for (marketplace_id, country, _seller_id) in account_cfg["marketplaces"]
+    if marketplace_id in _SP_ACTIVE_MARKETPLACES
 }
 
 # ---------------------------------------------------------------------------
@@ -145,6 +171,14 @@ _REPORTS = [
 REPORT_POLL_TIMEOUT_S = 300   # 5 minutes max
 REPORT_POLL_INTERVAL_S = 20   # check every 20 seconds
 
+# HTTP 425 "Too Early" — the Reporting API returns this while a report is still
+# being generated. It is a not-ready-yet signal, not a failure. Two things follow
+# from that: tenacity must NOT burn retry attempts on it (only time resolves it),
+# and _poll_report_url must treat it as another pending tick rather than letting
+# it escape into _sync_report's catch-all, which would log an error and silently
+# skip the report — leaving metadata present and performance rows absent.
+REPORT_NOT_READY_STATUS = 425
+
 
 # ---------------------------------------------------------------------------
 # Auth
@@ -185,10 +219,22 @@ def _headers(access_token: str, client_id: str, profile_id: Optional[str] = None
     return h
 
 
+def _is_retryable_http_error(exc: BaseException) -> bool:
+    """Retry transport-level HTTP errors, but never 425 (report not ready yet).
+
+    A 425 is surfaced to the caller on the first attempt so the poll loop can
+    keep waiting on its own schedule, instead of spending three tenacity
+    attempts plus backoff on a condition only elapsed time resolves.
+    """
+    if not isinstance(exc, httpx.HTTPStatusError):
+        return False
+    return exc.response.status_code != REPORT_NOT_READY_STATUS
+
+
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=30),
-    retry=retry_if_exception_type(httpx.HTTPStatusError),
+    retry=retry_if_exception(_is_retryable_http_error),
     reraise=True,
 )
 def _get(client: httpx.Client, url: str, params: Optional[dict] = None) -> object:
@@ -200,7 +246,7 @@ def _get(client: httpx.Client, url: str, params: Optional[dict] = None) -> objec
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=30),
-    retry=retry_if_exception_type(httpx.HTTPStatusError),
+    retry=retry_if_exception(_is_retryable_http_error),
     reraise=True,
 )
 def _post(client: httpx.Client, url: str, payload: dict) -> dict:
@@ -221,7 +267,9 @@ def _fetch_profiles(
     """Fetch advertiser profiles from all regional endpoints.
 
     Profiles that the LWA token has no access to are skipped gracefully.
-    If filter_ids is provided, only those profile IDs are returned.
+    Profiles outside ACTIVE_AD_COUNTRIES are always dropped (marketplace scope,
+    matched to the sales/traffic reports). If filter_ids is also provided, it
+    narrows the result further to those profile IDs.
     """
     all_profiles: list = []
 
@@ -245,6 +293,19 @@ def _fetch_profiles(
                 logger.warning("amazon_ads: %s region HTTP %s — skipping", region, exc.response.status_code)
         except Exception as exc:
             logger.warning("amazon_ads: %s region unreachable (%s) — skipping", region, exc)
+
+    # Marketplace scope: keep only profiles in ACTIVE_AD_COUNTRIES.
+    before = len(all_profiles)
+    all_profiles = [
+        p for p in all_profiles
+        if str(p.get("countryCode", "")).upper() in ACTIVE_AD_COUNTRIES
+    ]
+    dropped = before - len(all_profiles)
+    if dropped:
+        logger.info(
+            "amazon_ads: scoped %d -> %d profiles to active marketplaces (%s); dropped %d",
+            before, len(all_profiles), ", ".join(sorted(ACTIVE_AD_COUNTRIES)), dropped,
+        )
 
     if filter_ids:
         before = len(all_profiles)
@@ -390,8 +451,19 @@ def _poll_report_url(
     deadline = time.time() + REPORT_POLL_TIMEOUT_S
 
     while time.time() < deadline:
-        with httpx.Client(headers=hdrs, timeout=20.0) as client:
-            resp = _get(client, f"{base_url}/reporting/reports/{report_id}")
+        try:
+            with httpx.Client(headers=hdrs, timeout=20.0) as client:
+                resp = _get(client, f"{base_url}/reporting/reports/{report_id}")
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code != REPORT_NOT_READY_STATUS:
+                raise
+            # 425 Too Early — report still generating. Same as a PENDING tick.
+            logger.debug(
+                "amazon_ads: reportId=%s HTTP 425 not ready — waiting %ss",
+                report_id, REPORT_POLL_INTERVAL_S,
+            )
+            time.sleep(REPORT_POLL_INTERVAL_S)
+            continue
 
         status = resp.get("status", "UNKNOWN")
         if status == "COMPLETED":

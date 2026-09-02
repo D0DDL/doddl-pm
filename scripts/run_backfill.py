@@ -33,6 +33,9 @@ Usage:
     # Override start date (useful for re-running a gap):
     python scripts/run_backfill.py --connector ga4 --start 2023-01-01
 
+    # Override as a day count back from today (Amazon Ads retention window):
+    python scripts/run_backfill.py --connector amazon_ads --since 95
+
 Set AZURE_KEYVAULT_URI before running.
 """
 
@@ -60,6 +63,10 @@ logging.basicConfig(
 logging.getLogger("azure").setLevel(logging.WARNING)
 logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(logging.WARNING)
 logger = logging.getLogger("backfill")
+
+# Amazon Ads v3 reporting data retention. Older dates are accepted by the API
+# but return no rows, so this bounds the Amazon Advertising backfill by default.
+ADS_RETENTION_DAYS = 95
 
 
 # ── Date chunking ─────────────────────────────────────────────────────────────
@@ -157,7 +164,22 @@ def main() -> None:
         "--start",
         help="Override earliest start date (YYYY-MM-DD). Default: per-connector maximum.",
     )
+    parser.add_argument(
+        "--since",
+        type=int,
+        metavar="DAYS",
+        help="Override earliest start date as a day count back from today "
+             "(e.g. --since 95 for the Amazon Ads reporting retention window). "
+             "Relative form of --start; the two are mutually exclusive.",
+    )
     args = parser.parse_args()
+
+    if args.start and args.since is not None:
+        logger.error("--start and --since are mutually exclusive; pass one or the other")
+        sys.exit(1)
+    if args.since is not None and args.since < 1:
+        logger.error("--since must be a positive number of days (got %s)", args.since)
+        sys.exit(1)
 
     logger.info("Vault  : %s", vault_uri)
     logger.info("Run at : %s", date.today().isoformat())
@@ -165,6 +187,11 @@ def main() -> None:
         logger.info("Filter : --connector %s", args.connector)
     if args.start:
         logger.info("Start  : --start %s (overrides per-connector default)", args.start)
+    if args.since is not None:
+        logger.info(
+            "Start  : --since %d days -> %s (overrides per-connector default)",
+            args.since, (date.today() - timedelta(days=args.since)).isoformat(),
+        )
 
     # Import connectors after path setup
     from connectors.scheduler.jobs import (
@@ -213,8 +240,12 @@ def main() -> None:
             "name": "Amazon Advertising",
             "key": "amazon_ads",
             "mode": "chunked",
-            "earliest": date(2022, 1, 1),   # Ads API v3 reports go back ~3 years;
-                                             # 2022 covers full campaign history
+            # Ads v3 reporting data is retained for ~95 days — requests for older
+            # dates are accepted but come back empty, so the previous date(2022,1,1)
+            # default queued ~44 chunks of which only the newest ~3 could ever
+            # return rows. Default to the retention window; override with
+            # --since / --start when Amazon confirms a wider window.
+            "earliest": today - timedelta(days=ADS_RETENTION_DAYS),
             "chunk_days": 30,               # 30-day chunks: 4 report types x N profiles
                                              # per chunk; keep within API timeout budget
             # Ads Reporting API: 4 reports x N profiles per chunk; each report
@@ -271,14 +302,22 @@ def main() -> None:
 
     # Apply --connector filter
     if args.connector:
+        # Capture the valid keys BEFORE filtering — reading them off the filtered
+        # list always yielded an empty string and fell back to a hardcoded list
+        # that was missing amazon_ads.
+        valid_keys = ", ".join(c["key"] for c in connectors)
         connectors = [c for c in connectors if c["key"] == args.connector]
         if not connectors:
-            keys = ", ".join(c["key"] for c in connectors) or "shopify, klaviyo, amazon, meta, ga4, gsc, clarity, google_ads"
-            logger.error("Unknown connector '%s'. Valid: %s", args.connector, keys)
+            logger.error("Unknown connector '%s'. Valid: %s", args.connector, valid_keys)
             sys.exit(1)
 
-    # Apply --start override
-    start_override = date.fromisoformat(args.start) if args.start else None
+    # Apply --start / --since override (mutually exclusive, validated above)
+    if args.start:
+        start_override = date.fromisoformat(args.start)
+    elif args.since is not None:
+        start_override = today - timedelta(days=args.since)
+    else:
+        start_override = None
 
     results = []
 
