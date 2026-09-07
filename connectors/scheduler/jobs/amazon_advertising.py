@@ -98,10 +98,37 @@ _COUNTRY_TO_REGION: dict[str, str] = {
 # every marketplace doddl advertises in (MX, TR, AE, SA, JP included); those
 # are dropped at the profile-iteration point in _fetch_profiles rather than by
 # pinning profile IDs, so re-enabling a marketplace upstream needs no change
-# here. The Advertising API reports ISO country codes ("GB"); the SP-API
-# ACCOUNTS table uses Amazon's marketplace labels ("UK") — translate the ones
-# that differ.
+# here.
+#
+# COUNTRY CODES: BOTH SIDES SAY "UK", AND THIS USED TO TRANSLATE ONE OF THEM.
+# The comment here previously claimed the Advertising API reports ISO codes
+# ("GB") while the SP-API ACCOUNTS table uses Amazon labels ("UK"), and mapped
+# UK -> GB accordingly. The first half is false. /v2/profiles returns
+# countryCode "UK" for both UK profiles (verified live 2026-09-07 across all 28
+# profiles: AE AU BE CA DE ES FR IE IT JP MX NL PL SA SE SG TR UK US — no "GB"
+# anywhere). So ACTIVE_AD_COUNTRIES held "GB", the profiles said "UK", the
+# membership test failed, and BOTH UK profiles were dropped before
+# amazon-ads-profile-ids was ever consulted — including 1842164754186650, which
+# carries 388 campaigns and GBP 3,981 of spend in the last 30 days.
+#
+# It failed silently: the run logs "scoped 28 -> 13 profiles" and completes
+# normally, so the biggest EU advertiser simply never appears.
+#
+# ACTIVE_AD_COUNTRIES keeps the SP-API-derived spelling (GB, because that is
+# what the marketplace table yields after this map). Profiles are normalised TO
+# that spelling at comparison time by _ads_country(), so the two vocabularies
+# meet in exactly one place instead of being assumed identical.
 _SP_LABEL_TO_ISO_COUNTRY: dict[str, str] = {"UK": "GB"}
+
+# Advertising API countryCode -> the spelling ACTIVE_AD_COUNTRIES uses.
+# Only codes that genuinely differ belong here; everything else passes through.
+_ADS_COUNTRY_TO_SCOPE: dict[str, str] = {"UK": "GB"}
+
+
+def _ads_country(country_code) -> str:
+    """Normalise a /v2/profiles countryCode to the ACTIVE_AD_COUNTRIES spelling."""
+    c = str(country_code or "").strip().upper()
+    return _ADS_COUNTRY_TO_SCOPE.get(c, c)
 
 ACTIVE_AD_COUNTRIES: set[str] = {
     _SP_LABEL_TO_ISO_COUNTRY.get(country, country)
@@ -343,7 +370,7 @@ def _fetch_profiles(
     before = len(all_profiles)
     all_profiles = [
         p for p in all_profiles
-        if str(p.get("countryCode", "")).upper() in ACTIVE_AD_COUNTRIES
+        if _ads_country(p.get("countryCode")) in ACTIVE_AD_COUNTRIES
     ]
     dropped = before - len(all_profiles)
     if dropped:
