@@ -36,7 +36,9 @@ Metadata pulled:
 
 Report API:
   Uses the v3 Reporting API (async: submit → poll → download gzip-JSON from S3).
-  Reports are polled for up to 5 minutes per report; failures are logged and skipped.
+  Reports are polled for up to 20 minutes per report. A report that times out or
+  fails is logged and skipped, but a run in which EVERY report was skipped raises
+  rather than reporting success — see run().
 
 Incremental interval: 60 minutes (last 2 days performance, fresh metadata).
 Backfill: called by run_backfill.py with 30-day chunks.
@@ -168,8 +170,51 @@ _REPORTS = [
 ]
 
 # Report polling configuration
-REPORT_POLL_TIMEOUT_S = 300   # 5 minutes max
+#
+# 300s WAS TOO SHORT AND FAILED QUIETLY.
+# A v3 report is generated asynchronously and routinely takes longer than five
+# minutes; scheduler.py budgets 45-80 minutes for this job and up to ~2h
+# (misfire_grace_time=7200) precisely because of report generation latency. With
+# a 300s deadline _poll_report_url raises TimeoutError, _sync_report catches it,
+# logs a warning and RETURNS — so a run that never obtained a single report
+# still finished and reported success. 20 minutes per report keeps the whole job
+# inside its scheduled budget (4 reports x 9 profiles are sequential, but a
+# report that needs more than 20 minutes is genuinely stuck, not slow) while no
+# longer discarding reports that were merely still generating.
+REPORT_POLL_TIMEOUT_S = 1200  # 20 minutes per report
 REPORT_POLL_INTERVAL_S = 20   # check every 20 seconds
+
+# ─────────────────────────────────────────────────────────────────────────────
+# THE REQUESTED WINDOW, DEFINED ONCE
+# ─────────────────────────────────────────────────────────────────────────────
+# Amazon finalises a day's advertising figures roughly a day late, so the
+# nightly run asks for a window that ENDS at D-2 rather than D-1. Asking for
+# D-1 returns a report that completes normally and carries a partial or empty
+# day — which is worse than not asking, because a partial day upserts over
+# nothing and then looks like a real low-spend day until the next run corrects
+# it. D-2 is the most recent day Amazon can be relied on to have closed.
+#
+# Two days wide, so the run always re-requests the day before the one it
+# trusts. upsert_clean_batch is keyed on source_record_id, so re-requesting a
+# day it already has corrects that day rather than duplicating it.
+#
+# These are named constants rather than inline arithmetic because run() and
+# run_backfill() must not drift apart on what "recent" means, and because the
+# only way to see this decision was previously to read two subtractions.
+NIGHTLY_LAG_DAYS = 2      # end the window at D-2
+NIGHTLY_WINDOW_DAYS = 2   # ...and start it one day before that
+
+
+def nightly_window(today: Optional[date] = None) -> tuple:
+    """The (start, end) dates the nightly run requests, as ISO strings.
+
+    Exposed and pure so the choice is testable without credentials — the whole
+    job needs Key Vault and a live Amazon token, this does not.
+    """
+    today = today or date.today()
+    end = today - timedelta(days=NIGHTLY_LAG_DAYS)
+    start = end - timedelta(days=NIGHTLY_WINDOW_DAYS - 1)
+    return start.isoformat(), end.isoformat()
 
 # HTTP 425 "Too Early" — the Reporting API returns this while a report is still
 # being generated. It is a not-ready-yet signal, not a failure. Two things follow
@@ -499,8 +544,19 @@ def _sync_report(
     profile_id: str, pull_id: str,
     start_date: str, end_date: str,
     report_def: dict,
-) -> None:
-    """Submit, poll, download, and upsert one performance report for one profile."""
+) -> str:
+    """Submit, poll, download, and upsert one performance report for one profile.
+
+    Returns an outcome so the caller can tell an empty result from a lost one:
+      'ok'      — the report was obtained (row count may legitimately be 0)
+      'timeout' — still generating when the poll deadline expired
+      'failed'  — submit/poll/download raised
+
+    A per-report failure stays non-fatal: one stuck report must not cost the
+    other eleven marketplaces their data. But it is no longer INVISIBLE, which
+    it was while this function returned None either way — run() now refuses to
+    report success if nothing at all was obtained.
+    """
     report_type_id = report_def["report_type_id"]
     record_type = report_def["record_type"]
     id_fields = report_def["id_fields"]
@@ -516,10 +572,10 @@ def _sync_report(
 
     except TimeoutError as exc:
         logger.warning("amazon_ads: %s report timed out profile=%s: %s", report_type_id, profile_id, exc)
-        return
+        return "timeout"
     except Exception as exc:
         logger.error("amazon_ads: %s report FAILED profile=%s: %s", report_type_id, profile_id, exc, exc_info=True)
-        return
+        return "failed"
 
     # Raw record: report summary only (rows can be large; individual rows go to api_clean)
     write_raw(
@@ -558,6 +614,7 @@ def _sync_report(
         "amazon_ads: %d %s rows upserted profile=%s %s to %s",
         len(rows), record_type, profile_id, start_date, end_date,
     )
+    return "ok"
 
 
 # ---------------------------------------------------------------------------
@@ -572,7 +629,8 @@ def _sync_profile(
     start_date: str,
     end_date: str,
     include_metadata: bool,
-) -> None:
+) -> dict:
+    """Sync one profile. Returns {outcome: count} across its four reports."""
     profile_id = str(profile["profileId"])
     base_url: str = profile["_base_url"]
     region: str = profile.get("_region", "?")
@@ -587,11 +645,14 @@ def _sync_profile(
     if include_metadata:
         _sync_metadata(base_url, access_token, client_id, profile_id, pull_id)
 
+    outcomes: dict = {}
     for report_def in _REPORTS:
-        _sync_report(
+        result = _sync_report(
             base_url, access_token, client_id, profile_id, pull_id,
             start_date, end_date, report_def,
         )
+        outcomes[result] = outcomes.get(result, 0) + 1
+    return outcomes
 
 
 # ---------------------------------------------------------------------------
@@ -624,28 +685,48 @@ def run() -> None:
         logger.warning("amazon_ads: no profiles found — check credentials and profile ID config")
         return
 
-    today = date.today()
-    # Pull last 2 days to cover the typical 1-day data lag
-    start_date = (today - timedelta(days=2)).isoformat()
-    end_date = (today - timedelta(days=1)).isoformat()
+    start_date, end_date = nightly_window()
+    logger.info("amazon_ads: requesting %s to %s (window ends at D-%d)",
+                start_date, end_date, NIGHTLY_LAG_DAYS)
 
+    totals: dict = {}
     for profile in profiles:
         try:
-            _sync_profile(
+            outcomes = _sync_profile(
                 profile, access_token, creds["amazon-ads-client-id"],
                 pull_id, start_date, end_date,
                 include_metadata=True,
             )
+            for k, v in outcomes.items():
+                totals[k] = totals.get(k, 0) + v
         except Exception as exc:
+            totals["profile_error"] = totals.get("profile_error", 0) + 1
             logger.error(
                 "amazon_ads: profile %s failed — %s",
                 profile.get("profileId"), exc, exc_info=True,
             )
 
     logger.info(
-        "amazon_ads.run complete pull_id=%s profiles=%d",
-        pull_id, len(profiles),
+        "amazon_ads.run complete pull_id=%s profiles=%d outcomes=%s",
+        pull_id, len(profiles), totals,
     )
+
+    # A RUN THAT OBTAINED NOTHING IS A FAILED RUN, AND MUST SAY SO.
+    # Every per-report error above is caught and logged so one stuck report
+    # cannot cost the other marketplaces their data. Taken to its conclusion
+    # that meant a run where all 36 reports timed out still returned normally,
+    # logged "complete", and left the scheduler believing the connector was
+    # healthy while api_clean stayed empty. That is the same silent-zero failure
+    # the reports app just had to be rescued from. Raising here surfaces it to
+    # the APScheduler error listener and the incident log.
+    if not totals.get("ok"):
+        raise RuntimeError(
+            f"amazon_ads.run obtained no reports at all across {len(profiles)} profiles "
+            f"({start_date}..{end_date}); outcomes={totals}. Nothing was written to api_clean. "
+            f"A 425/timeout on every report points at report-generation latency "
+            f"(REPORT_POLL_TIMEOUT_S={REPORT_POLL_TIMEOUT_S}s); a 'failed' count points at "
+            f"credentials or profile scope."
+        )
 
 
 def run_backfill(start_date, end_date) -> None:
@@ -676,17 +757,30 @@ def run_backfill(start_date, end_date) -> None:
         logger.warning("amazon_ads: no profiles found for backfill")
         return
 
+    totals: dict = {}
     for profile in profiles:
         try:
-            _sync_profile(
+            outcomes = _sync_profile(
                 profile, access_token, creds["amazon-ads-client-id"],
                 pull_id, start_str, end_str,
                 include_metadata=False,
             )
+            for k, v in outcomes.items():
+                totals[k] = totals.get(k, 0) + v
         except Exception as exc:
+            totals["profile_error"] = totals.get("profile_error", 0) + 1
             logger.error(
                 "amazon_ads: profile %s backfill failed — %s",
                 profile.get("profileId"), exc, exc_info=True,
             )
 
-    logger.info("amazon_ads.run_backfill complete pull_id=%s", pull_id)
+    logger.info("amazon_ads.run_backfill complete pull_id=%s outcomes=%s", pull_id, totals)
+
+    # Same rule as run(): a chunk that obtained nothing must not look done.
+    # run_backfill.py walks chunks in sequence, and a silently empty chunk would
+    # leave a hole in the middle of a backfill that reported success throughout.
+    if not totals.get("ok"):
+        raise RuntimeError(
+            f"amazon_ads.run_backfill obtained no reports for {start_str}..{end_str} "
+            f"across {len(profiles)} profiles; outcomes={totals}. Nothing was written."
+        )

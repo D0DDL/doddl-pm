@@ -281,23 +281,29 @@ def register_jobs(scheduler: BlockingScheduler) -> None:
         coalesce=True,
     )
 
-    # out of scope 2026-08-03 — re-enable by uncommenting
-    # Amazon Advertising API partner registration was REJECTED — no credentials
-    # exist, so this connector cannot function. Left registered it would fail
-    # every night and bury genuine errors in the incident log.
     # ── Amazon Advertising — SP campaigns, ad groups, keywords, search terms ──
-    # scheduler.add_job(
-    #     func=amazon_advertising.run,
-    #     trigger="cron",
-    #     hour=4,
-    #     minute=30,
-    #     timezone="Europe/London",
-    #     id="amazon-advertising-sync",
-    #     name="Amazon Advertising SP campaigns + performance sync",
-    #     replace_existing=True,
-    #     misfire_grace_time=7200,
-    #     coalesce=True,
-    # )
+    #    (daily 05:30 Europe/London, after amazon-sales-traffic-nightly) ───────
+    # In scope again as of 2026-09-01: the partner registration that was
+    # rejected on 2026-08-03 is now approved and amazon-ads-refresh-token is in
+    # Key Vault. One LWA token covers NA + EU + FE; the connector scopes itself
+    # to the 9 ACTIVE_AD_COUNTRIES (matched to ACTIVE_MARKETPLACES).
+    # Runs long: 9 profiles x (3 metadata calls + 4 async v3 reports, each
+    # submit -> poll -> download) is ~45-80 min typically, up to ~2h if report
+    # generation is slow or createReport hits 429 backoff — hence its own slot
+    # after the 04:30 sales/traffic job rather than a 30-minute stagger, and
+    # misfire_grace_time=7200 to match the worst-case runtime.
+    scheduler.add_job(
+        func=amazon_advertising.run,
+        trigger="cron",
+        hour=5,
+        minute=30,
+        timezone="Europe/London",
+        id="amazon-advertising-sync",
+        name="Amazon Advertising SP campaigns + performance sync",
+        replace_existing=True,
+        misfire_grace_time=7200,
+        coalesce=True,
+    )
 
     # out of scope 2026-08-03 — re-enable by uncommenting
     # ── SEMrush — domain analytics + keywords (every 24 hours) ───────────────
