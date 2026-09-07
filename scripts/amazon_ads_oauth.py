@@ -148,14 +148,16 @@ def _probe_region(region: str, access_token: str, client_id: str) -> None:
 
 def _store_with_retry(vault_uri: str, secret_name: str, value: str) -> bool:
     """Write to Key Vault, retrying transient failures. Returns True on success."""
-    from azure.keyvault.secrets import SecretClient
-    from azure.identity import DefaultAzureCredential
+    # Reuse connectors.lib.secrets' client: when AZURE_TENANT_ID is set it builds
+    # a tenant-scoped chain with a persisted token cache, which is what the reads
+    # in this script already authenticated with. A bare DefaultAzureCredential
+    # would fall through to the Azure CLI, which is not installed here.
+    from connectors.lib.secrets import _get_client
 
     last_exc: Exception | None = None
     for attempt in range(1, KV_WRITE_ATTEMPTS + 1):
         try:
-            client = SecretClient(vault_url=vault_uri, credential=DefaultAzureCredential())
-            client.set_secret(secret_name, value)
+            _get_client().set_secret(secret_name, value)
             return True
         except Exception as exc:  # noqa: BLE001 — any failure is a retry candidate
             last_exc = exc
@@ -198,6 +200,15 @@ def main() -> None:
              "for adding it via the portal by hand.",
     )
     args = parser.parse_args()
+
+    # Windows consoles default to cp1252; Amazon profile names are not confined
+    # to it. Degrade unprintable characters instead of raising.
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:  # noqa: BLE001 — older/redirected streams
+            pass
+
     region = args.region.lower()
     secret_name = args.secret_name.strip()
     redirect_uri = args.redirect_uri.strip()
@@ -303,7 +314,12 @@ def main() -> None:
     print("  (this is the 'does NA need its own token' check):")
     if access_token:
         for r in ("na", "eu", "fe"):
-            _probe_region(r, access_token, client_id)
+            try:
+                _probe_region(r, access_token, client_id)
+            except Exception as exc:  # noqa: BLE001 — STEP 4 is diagnostics only.
+                # A probe must never abort the run: the refresh token is only in
+                # memory at this point and STEP 5 has not stored it yet.
+                print(f"  {r.upper():3} — probe error ({type(exc).__name__}: {exc})")
         print("\n  If NA shows profiles above, the single token covers NA — no second")
         print("  authorisation needed. If NA shows 'no access' AND doddl runs US ads,")
         print("  US advertising is under a separate Amazon login: re-run with")
