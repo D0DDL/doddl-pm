@@ -145,11 +145,25 @@ _REPORTS = [
     {
         "report_type_id": "spCampaigns",
         "group_by": ["campaign"],
+        # THREE COLUMNS REMOVED 2026-09-08 — the API rejects them outright.
+        # createReport returned 400 "configuration columns includes invalid
+        # values: (portfolioId, salesOtherSku7d, roasClicks7d)" for every
+        # profile, so this definition had never produced a single row.
+        #
+        # roasClicks7d does not exist in the v3 schema; the nearest thing is
+        # roasClicks14d, and it is deliberately NOT substituted. The Ads tab
+        # recomputes ROAS from summed cost and sales_7d (lib/ads.js — ratios
+        # from sums, never averaged), so a precomputed ROAS is unused, and a
+        # 14-day-attributed one sitting beside 7-day sales would invite someone
+        # to compare two numbers built on different windows.
+        #
+        # unitsSoldClicks7d is VALID and stays — it was wrongly suspected of
+        # being renamed. The allowed list carries it.
         "columns": [
-            "campaignId", "campaignName", "campaignStatus", "portfolioId",
+            "campaignId", "campaignName", "campaignStatus",
             "impressions", "clicks", "cost",
-            "purchases7d", "purchasesSameSku7d", "sales7d", "salesOtherSku7d",
-            "unitsSoldClicks7d", "clickThroughRate", "costPerClick", "roasClicks7d",
+            "purchases7d", "purchasesSameSku7d", "sales7d",
+            "unitsSoldClicks7d", "clickThroughRate", "costPerClick",
             "date",
         ],
         "record_type": "sp_campaign_performance",
@@ -575,14 +589,20 @@ def _sync_report(
     """Submit, poll, download, and upsert one performance report for one profile.
 
     Returns an outcome so the caller can tell an empty result from a lost one:
-      'ok'      — the report was obtained (row count may legitimately be 0)
-      'timeout' — still generating when the poll deadline expired
-      'failed'  — submit/poll/download raised
+      'ok'                 — obtained (row count may legitimately be 0)
+      'timeout'            — still generating when the poll deadline expired
+      'failed'             — poll/download raised for some other reason
+      'invalid_definition' — createReport returned 4xx: THIS CODE is wrong
 
-    A per-report failure stays non-fatal: one stuck report must not cost the
-    other eleven marketplaces their data. But it is no longer INVISIBLE, which
-    it was while this function returned None either way — run() now refuses to
-    report success if nothing at all was obtained.
+    A per-report failure stays non-fatal so one stuck report cannot cost the
+    other marketplaces their data. But 'invalid_definition' is a different
+    animal from the other two and is escalated by run(): a 400 from
+    createReport means the columns or reportTypeId in _REPORTS do not match the
+    v3 schema, which is a permanent defect that will fail identically every
+    night until someone edits this file. Three of the four definitions were in
+    exactly that state on 2026-09-07 — spCampaigns, spAdGroups and spKeywords
+    all 400ing — while runs completed and logged normally, because the generic
+    handler treated a schema mismatch the same as a slow report.
     """
     report_type_id = report_def["report_type_id"]
     record_type = report_def["record_type"]
@@ -600,6 +620,24 @@ def _sync_report(
     except TimeoutError as exc:
         logger.warning("amazon_ads: %s report timed out profile=%s: %s", report_type_id, profile_id, exc)
         return "timeout"
+    except httpx.HTTPStatusError as exc:
+        # 4xx on submit is a rejected REQUEST, not a failed report. The API says
+        # which column or reportTypeId it objects to; that message is the whole
+        # diagnosis, so it is logged in full rather than summarised.
+        if 400 <= exc.response.status_code < 500:
+            body = ""
+            try:
+                body = exc.response.text[:800]
+            except Exception:
+                pass
+            logger.error(
+                "amazon_ads: %s report definition REJECTED (HTTP %s) profile=%s — this will fail "
+                "every night until _REPORTS is corrected. Response: %s",
+                report_type_id, exc.response.status_code, profile_id, body,
+            )
+            return "invalid_definition"
+        logger.error("amazon_ads: %s report FAILED profile=%s: %s", report_type_id, profile_id, exc, exc_info=True)
+        return "failed"
     except Exception as exc:
         logger.error("amazon_ads: %s report FAILED profile=%s: %s", report_type_id, profile_id, exc, exc_info=True)
         return "failed"
@@ -738,6 +776,24 @@ def run() -> None:
         pull_id, len(profiles), totals,
     )
 
+    # A REJECTED DEFINITION FAILS THE JOB, EVEN IF OTHER REPORTS SUCCEEDED.
+    # This is the case the previous version could not see. On 2026-09-07 three
+    # of the four definitions 400ed — spCampaigns, spAdGroups, spKeywords — and
+    # only spSearchTerm was accepted. Every run would have obtained one report
+    # per profile, satisfied the "did we get anything" check below, and logged
+    # complete, while the Ads tab sat empty of the campaign-grain rows it
+    # actually renders. A schema mismatch is permanent: it fails identically
+    # every night until _REPORTS is edited, so it belongs in the incident log
+    # the first night, not the fiftieth.
+    if totals.get("invalid_definition"):
+        raise RuntimeError(
+            f"amazon_ads.run: {totals['invalid_definition']} report definition(s) were REJECTED by "
+            f"createReport (HTTP 4xx) across {len(profiles)} profiles ({start_date}..{end_date}); "
+            f"outcomes={totals}. The columns or reportTypeId in _REPORTS do not match the v3 schema. "
+            f"The per-report log lines carry Amazon's response naming the offending field. This will "
+            f"fail identically every night until the definition is corrected — it is not transient."
+        )
+
     # A RUN THAT OBTAINED NOTHING IS A FAILED RUN, AND MUST SAY SO.
     # Every per-report error above is caught and logged so one stuck report
     # cannot cost the other marketplaces their data. Taken to its conclusion
@@ -802,6 +858,14 @@ def run_backfill(start_date, end_date) -> None:
             )
 
     logger.info("amazon_ads.run_backfill complete pull_id=%s outcomes=%s", pull_id, totals)
+
+    # Same escalation as run(): a rejected definition is a permanent defect.
+    if totals.get("invalid_definition"):
+        raise RuntimeError(
+            f"amazon_ads.run_backfill: {totals['invalid_definition']} report definition(s) REJECTED by "
+            f"createReport for {start_str}..{end_str}; outcomes={totals}. _REPORTS does not match the "
+            f"v3 schema — every remaining chunk will fail the same way."
+        )
 
     # Same rule as run(): a chunk that obtained nothing must not look done.
     # run_backfill.py walks chunks in sequence, and a silently empty chunk would
