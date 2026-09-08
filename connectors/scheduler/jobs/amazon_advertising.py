@@ -726,10 +726,18 @@ def _sync_report(
                 body = exc.response.text[:800]
             except Exception:
                 pass
+            # The message states WHAT happened and quotes Amazon; it does not
+            # assert WHY. A 4xx here is usually a bad column or reportTypeId,
+            # but it is also how the API reports a date range wider than its
+            # 31-day maximum or a startDate before the retention window — both
+            # caller errors with the same shape and neither fixed by editing
+            # _REPORTS. Claiming a cause the status code cannot distinguish
+            # sends the next person to the wrong file; the quoted detail
+            # already says which it is.
             logger.error(
-                "amazon_ads: %s report definition REJECTED (HTTP %s) profile=%s — this will fail "
-                "every night until _REPORTS is corrected. Response: %s",
-                report_type_id, exc.response.status_code, profile_id, body,
+                "amazon_ads: %s report request REJECTED (HTTP %s) profile=%s window=%s..%s. "
+                "Amazon's response: %s",
+                report_type_id, exc.response.status_code, profile_id, start_date, end_date, body,
             )
             return "invalid_definition"
         logger.error("amazon_ads: %s report FAILED profile=%s: %s", report_type_id, profile_id, exc, exc_info=True)
@@ -909,11 +917,13 @@ def run() -> None:
     # the first night, not the fiftieth.
     if totals.get("invalid_definition"):
         raise RuntimeError(
-            f"amazon_ads.run: {totals['invalid_definition']} report definition(s) were REJECTED by "
+            f"amazon_ads.run: {totals['invalid_definition']} report request(s) were REJECTED by "
             f"createReport (HTTP 4xx) across {len(profiles)} profiles ({start_date}..{end_date}); "
-            f"outcomes={totals}. The columns or reportTypeId in _REPORTS do not match the v3 schema. "
-            f"The per-report log lines carry Amazon's response naming the offending field. This will "
-            f"fail identically every night until the definition is corrected — it is not transient."
+            f"outcomes={totals}. Read the per-report log lines: they quote Amazon's response, which "
+            f"names the cause. Usually a column or reportTypeId in _REPORTS that does not match the "
+            f"v3 schema, in which case it will fail identically every night; but the same status also "
+            f"covers a window wider than the 31-day maximum or a startDate before the retention "
+            f"window, which are caller errors, not schema errors."
         )
 
     # A RUN THAT OBTAINED NOTHING IS A FAILED RUN, AND MUST SAY SO.
