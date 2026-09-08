@@ -281,6 +281,35 @@ def register_jobs(scheduler: BlockingScheduler) -> None:
         coalesce=True,
     )
 
+    # ── Amazon Catalog Items — daily sales rank snapshot ────────────────────
+    #    (daily 06:30 Europe/London, after amazon-sales-traffic-nightly) ──────
+    # RANK CANNOT BE BACKFILLED. Every other feed here has a retention window —
+    # sales/traffic two years, ads 95 days — but the Catalog Items API returns
+    # only today's rank. A day this job does not run is a permanent hole in the
+    # series, which is why it gets its own slot rather than being appended to an
+    # existing job that might fail before reaching it.
+    #
+    # 06:30 is safe despite the ads job starting at 05:30 and running up to ~2h:
+    # the executor is ThreadPoolExecutor(max_workers=10), so jobs overlap rather
+    # than queue. On a serialised scheduler this would have had to move to 03:30
+    # to avoid waiting behind ads.
+    #
+    # ~184 (marketplace, asin) pairs at 2 req/sec is about 95 seconds of request
+    # time; misfire_grace_time is an hour, far more than it needs, because a
+    # late snapshot is still that day's snapshot and a skipped one is gone.
+    scheduler.add_job(
+        func=amazon_sp_api.run_catalog_rank,
+        trigger="cron",
+        hour=6,
+        minute=30,
+        timezone="Europe/London",
+        id="amazon-catalog-rank",
+        name="Amazon Catalog Items daily sales rank snapshot",
+        replace_existing=True,
+        misfire_grace_time=3600,
+        coalesce=True,
+    )
+
     # ── Amazon Advertising — SP campaigns, ad groups, keywords, search terms ──
     #    (daily 05:30 Europe/London, after amazon-sales-traffic-nightly) ───────
     # In scope again as of 2026-09-01: the partner registration that was

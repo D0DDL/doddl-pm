@@ -67,6 +67,9 @@ from tenacity import (
 
 from connectors.lib.secrets import get_secret, get_secrets
 from connectors.lib.db import write_raw, upsert_clean_batch, last_pull_ts, upsert_table, select_rows
+# Paging helpers for the catalog-rank target query: select_rows has no offset
+# parameter and amazon_asin_daily holds tens of thousands of rows in 90 days.
+from connectors.lib.db import SUPABASE_URL as _DB_URL, _headers as _db_headers, _key as _db_key
 
 logger = logging.getLogger(__name__)
 
@@ -2284,4 +2287,298 @@ if __name__ == "__main__":
             data_end_time=_day.strftime("%Y-%m-%dT23:59:59Z"),
             report_options={"dateGranularity": "DAY", "asinGranularity": "CHILD"},   # rev 4: reverted from rev 3's SKU
             report_format="json",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Catalog Items — daily sales rank snapshot
+# ---------------------------------------------------------------------------
+# GET /catalog/2022-04-01/items/{asin}?marketplaceIds={id}&includedData=salesRanks
+#
+# RANK HAS NO HISTORY. A MISSED DAY IS GONE.
+# Every other feed here can be backfilled: sales/traffic reaches back two years,
+# ads keeps 95 days. Catalog rank is a point-in-time snapshot with no retention
+# window at all — if this job does not run on a given day, that day's rank does
+# not exist anywhere and never will. That is why it is scheduled early, why a
+# per-ASIN failure is tolerated, and why a run that ranks nothing raises.
+#
+# BOTH RANK ARRAYS ARE STORED, UNFLATTENED.
+# One ASIN sits in several categories at once and the useful one changes:
+#   classificationRanks  {classificationId, title, link, rank}    Toddler Bowls #34
+#   displayGroupRanks    {websiteDisplayGroup, title, link, rank} Baby Products #7740
+# Same product, two orders of magnitude apart. The two also carry DIFFERENT
+# identifying keys — classificationId vs websiteDisplayGroup — so flattening to
+# one shape would discard whichever field lost. The marketplace's whole
+# salesRanks entry is stored as returned and the reader decides which matters.
+#
+# TARGETS COME FROM WHAT ACTUALLY SELLS, NOT FROM THE PRODUCT MASTER.
+# dim_product_asin holds 78 distinct ASINs against a region ("EU"/"NA"), so
+# using it would mean fanning each across all seven EU marketplaces and
+# discovering by 404 which listings exist — ~500 requests a night, most of them
+# misses. amazon_asin_daily already holds real (marketplace_id, asin) pairs,
+# every one a listing Amazon reported activity for: 184 pairs over 63 ASINs in
+# the last 90 days. Every request targets a listing known to exist.
+#
+# The 90-day bound is also the retry-suppression mechanism. A delisted ASIN
+# stops appearing in amazon_asin_daily, ages out of the window, and leaves this
+# job's target list on its own — no status table, no attempts counter, and no
+# never-retry flag that has to be cleared by hand when a listing returns.
+CATALOG_RANK_RATE = 2.0          # x-amzn-RateLimit-Limit: 2.0, confirmed live
+CATALOG_RANK_BURST = 2
+CATALOG_RANK_LOOKBACK_DAYS = 90
+CATALOG_RANK_RECORD_TYPE = "catalog_rank"
+CATALOG_RANK_PATH = "/catalog/2022-04-01/items"
+# Throttle retries per pair. Amazon's quota is shared across everything hitting
+# the same endpoint, so a locally-correct 2 req/sec still collects 429s when the
+# ads or sales/traffic jobs are running alongside on the 10-worker pool.
+CATALOG_RANK_THROTTLE_RETRIES = 4
+#
+# WHAT ELSE COMPETES FOR THIS QUOTA: NOTHING, TODAY.
+# Checked 2026-09-08 against a week of api_raw timings (UTC):
+#   amazon-sp-api-sync        00:30:03 -> 00:30:31   orders / fba / listings
+#   sales-traffic-nightly     03:30:29 -> 03:36:42   reports
+#   amazon-catalog-rank       05:30 (06:30 BST)      catalog        <- this job
+# Sales/traffic finishes nearly two hours before this job starts, and it has
+# never run long: six minutes, every night, seven nights running.
+#
+# The advertising job at 04:30 UTC does NOT compete either — it calls
+# advertising-api-*.amazon.com, a different host and a different product, with
+# its own quota. (An earlier note in this file's history claimed otherwise.)
+#
+# SP-API quotas are also published PER OPERATION rather than per host, and the
+# response confirms it per call: getCatalogItem returns its own
+# x-amzn-RateLimit-Limit: 2.0. So even a sales/traffic overrun would be
+# spending Reports API budget, not this one.
+#
+# The 429s on the first live run therefore came from inside this job, not from
+# contention: the NA account holds the largest block (51 US + 8 CA pairs) and
+# ran them back to back at exactly the advertised rate with no slack, which
+# Amazon throttled anyway. Hence the retry above rather than a lower rate — the
+# limiter is correct, the enforcement is just tighter than the number implies.
+#
+# THIS LOOP MUST STAY SEQUENTIAL ACROSS ACCOUNTS. Each account gets its own
+# _RateLimiter, which is right when they run one after another. Parallelising
+# them on the 10-worker pool would put EU and EU-2 — two accounts, one
+# getCatalogItem quota — at 4 req/sec against a 2 req/sec limit, and the
+# symptom would be intermittent 429s that look like Amazon being flaky.
+_CATALOG_PAGE = 1000
+
+# marketplace_id -> the label used elsewhere in this file, so a stamped
+# marketplace_name matches what the sales/traffic rows already carry.
+_MARKETPLACE_LABEL: dict[str, str] = {
+    marketplace_id: country
+    for account_cfg in ACCOUNTS.values()
+    for (marketplace_id, country, _seller_id) in account_cfg["marketplaces"]
+}
+
+
+def _catalog_select_page(table: str, select: str, filters: dict, page: int) -> list:
+    """One page of a PostgREST select.
+
+    select_rows() has no offset parameter and amazon_asin_daily holds tens of
+    thousands of rows in a 90-day window, so paging happens here rather than
+    pulling the lot in a single request.
+    """
+    params = {"select": select, **filters}
+    headers = dict(_db_headers(_db_key()))
+    headers["Range-Unit"] = "items"
+    headers["Range"] = f"{page * _CATALOG_PAGE}-{(page + 1) * _CATALOG_PAGE - 1}"
+    resp = httpx.get(f"{_DB_URL}/{table}", headers=headers, params=params, timeout=60.0)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def catalog_rank_targets(lookback_days: int = CATALOG_RANK_LOOKBACK_DAYS) -> dict:
+    """{marketplace_id: sorted[asin]} for listings with activity in the window.
+
+    Restricted to ACTIVE_MARKETPLACES: a marketplace we do not report on does
+    not need its rank tracked, and pulling it would spend rate-limit budget the
+    reported marketplaces need.
+    """
+    since = (date.today() - timedelta(days=lookback_days)).isoformat()
+    by_marketplace: dict = {}
+    page = 0
+    while True:
+        rows = _catalog_select_page(
+            "amazon_asin_daily", "marketplace_id,asin",
+            {"report_date": f"gte.{since}"}, page,
+        )
+        if not rows:
+            break
+        for r in rows:
+            mid, asin = r.get("marketplace_id"), r.get("asin")
+            if mid and asin and mid in ACTIVE_MARKETPLACES:
+                by_marketplace.setdefault(mid, set()).add(asin)
+        if len(rows) < _CATALOG_PAGE:
+            break
+        page += 1
+    return {m: sorted(a) for m, a in sorted(by_marketplace.items())}
+
+
+def _fetch_sales_rank(client, endpoint: str, asin: str, marketplace_id: str, limiter) -> tuple:
+    """(status, salesRanks-entry-or-None) where status is 'ok' or 'not_found'.
+
+    A 404 IS A NORMAL ABSENCE, NOT A FAILURE. The listing was pulled, or the
+    ASIN sold here historically and no longer has a catalogue entry. Amazon
+    returns a structured body for it:
+
+      {"errors":[{"code":"NOT_FOUND","message":"Requested item, B0..., not
+       found in marketplace(s) A1PA...."}]}
+
+    The identical 404 also covers a genuinely wrong ASIN, so the two cannot be
+    told apart from the status code alone. Both are recorded, neither raises.
+    """
+    # 429 IS RETRIED, NOT COUNTED AS A LOSS.
+    # The first live run threw away 39 of 184 pairs to throttling because this
+    # raised on 429 and the caller moved on. For a feed with a retention window
+    # that is a re-run; for rank it is a permanent hole in the series, because
+    # the API only ever returns today. The documented 2 req/sec is what
+    # _RateLimiter is set to and the observed limit header agrees, but the quota
+    # is shared with whatever else is calling the same endpoint — the ads and
+    # sales/traffic jobs overlap on a 10-worker pool — so being locally correct
+    # is not enough. Retry-After is honoured when Amazon sends it, following the
+    # same pattern as the sales/traffic job.
+    for attempt in range(1, CATALOG_RANK_THROTTLE_RETRIES + 1):
+        limiter.acquire()
+        resp = client.get(
+            f"{endpoint}{CATALOG_RANK_PATH}/{asin}",
+            params={"marketplaceIds": marketplace_id, "includedData": "salesRanks"},
+        )
+        if resp.status_code != 429:
+            break
+        try:
+            wait = float(resp.headers.get("Retry-After", 0)) or (2.0 * attempt)
+        except (TypeError, ValueError):
+            wait = 2.0 * attempt
+        logger.debug("catalog_rank: 429 on %s/%s, waiting %.1fs (attempt %d/%d)",
+                     marketplace_id, asin, wait, attempt, CATALOG_RANK_THROTTLE_RETRIES)
+        time.sleep(wait)
+
+    if resp.status_code == 404:
+        return "not_found", None
+    resp.raise_for_status()
+    for entry in resp.json().get("salesRanks") or []:
+        if entry.get("marketplaceId") == marketplace_id:
+            return "ok", entry
+    # 200 with no entry for the marketplace asked about — distinct from a 404.
+    # The ASIN exists here; it simply holds no rank yet (too new, or no
+    # category assigned). Recorded as 'ok' with empty arrays so the absence of
+    # a rank is visible rather than looking like a failed fetch.
+    return "ok", None
+
+
+def run_catalog_rank() -> None:
+    """Daily sales-rank snapshot, one row per (asin, marketplace, date)."""
+    pull_id = str(uuid.uuid4())
+    snapshot_date = date.today().isoformat()
+    logger.info("catalog_rank start pull_id=%s date=%s", pull_id, snapshot_date)
+
+    targets = catalog_rank_targets()
+    total = sum(len(v) for v in targets.values())
+    logger.info(
+        "catalog_rank: %d (marketplace, asin) pairs across %d marketplaces from %d days",
+        total, len(targets), CATALOG_RANK_LOOKBACK_DAYS,
+    )
+    if not total:
+        raise RuntimeError(
+            "catalog_rank: no (marketplace, asin) pairs in the last "
+            f"{CATALOG_RANK_LOOKBACK_DAYS} days of amazon_asin_daily. Rank has no history, "
+            "so a silent no-op day is a permanent hole — failing instead."
+        )
+
+    creds = get_secrets(["amazon-sp-api-client-id", "amazon-sp-api-client-secret"])
+    cid, csec = creds["amazon-sp-api-client-id"], creds["amazon-sp-api-client-secret"]
+
+    counts = {"ok": 0, "no_rank": 0, "not_found": 0, "error": 0}
+    batch: list = []
+
+    # Iterated by ACCOUNT, not by marketplace. The seven EU marketplaces span
+    # two seller identities (UK under EU, the rest under EU-2) with separate
+    # refresh tokens, and accounts sharing an endpoint must not share a
+    # rate-limit bucket — the same reason _RateLimiter is per-account for
+    # orders, inventory and listings.
+    for account_name, cfg in ACCOUNTS.items():
+        mkts = [m for (m, _c, _s) in cfg["marketplaces"]
+                if m in ACTIVE_MARKETPLACES and m in targets]
+        if not mkts:
+            continue
+        try:
+            secret_name = cfg["refresh_token_secret"]
+            rt = get_secrets([secret_name])[secret_name]
+        except Exception as exc:
+            # Skipped, not fatal: one account without a token must not cost the
+            # others their snapshot, and today's rank cannot be re-fetched later.
+            skipped = sum(len(targets[m]) for m in mkts)
+            counts["error"] += skipped
+            logger.error("catalog_rank: %s refresh token unavailable (%s) — skipping %d pairs",
+                         account_name, str(exc)[:120], skipped)
+            continue
+
+        token = _get_access_token(cid, csec, rt)
+        limiter = _RateLimiter(CATALOG_RANK_RATE, CATALOG_RANK_BURST)
+        headers = {"x-amz-access-token": token, "Accept": "application/json"}
+
+        with httpx.Client(headers=headers, timeout=30.0) as client:
+            for marketplace_id in mkts:
+                label = _MARKETPLACE_LABEL.get(marketplace_id, marketplace_id)
+                for asin in targets[marketplace_id]:
+                    try:
+                        status, entry = _fetch_sales_rank(
+                            client, cfg["endpoint"], asin, marketplace_id, limiter)
+                    except Exception as exc:
+                        counts["error"] += 1
+                        logger.warning("catalog_rank: %s %s failed: %s",
+                                       label, asin, str(exc)[:200])
+                        continue
+
+                    if status == "not_found":
+                        counts["not_found"] += 1
+                    elif entry is None:
+                        counts["no_rank"] += 1
+                    else:
+                        counts["ok"] += 1
+
+                    # marketplace_id / marketplace_name / date are STAMPED ON.
+                    # The catalogue response nests the marketplace inside
+                    # salesRanks and carries no date at all, so putting both on
+                    # the row means no consumer has to infer either — the same
+                    # rule applied to the amazon_ads rows.
+                    batch.append({
+                        "source": SOURCE,
+                        "record_type": CATALOG_RANK_RECORD_TYPE,
+                        "source_record_id": f"{marketplace_id}_{asin}_{snapshot_date}",
+                        "data": {
+                            "asin": asin,
+                            "marketplace_id": marketplace_id,
+                            "marketplace_name": label,
+                            "date": snapshot_date,
+                            "status": status,
+                            "classificationRanks": (entry or {}).get("classificationRanks") or [],
+                            "displayGroupRanks": (entry or {}).get("displayGroupRanks") or [],
+                        },
+                        "last_pull_id": pull_id,
+                    })
+                    if len(batch) >= 500:
+                        upsert_clean_batch(batch)
+                        batch = []
+
+    if batch:
+        upsert_clean_batch(batch)
+
+    write_raw(
+        source=SOURCE, pull_id=pull_id,
+        endpoint=f"{CATALOG_RANK_PATH}/salesRanks",
+        response_body={"date": snapshot_date, "pairs": total, **counts},
+        response_status=200, connector_version=VERSION,
+    )
+    logger.info("catalog_rank complete pull_id=%s %s", pull_id, counts)
+
+    # A run that ranked nothing is a failed run. Rank cannot be backfilled, so
+    # "completed, wrote only absences" has to reach the incident log the first
+    # night rather than being found a month later as a hole in the series.
+    if counts["ok"] == 0:
+        raise RuntimeError(
+            f"catalog_rank obtained no ranks at all for {snapshot_date} across {total} pairs; "
+            f"counts={counts}. Rank is a point-in-time snapshot with no retention window, so "
+            f"this day cannot be recovered by re-running later."
         )
