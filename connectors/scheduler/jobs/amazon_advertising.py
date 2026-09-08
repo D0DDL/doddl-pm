@@ -130,6 +130,42 @@ def _ads_country(country_code) -> str:
     c = str(country_code or "").strip().upper()
     return _ADS_COUNTRY_TO_SCOPE.get(c, c)
 
+# ─────────────────────────────────────────────────────────────────────────────
+# THE MARKETPLACE GOES ON THE ROW, NOT IN A LOOKUP SOMEWHERE ELSE
+# ─────────────────────────────────────────────────────────────────────────────
+# /v2/profiles reports countryCode ("UK", "DE"), never a marketplace_id, and the
+# report rows themselves carry neither. Until 2026-09-08 the connector persisted
+# only profileId, so every consumer had to map profileId -> marketplace through
+# its own copy of the profile list. doddl-reports had exactly that copy, it was
+# hand-transcribed, and it was wrong about Ireland and about US/CA sharing a
+# profile.
+#
+# A marketplace_id derived once here, from the same ACCOUNTS table the
+# sales/traffic reports use, cannot drift from them. A map maintained in a
+# second repo can and did. So the fact is written onto the row.
+#
+# Keyed on the SP-API country LABEL, which is what /v2/profiles returns too —
+# both say "UK". _ads_country() exists for comparing against
+# ACTIVE_AD_COUNTRIES, which holds the ISO-normalised "GB"; it is deliberately
+# NOT used here, because this map's keys are labels, not ISO codes.
+_COUNTRY_TO_MARKETPLACE_ID: dict[str, str] = {
+    country: marketplace_id
+    for account_cfg in _SP_ACCOUNTS.values()
+    for (marketplace_id, country, _seller_id) in account_cfg["marketplaces"]
+}
+
+
+def _marketplace_of(profile: dict) -> tuple:
+    """(marketplace_id, marketplace_name) for a profile, or (None, None).
+
+    None is returned rather than guessed for a country with no marketplace in
+    the SP-API table — MX, AU, JP and SG advertise but are not reporting
+    marketplaces. A guessed id would attribute their spend to somebody else.
+    """
+    cc = str(profile.get("countryCode") or "").strip().upper()
+    return _COUNTRY_TO_MARKETPLACE_ID.get(cc), (cc or None)
+
+
 ACTIVE_AD_COUNTRIES: set[str] = {
     _SP_LABEL_TO_ISO_COUNTRY.get(country, country)
     for account_cfg in _SP_ACCOUNTS.values()
@@ -585,6 +621,9 @@ def _sync_report(
     profile_id: str, pull_id: str,
     start_date: str, end_date: str,
     report_def: dict,
+    marketplace_id: str = None,
+    marketplace_name: str = None,
+    currency: str = None,
 ) -> str:
     """Submit, poll, download, and upsert one performance report for one profile.
 
@@ -662,11 +701,23 @@ def _sync_report(
     for row in rows:
         id_parts = [str(row.get(f, "")) for f in id_fields]
         record_id = f"{profile_id}_{'_'.join(id_parts)}"
+        # marketplace_id / marketplace_name / currency are STAMPED ON, not
+        # reported by Amazon: the report rows carry none of the three. They come
+        # from the profile this report was requested under, which is the only
+        # thing that knows them. Written only when known — a None would be
+        # indistinguishable from Amazon having sent a null.
+        enriched = {**row, "profileId": profile_id}
+        if marketplace_id:
+            enriched["marketplace_id"] = marketplace_id
+        if marketplace_name:
+            enriched["marketplace_name"] = marketplace_name
+        if currency:
+            enriched["currency"] = currency
         batch.append({
             "source": SOURCE,
             "record_type": record_type,
             "source_record_id": record_id,
-            "data": {**row, "profileId": profile_id},
+            "data": enriched,
             "last_pull_id": pull_id,
         })
         if len(batch) >= 500:
@@ -710,11 +761,22 @@ def _sync_profile(
     if include_metadata:
         _sync_metadata(base_url, access_token, client_id, profile_id, pull_id)
 
+    marketplace_id, marketplace_name = _marketplace_of(profile)
+    currency = profile.get("currencyCode")
+    if not marketplace_id:
+        logger.warning(
+            "amazon_ads: profile %s (%s) has no marketplace_id in the SP-API account table — "
+            "rows will carry profileId only", profile_id, country,
+        )
+
     outcomes: dict = {}
     for report_def in _REPORTS:
         result = _sync_report(
             base_url, access_token, client_id, profile_id, pull_id,
             start_date, end_date, report_def,
+            marketplace_id=marketplace_id,
+            marketplace_name=marketplace_name,
+            currency=currency,
         )
         outcomes[result] = outcomes.get(result, 0) + 1
     return outcomes
