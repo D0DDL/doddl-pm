@@ -48,6 +48,7 @@ import gzip
 import io
 import json
 import logging
+import re
 import time
 import uuid
 from datetime import date, timedelta
@@ -206,10 +207,22 @@ _REPORTS = [
         "id_fields": ["campaignId", "date"],
     },
     {
-        "report_type_id": "spAdGroups",
+        # AD-GROUP GRAIN IS spCampaigns + groupBy adGroup, NOT A REPORT TYPE.
+        # "spAdGroups" is not a reportTypeId the v3 API recognises — it answered
+        # "configuration reportTypeId is unknown or invalid" for every request,
+        # so this definition had never produced a row. Asked the API directly:
+        # the valid ids are spCampaigns, spTargeting, spKeywords, spSearchTerm,
+        # spAdvertisedProduct and spPurchasedProduct, and ad-group grain is
+        # spCampaigns grouped by adGroup.
+        #
+        # campaignId is NOT available at this grain — the allowed column set for
+        # groupBy=adGroup has adGroupId/adGroupName/adStatus and the metrics, no
+        # campaign identifiers. It was in the old list and is dropped; joining
+        # back to a campaign needs the campaign report, which we already pull.
+        "report_type_id": "spCampaigns",
         "group_by": ["adGroup"],
         "columns": [
-            "adGroupId", "adGroupName", "campaignId",
+            "adGroupId", "adGroupName", "adStatus",
             "impressions", "clicks", "cost",
             "purchases7d", "sales7d",
             "clickThroughRate", "costPerClick",
@@ -219,8 +232,16 @@ _REPORTS = [
         "id_fields": ["adGroupId", "date"],
     },
     {
-        "report_type_id": "spKeywords",
-        "group_by": ["keyword"],
+        # KEYWORD GRAIN IS spTargeting + groupBy targeting.
+        # The old definition used reportTypeId spKeywords with groupBy keyword
+        # and was rejected: "configuration columns includes invalid values:
+        # (adGroupId, campaignId, clickThroughRate, costPerClick)". spKeywords
+        # is a real id but only accepts groupBy adGroup, which is not keyword
+        # grain. spTargeting grouped by targeting is, and its allowed column set
+        # contains every field this definition wants — keyword, keywordId,
+        # matchType, adGroupId, campaignId and the rate metrics all included.
+        "report_type_id": "spTargeting",
+        "group_by": ["targeting"],
         "columns": [
             "keywordId", "keyword", "matchType", "adGroupId", "campaignId",
             "impressions", "clicks", "cost",
@@ -554,8 +575,44 @@ def _submit_report(
             "format": "GZIP_JSON",
         },
     }
-    with httpx.Client(headers=hdrs, timeout=30.0) as client:
-        resp = _post(client, f"{base_url}/reporting/reports", payload)
+    try:
+        with httpx.Client(headers=hdrs, timeout=30.0) as client:
+            resp = _post(client, f"{base_url}/reporting/reports", payload)
+    except httpx.HTTPStatusError as exc:
+        # 425 ON SUBMIT MEANS "DUPLICATE", NOT "NOT READY".
+        # The same status code means two different things on this API. On the
+        # poll endpoint it is "still generating" (REPORT_NOT_READY_STATUS). On
+        # createReport it is "you already asked for exactly this", and the body
+        # names the existing report:
+        #
+        #   {"code":"425","detail":"The Request is a duplicate of : <reportId>"}
+        #
+        # That is a success in every sense that matters — the report exists and
+        # can be polled — so the id is lifted out and returned. Treating it as
+        # an error would break the nightly job by construction: the window is
+        # D-3..D-2, so consecutive runs overlap by a day and the second request
+        # for that day is always a duplicate. It would also have been misfiled
+        # as 'invalid_definition' by the 4xx handler in _sync_report and failed
+        # the whole run.
+        if exc.response.status_code == REPORT_NOT_READY_STATUS:
+            detail = ""
+            try:
+                detail = exc.response.json().get("detail", "")
+            except Exception:
+                detail = exc.response.text or ""
+            found = re.search(r"duplicate of\s*:?\s*([0-9a-fA-F-]{16,})", detail)
+            if found:
+                existing = found.group(1)
+                logger.info(
+                    "amazon_ads: %s report for %s..%s profile=%s already requested — reusing reportId=%s",
+                    report_type_id, start_date, end_date, profile_id, existing,
+                )
+                return existing
+            logger.warning(
+                "amazon_ads: %s submit returned 425 with no reportId to reuse profile=%s: %s",
+                report_type_id, profile_id, detail[:300],
+            )
+        raise
 
     report_id = resp.get("reportId")
     if not report_id:
@@ -684,7 +741,10 @@ def _sync_report(
     # Raw record: report summary only (rows can be large; individual rows go to api_clean)
     write_raw(
         source=SOURCE, pull_id=pull_id,
-        endpoint=f"/reporting/reports/{report_type_id}/{profile_id}",
+        # record_type, not report_type_id: campaign and ad-group grain are both
+        # reportTypeId spCampaigns (they differ only by groupBy), so keying the
+        # raw record on the type id alone would make them indistinguishable.
+        endpoint=f"/reporting/reports/{record_type}/{profile_id}",
         response_body={
             "profileId": profile_id,
             "reportId": report_id,
